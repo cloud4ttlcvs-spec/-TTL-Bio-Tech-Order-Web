@@ -1,0 +1,784 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"/>
+<title>生技展訂購系統 V9.1</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=Roboto:wght@500;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+
+<style>
+/* CSS 樣式維持 V9.0 的精美設計 */
+:root {
+  --primary: #00897b; --primary-dark: #00695c; --accent: #ff6f00; 
+  --bg-body: #f0f2f5; --bg-card: #ffffff; --text-main: #263238; --text-sub: #546e7a;
+  --border: #eceff1; --shadow-sm: 0 2px 8px rgba(0,0,0,0.06);
+  --header-height: 115px;
+}
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; user-select: none; }
+body {
+  font-family: 'Noto Sans TC', sans-serif; background: var(--bg-body); color: var(--text-main);
+  margin: 0; padding: 0; padding-top: var(--header-height); padding-bottom: 100px;
+  overflow-x: hidden;
+}
+#loader { position: fixed; inset: 0; background: #fff; z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; transition: opacity 0.5s ease; }
+.spinner { width: 40px; height: 40px; border: 4px solid var(--border); border-top-color: var(--primary); border-radius: 50%; animation: spin 0.8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+header { position: fixed; top: 0; left: 0; right: 0; background: rgba(255,255,255,0.98); z-index: 1000; box-shadow: var(--shadow-sm); padding: 10px 16px 0 16px; height: var(--header-height); display: flex; flex-direction: column; gap: 10px; backdrop-filter: blur(5px); }
+.search-box { position: relative; width: 100%; }
+.search-box input { width: 100%; padding: 10px 12px 10px 40px; border-radius: 20px; border: 1px solid #cfd8dc; background: #f5f7f8; font-size: 15px; transition: 0.3s; }
+.search-box input:focus { background: #fff; border-color: var(--primary); outline: none; }
+.search-box .icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--text-sub); }
+.cat-wrap { overflow: hidden; width: 100%; }
+.cat-nav { display: flex; overflow-x: auto; gap: 8px; padding-bottom: 8px; scrollbar-width: none; scroll-behavior: smooth; }
+.cat-nav::-webkit-scrollbar { display: none; }
+.cat-pill { white-space: nowrap; padding: 6px 16px; border-radius: 20px; font-size: 14px; font-weight: 500; background: #fff; border: 1px solid #cfd8dc; color: var(--text-sub); cursor: pointer; transition: 0.2s; }
+.cat-pill.active { background: var(--primary); color: #fff; border-color: var(--primary); box-shadow: 0 4px 6px rgba(0,137,123,0.2); }
+#list { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; padding: 16px; max-width: 800px; margin: 0 auto; min-height: 60vh; touch-action: pan-y; }
+@media (max-width: 480px) { #list { grid-template-columns: 1fr 1fr; gap: 10px; padding: 12px; } }
+.p-card { background: var(--bg-card); border-radius: 16px; box-shadow: var(--shadow-sm); overflow: hidden; display: flex; flex-direction: column; position: relative; transition: transform 0.1s; }
+.p-card:active { transform: scale(0.98); }
+.p-img-box { width: 100%; aspect-ratio: 1/1; background: #fafafa; position: relative; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+.p-img-box img { width: 100%; height: 100%; object-fit: contain; transition: opacity 0.3s; opacity: 0; }
+.p-img-box img.loaded { opacity: 1; }
+.p-no-img { color: #bdbdbd; font-size: 12px; display: flex; flex-direction: column; align-items: center; }
+.badges { position: absolute; top: 6px; left: 6px; display: flex; flex-direction: column; gap: 4px; z-index: 2; align-items: flex-start; }
+.badge { font-size: 10px; padding: 3px 8px; border-radius: 6px; color: #fff; font-weight: 700; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
+.bg-red { background: linear-gradient(135deg, #ff5252, #d32f2f); }
+.bg-blue { background: linear-gradient(135deg, #42a5f5, #1565c0); }
+.bg-gold { background: linear-gradient(135deg, #ffca28, #f57f17); color: #3e2723; }
+.bg-purple { background: linear-gradient(135deg, #ab47bc, #7b1fa2); }
+.p-body { padding: 12px; flex: 1; display: flex; flex-direction: column; justify-content: space-between; }
+.p-title { font-size: 14px; font-weight: 700; line-height: 1.4; margin-bottom: 4px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; height: 40px; color: #37474f; }
+.p-code { font-size: 11px; color: #90a4ae; margin-bottom: 6px; }
+.p-price-row { display: flex; align-items: baseline; gap: 6px; margin-top: auto; }
+.p-price { font-size: 16px; font-weight: 800; color: #263238; }
+.p-old { font-size: 11px; text-decoration: line-through; color: #90a4ae; }
+.stepper { display: flex; align-items: center; justify-content: flex-end; gap: 8px; margin-top: 10px; }
+.s-btn { width: 28px; height: 28px; border-radius: 50%; border: 1px solid #cfd8dc; background: #fff; color: var(--primary); font-size: 18px; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+.s-btn:active { background: #e0f2f1; border-color: var(--primary); }
+.s-btn.add { background: var(--primary); color: #fff; border: none; }
+.s-val { width: 24px; text-align: center; font-size: 15px; font-weight: 600; color: #37474f; }
+.s-btn.hidden, .s-val.hidden { display: none; }
+.btn-bundle { width: 100%; margin-top: 10px; padding: 8px; border: 1px dashed var(--primary); border-radius: 8px; color: var(--primary); background: #e0f2f1; font-size: 13px; font-weight: 700; cursor: pointer; text-align: center; }
+#float-bar { position: fixed; bottom: 20px; left: 16px; right: 16px; background: #263238; color: #fff; border-radius: 50px; padding: 12px 24px; box-shadow: 0 10px 25px rgba(0,0,0,0.3); display: flex; align-items: center; justify-content: space-between; transform: translateY(150%); transition: 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); z-index: 1100; cursor: pointer; }
+#float-bar.show { transform: translateY(0); }
+.fb-info { display: flex; flex-direction: column; }
+.fb-total { font-size: 18px; font-weight: 700; }
+.fb-count { font-size: 11px; opacity: 0.8; }
+.fb-btn { background: var(--accent); padding: 8px 20px; border-radius: 20px; font-weight: 700; font-size: 14px; box-shadow: 0 4px 10px rgba(255,111,0,0.4); }
+#drawer { position: fixed; inset: 0; z-index: 1200; pointer-events: none; }
+#drawer-bg { position: absolute; inset: 0; background: rgba(0,0,0,0.5); opacity: 0; transition: 0.3s; }
+#drawer-panel { position: absolute; top: 0; right: 0; bottom: 0; width: 100%; max-width: 480px; background: #fff; transform: translateX(100%); transition: 0.3s ease; display: flex; flex-direction: column; pointer-events: auto; }
+#drawer.open #drawer-bg { opacity: 1; pointer-events: auto; }
+#drawer.open #drawer-panel { transform: translateX(0); }
+.dr-head { padding: 16px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; background: #fff; }
+.dr-body { flex: 1; overflow-y: auto; padding: 16px; background: #f9fafb; }
+.dr-foot { padding: 16px; background: #fff; border-top: 1px solid var(--border); box-shadow: 0 -4px 20px rgba(0,0,0,0.05); }
+.c-item { display: flex; gap: 12px; margin-bottom: 12px; padding: 12px; background: #fff; border-radius: 12px; border: 1px solid #eceff1; }
+.c-info { flex: 1; }
+.c-title { font-size: 14px; font-weight: 700; margin-bottom: 4px; color: #37474f; }
+.c-spec { font-size: 12px; color: #78909c; }
+.c-tags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+.c-tag { font-size: 10px; padding: 2px 6px; border-radius: 4px; background: #e8f5e9; color: #2e7d32; font-weight: 600; }
+.c-tag.warn { background: #ffebee; color: #c62828; }
+.c-tag.save { background: #fff3e0; color: #e65100; border: 1px solid #ffe0b2; }
+.c-price { font-weight: 700; margin-top: 6px; font-size: 15px; }
+.c-ctrl { display: flex; flex-direction: column; align-items: flex-end; justify-content: center; }
+.sum-card { background: #fff; border-radius: 12px; border: 1px solid #e0e0e0; margin-top: 15px; overflow: hidden; }
+.sum-head { padding: 12px 16px; background: #f5f5f5; font-size: 14px; font-weight: 700; display: flex; justify-content: space-between; align-items: center; cursor: pointer; }
+.sum-body { display: none; padding: 12px 16px; font-size: 13px; color: #455a64; line-height: 1.6; }
+.sum-body.open { display: block; }
+.sum-line { display: flex; justify-content: space-between; border-bottom: 1px dashed #eee; padding: 4px 0; }
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px; }
+input, select { width: 100%; padding: 12px; border: 1px solid #cfd8dc; border-radius: 8px; font-size: 14px; background: #fafafa; }
+.btn-submit { width: 100%; margin-top: 15px; padding: 14px; background: var(--text-main); color: #fff; border: none; border-radius: 12px; font-size: 16px; font-weight: 700; cursor: pointer; transition: 0.2s; }
+.btn-submit:active { transform: scale(0.98); }
+.promo-bar { background: #e8f5e9; color: #1b5e20; padding: 10px 16px; font-size: 13px; display: flex; align-items: center; gap: 8px; border-bottom: 1px solid #c8e6c9; }
+.modal { position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 2000; display: none; align-items: center; justify-content: center; backdrop-filter: blur(4px); }
+.modal.open { display: flex; }
+.m-box { background: #fff; width: 90%; max-width: 400px; border-radius: 20px; padding: 20px; max-height: 80vh; display: flex; flex-direction: column; box-shadow: 0 20px 50px rgba(0,0,0,0.3); }
+.m-head { font-size: 18px; font-weight: 700; margin-bottom: 10px; text-align: center; }
+.m-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; overflow-y: auto; padding: 4px; }
+.m-opt { padding: 12px; border: 2px solid #eee; border-radius: 12px; text-align: center; cursor: pointer; transition: 0.2s; position: relative; }
+.m-opt.selected { border-color: var(--primary); background: #e0f2f1; }
+.m-badge { position: absolute; top: -8px; right: -8px; background: var(--accent); color: #fff; width: 24px; height: 24px; border-radius: 50%; font-size: 12px; display: flex; align-items: center; justify-content: center; font-weight: 700; display: none; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
+.m-opt.selected .m-badge { display: flex; }
+.m-acts { display: flex; gap: 10px; margin-top: 20px; }
+.m-btn { flex: 1; padding: 12px; border-radius: 10px; border: none; font-weight: 700; cursor: pointer; }
+#empty-state { text-align: center; margin-top: 60px; color: #b0bec5; display: none; }
+</style>
+</head>
+<body>
+
+<div id="loader">
+  <div class="spinner"></div>
+  <p style="margin-top:15px; color:#546e7a; font-weight:500">正在同步資料...</p>
+</div>
+
+<header>
+  <div class="search-box">
+    <span class="material-icons-round icon">search</span>
+    <input id="searchInp" type="text" placeholder="搜尋商品名稱、代號...">
+  </div>
+  <div class="cat-wrap">
+    <nav class="cat-nav" id="catNav">
+      <div class="cat-pill active" onclick="setCategory('')">全部商品</div>
+    </nav>
+  </div>
+</header>
+
+<main id="list"></main>
+<div id="empty-state">
+  <span class="material-icons-round" style="font-size:48px">search_off</span>
+  <p>找不到相關商品<br>請檢查 CSV 連結是否正確</p>
+</div>
+
+<div id="float-bar" onclick="openCart()">
+  <div class="fb-info">
+    <span class="fb-total">$0</span>
+    <span class="fb-count">0 件商品</span>
+  </div>
+  <div class="fb-btn">查看購物車 ></div>
+</div>
+
+<div id="drawer">
+  <div id="drawer-bg" onclick="closeCart()"></div>
+  <div id="drawer-panel">
+    <div class="dr-head">
+      <h2 style="margin:0;font-size:18px">購物車</h2>
+      <span class="material-icons-round" onclick="closeCart()" style="cursor:pointer;padding:5px">close</span>
+    </div>
+    
+    <div class="promo-bar" id="promoBar" style="display:none">
+      <span class="material-icons-round" style="color:#2e7d32">redeem</span>
+      <span id="promoTxt"></span>
+    </div>
+
+    <div class="dr-body" id="cartList"></div>
+
+    <div class="dr-foot">
+      <div class="sum-card">
+        <div class="sum-head" onclick="toggleSum()">
+          <span>🎁 商品總覽 (含贈品)</span>
+          <span class="material-icons-round" id="sumIcon">expand_more</span>
+        </div>
+        <div class="sum-body" id="finalList"></div>
+      </div>
+
+      <div style="display:flex;justify-content:space-between;margin:15px 0 5px 0;color:#c2185b;font-weight:700"><span>美容保養小計</span><span id="sumBeauty">$0</span></div>
+      <div style="display:flex;justify-content:space-between;margin-bottom:5px"><span>原價總計</span><span id="sumBase">$0</span></div>
+      <div style="display:flex;justify-content:space-between;margin-bottom:5px;color:var(--accent)"><span>折扣與優惠</span><span id="sumDisc">-$0</span></div>
+      <div style="display:flex;justify-content:space-between;margin-top:10px;padding-top:10px;border-top:1px dashed #cfd8dc;font-size:20px;font-weight:800;color:#263238"><span>應付金額</span><span id="sumPay">$0</span></div>
+      
+      <div class="form-grid">
+        <input id="fName" placeholder="姓名 (必填)">
+        <input id="fDept" placeholder="部門 (必填)">
+        <select id="fPay">
+          <option value="現金">現金</option>
+          <option value="信用卡">信用卡</option>
+          <option value="薪資扣款">薪資扣款</option>
+          <option value="匯款">匯款</option>
+        </select>
+        <input id="fNote" placeholder="備註">
+      </div>
+      <button class="btn-submit" onclick="submitOrder()">確認訂購</button>
+      <div id="warnMsg" style="color:#d32f2f;font-size:13px;text-align:center;margin-top:10px;display:none;font-weight:700">⚠️ 尚有未符合優惠規則的商品</div>
+    </div>
+  </div>
+</div>
+
+<div id="bundleModal" class="modal">
+  <div class="m-box">
+    <div class="m-head">任選 2 件內容物</div>
+    <div style="text-align:center;color:#78909c;font-size:13px;margin-bottom:10px">可重複選擇相同商品</div>
+    <div class="m-grid" id="mGrid"></div>
+    <div class="m-acts">
+      <button class="m-btn" style="background:#f5f5f5;color:#546e7a" onclick="closeBundle()">取消</button>
+      <button class="m-btn" style="background:var(--primary);color:#fff" onclick="confirmBundle()">確認選取</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* =========================================================
+   ⚠️ 請將您的 CSV 發布連結貼在下方引號中
+   ========================================================= */
+const SHEET_P = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRVtfpccKivWeh0AcCFRmfELivETrvxF-IfCJE8zUo0i_qfRc2YyG4bdK2adofSNGYgsbhxKtu8lmeM/pub?gid=0&single=true&output=csv";
+const SHEET_R = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQU95r9_TOPlQXY-lcBS_RH3tRc0mtRyuazxHHWljpRusbzBiWsEfm3Pa_HZmKW5Ob5TOq4W5O-vumI/pub?gid=2071879068&single=true&output=csv";
+
+/* ========================================================= */
+
+// Proxy (Using CodeTabs for reliability)
+const PROXY = (url) => "https://api.allorigins.win/raw?url=" + encodeURIComponent(url);
+
+// --- State ---
+let PRODUCTS = [], RULES = {}, CART = [], SELECTED_BUNDLE = new Map();
+let PRODUCT_MAP = new Map(); // Code -> Product Obj
+let currentCat = "";
+let isCartOpen = false;
+
+// --- 1. Data Loading (PapaParse) ---
+async function initApp() {
+  try {
+    const [pText, rText] = await Promise.all([
+      fetch(PROXY(SHEET_P)).then(r => r.text()),
+      fetch(PROXY(SHEET_R)).then(r => r.text())
+    ]);
+
+    // Parse Products
+    const pData = Papa.parse(pText, { header: true, skipEmptyLines: true }).data;
+    
+    // Process Products
+    PRODUCTS = pData.map((row, idx) => {
+      // Pick logic (Case insensitive)
+      const pick = (k) => row[k] || row[Object.keys(row).find(x => x.toLowerCase() === k.toLowerCase())] || "";
+      const name = pick("product_name");
+      if(!name) return null;
+
+      // Gift Check
+      const isGift = pick("is_gift").toLowerCase();
+      if(isGift === 'true' || isGift === 'yes' || isGift.includes('是')) return null;
+
+      // Specs for Bundle
+      let bundle = [];
+      for(let i=1; i<=4; i++) {
+        let sn = pick(`spec_${i}`);
+        let sq = Number(pick(`spec_${i}_qty`) || 0);
+        if(sn) bundle.push({ name: sn, qty: sq || 1 });
+      }
+
+      const prod = {
+        _id: idx,
+        code: pick("product_code"),
+        name: name,
+        category: pick("category"),
+        price: Number((pick("list_price")||"0").replace(/,/g,'')),
+        spec: pick("spec"),
+        photo: pick("photos url"),
+        bundle: bundle
+      };
+      
+      // Map for quick lookup
+      if(prod.code) PRODUCT_MAP.set(prod.code, prod);
+      return prod;
+    }).filter(x => x);
+
+    // Parse Rules
+    const rData = Papa.parse(rText, { header: true, skipEmptyLines: true }).data;
+    RULES = { tiers: [], bogo: [], spend: [], bundle: [] }; // Reset
+    
+    rData.forEach(row => {
+      const pick = (k) => row[k] || row[Object.keys(row).find(x => x.toLowerCase() === k.toLowerCase())] || "";
+      const type = pick("rule_type").toLowerCase();
+      
+      if(type.includes("tier") || type.includes("group")) {
+        RULES.tiers.push({
+          zone: pick("zone"),
+          min: Number(pick("min_qty")),
+          pct: Number(pick("percent_off"))
+        });
+      } else if(type.includes("bogo")) {
+        RULES.bogo.push({
+          code: pick("product_code"),
+          buy: Number(pick("buy")),
+          get: Number(pick("get"))
+        });
+      } else if(type.includes("spend") || type.includes("滿額")) {
+        RULES.spend.push({
+          scope: pick("threshold_scope"),
+          prefix: pick("zone_prefix"),
+          amt: Number(pick("threshold_amount")),
+          gift: pick("gift_code"),
+          qty: Number(pick("gift_qty")),
+          mult: pick("multiples").toUpperCase() === "TRUE"
+        });
+      } else if(type.includes("bundle") || type.includes("組合")) {
+        RULES.bundle.push({
+          code: pick("product_code"),
+          price: Number(pick("unit_price"))
+        });
+      }
+    });
+
+    // Name Map for Gifts (Even if hidden in main list)
+    pData.forEach(row => {
+        const pick = (k) => row[k] || row[Object.keys(row).find(x => x.toLowerCase() === k.toLowerCase())] || "";
+        const c = pick("product_code");
+        const n = pick("product_name");
+        if(c && n) PRODUCT_MAP.set(c, { name: n, price: 0 }); // Min info for gift lookup
+    });
+
+    renderUI();
+    document.getElementById("loader").style.opacity = 0;
+    setTimeout(()=>document.getElementById("loader").remove(), 500);
+
+  } catch(e) {
+    alert("資料載入失敗: " + e.message + "\n請確認 CSV 連結權限是否公開。");
+  }
+}
+
+// --- 2. UI Rendering ---
+function renderUI() {
+  const nav = document.getElementById("catNav");
+  // Clean categories (Remove _desc)
+  const cats = [...new Set(PRODUCTS.map(p => p.category.split(/[\s_]/)[0]))].filter(Boolean);
+  
+  cats.forEach(c => {
+    const pill = document.createElement("div");
+    pill.className = "cat-pill";
+    pill.innerText = c;
+    pill.onclick = () => setCategory(c);
+    nav.appendChild(pill);
+  });
+
+  renderList();
+  
+  // Swipe Logic
+  const listEl = document.getElementById("list");
+  let ts = 0;
+  listEl.addEventListener('touchstart', (e) => { ts = e.changedTouches[0].screenX; }, {passive: true});
+  listEl.addEventListener('touchend', (e) => {
+    let te = e.changedTouches[0].screenX;
+    if(ts - te > 50) { // Swipe Left -> Next Cat
+       let idx = cats.indexOf(currentCat);
+       if(idx < cats.length - 1) setCategory(cats[idx+1] || "");
+    } else if(te - ts > 50) { // Swipe Right -> Prev Cat
+       let idx = cats.indexOf(currentCat);
+       if(idx > -1) setCategory(cats[idx-1] || "");
+       else setCategory(cats[0]);
+    }
+  }, {passive: true});
+}
+
+function renderList() {
+  const grid = document.getElementById("list");
+  grid.innerHTML = "";
+  const q = document.getElementById("searchInp").value.toLowerCase().trim();
+  
+  const filtered = PRODUCTS.filter(p => {
+    const pCat = p.category.split(/[\s_]/)[0];
+    if(currentCat && pCat !== currentCat) return false;
+    if(q && !p.name.toLowerCase().includes(q) && !p.code.toLowerCase().includes(q)) return false;
+    return true;
+  });
+
+  if(filtered.length === 0) {
+    document.getElementById("empty-state").style.display = "block";
+  } else {
+    document.getElementById("empty-state").style.display = "none";
+  }
+
+  filtered.forEach(p => {
+    const inCart = CART.find(x => x._id === p._id);
+    const qty = inCart ? inCart.qty : 0;
+    
+    // Badges logic
+    let badges = "";
+    if(p.category.includes("加價購")) badges += `<span class="badge bg-red">加價購</span>`;
+    if(RULES.bogo.some(b => b.code === p.code)) badges += `<span class="badge bg-blue">買一送一</span>`;
+    if(p.name.includes("任選")) badges += `<span class="badge bg-gold">組合優惠</span>`;
+    if(RULES.tiers.some(t => p.category.includes(t.zone))) badges += `<span class="badge bg-purple">多件折扣</span>`;
+
+    // Bundle Button logic
+    let actionBtn = "";
+    if(p.bundle.length >= 2 && p.name.includes("任選")) {
+      const hasSel = SELECTED_BUNDLE.has(p._id);
+      actionBtn = `<div class="btn-bundle" onclick="openBundle(${p._id})">
+        ${hasSel ? "內容已選 ✓ (點擊修改)" : "選擇內容物"}
+      </div>`;
+    }
+
+    // Image logic
+    let imgHtml = `<div class="p-no-img"><span class="material-icons-round" style="font-size:32px">image_not_supported</span>無圖片</div>`;
+    if(p.photo && p.photo.length > 5) {
+      imgHtml = `<img src="${p.photo}" onload="this.classList.add('loaded')" onerror="this.style.display='none';this.parentElement.innerHTML='<div class=\'p-no-img\'>暫無圖片</div>'">`;
+    }
+
+    const card = document.createElement("div");
+    card.className = "p-card";
+    card.innerHTML = `
+      <div class="p-img-box">
+        <div class="badges">${badges}</div>
+        ${imgHtml}
+      </div>
+      <div class="p-body">
+        <div>
+          <div class="p-title">${p.name}</div>
+          <div class="p-code">${p.code}</div>
+        </div>
+        <div>
+          <div class="p-price-row"><span class="p-price">$${p.price.toLocaleString()}</span></div>
+          ${actionBtn}
+          <div class="stepper">
+            <div class="s-btn ${qty===0?'hidden':''}" onclick="updateQty(${p._id}, -1)">－</div>
+            <div class="s-val ${qty===0?'hidden':''}">${qty}</div>
+            <div class="s-btn add" onclick="updateQty(${p._id}, 1)">＋</div>
+          </div>
+        </div>
+      </div>
+    `;
+    grid.appendChild(card);
+  });
+}
+
+// --- 3. Logic: Categories & Bundle Modal ---
+function setCategory(cat) {
+  currentCat = cat;
+  document.querySelectorAll(".cat-pill").forEach(el => {
+    el.classList.toggle("active", el.innerText === (cat || "全部商品"));
+  });
+  renderList();
+  window.scrollTo({top: 0, behavior: 'smooth'});
+}
+
+// Global modal state
+let modalPid = null;
+
+function openBundle(pid) {
+  modalPid = pid;
+  const p = PRODUCTS.find(x => x._id === pid);
+  const grid = document.getElementById("mGrid");
+  grid.innerHTML = "";
+  
+  // Load existing selection or init empty
+  const currentSel = SELECTED_BUNDLE.get(pid) || []; 
+  
+  p.bundle.forEach((b, idx) => {
+    const el = document.createElement("div");
+    const count = currentSel.filter(x => x === idx).length;
+    
+    el.className = `m-opt ${count > 0 ? 'selected' : ''}`;
+    el.innerHTML = `
+      <div class="m-badge">${count}</div>
+      <div>${b.name}</div>
+      <div style="font-size:12px;color:#90a4ae">x${b.qty}</div>
+    `;
+    
+    el.onclick = () => {
+      if (count > 0) {
+        const i = currentSel.indexOf(idx);
+        if(i > -1) currentSel.splice(i, 1);
+      } else {
+        if(currentSel.length < 2) currentSel.push(idx);
+        else {
+          currentSel.shift();
+          currentSel.push(idx);
+        }
+      }
+      openBundle(pid); 
+    };
+    grid.appendChild(el);
+  });
+  
+  document.getElementById("bundleModal").classList.add("open");
+}
+
+function closeBundle() { document.getElementById("bundleModal").classList.remove("open"); }
+
+function confirmBundle() {
+  if (!SELECTED_BUNDLE.has(modalPid)) { SELECTED_BUNDLE.set(modalPid, []); }
+  const sel = SELECTED_BUNDLE.get(modalPid);
+  
+  if(!sel || sel.length !== 2) {
+    alert("請選擇 2 件商品！");
+    return;
+  }
+  
+  let item = CART.find(x => x._id === modalPid);
+  if(!item) updateQty(modalPid, 1);
+  else refreshCart(); 
+  
+  closeBundle();
+}
+
+// Ensure Map is init
+const _origOpenBundle = openBundle;
+openBundle = (pid) => {
+  if(!SELECTED_BUNDLE.has(pid)) SELECTED_BUNDLE.set(pid, []);
+  _origOpenBundle(pid);
+}
+
+
+// --- 4. Cart Logic ---
+function updateQty(pid, delta) {
+  const p = PRODUCTS.find(x => x._id === pid);
+  if(!p) return;
+
+  if(delta > 0 && p.bundle.length >= 2 && p.name.includes("任選")) {
+    if(!SELECTED_BUNDLE.has(pid) || SELECTED_BUNDLE.get(pid).length !== 2) {
+      openBundle(pid);
+      return; 
+    }
+  }
+
+  let item = CART.find(x => x._id === pid);
+  if(!item && delta > 0) {
+    item = { ...p, qty: 0 };
+    CART.push(item);
+  }
+  
+  if(item) {
+    item.qty += delta;
+    if(item.qty <= 0) CART = CART.filter(x => x._id !== pid);
+  }
+  
+  refreshCart();
+  renderList();
+  
+  const fab = document.getElementById("float-bar");
+  fab.classList.remove("show");
+  void fab.offsetWidth; 
+  if(CART.length > 0) fab.classList.add("show");
+}
+
+function calcCart() {
+  let subTotal = 0;
+  let finalTotal = 0;
+  let beautyTotal = 0;
+  let discountAmt = 0;
+  let warnings = [];
+  
+  // 1. Group quantities for Tiers
+  let catCounts = {};
+  CART.forEach(it => {
+    const cat = it.category.split(/[\s_]/)[0]; // Use simplified category
+    catCounts[cat] = (catCounts[cat] || 0) + it.qty;
+  });
+
+  // 2. Process Items
+  const processedItems = CART.map(it => {
+    const originalLine = it.price * it.qty;
+    subTotal += originalLine;
+    
+    let finalLine = originalLine;
+    let tags = [];
+
+    // A. Bundle (Fixed Price)
+    const bundleRule = RULES.bundle.find(b => b.code === it.code);
+    if(bundleRule) {
+      if(bundleRule.price < it.price) {
+         finalLine = bundleRule.price * it.qty;
+         const saved = (it.price - bundleRule.price) * it.qty;
+         tags.push({ text: `組合省 $${saved.toLocaleString()}`, cls: "save" });
+      }
+    }
+    
+    // B. Tier Discount
+    else {
+      const simpleCat = it.category.split(/[\s_]/)[0];
+      // Check if this category has tier rules
+      const tierRules = RULES.tiers.filter(t => it.category.includes(t.zone) || t.zone.includes(simpleCat));
+      
+      if(tierRules.length > 0) {
+         tierRules.sort((a,b) => b.min - a.min);
+         const count = catCounts[simpleCat] || 0;
+         const applied = tierRules.find(t => count >= t.min);
+         
+         if(applied) {
+           finalLine = originalLine * ((100 - applied.pct) / 100);
+           tags.push({ text: `符合 ${applied.min}件${100-applied.pct}折`, cls: "save" });
+         }
+      }
+    }
+
+    // C. BOGO
+    const bogo = RULES.bogo.find(b => b.code === it.code);
+    if(bogo) {
+      const setSize = bogo.buy + bogo.get;
+      const freeSets = Math.floor(it.qty / setSize);
+      const remainder = it.qty % setSize;
+      
+      const freeCount = freeSets * bogo.get;
+      finalLine -= (freeCount * it.price);
+      
+      if(freeCount > 0) tags.push({ text: `買${bogo.buy}送${bogo.get} (折${freeCount})`, cls: "save" });
+      
+      if(remainder >= bogo.buy && remainder < setSize) {
+         const need = setSize - remainder;
+         tags.push({ text: `再選 ${need} 件享優惠`, cls: "warn" });
+         warnings.push(`${it.name} 未湊滿優惠`);
+      }
+    }
+
+    // Update Totals
+    finalTotal += finalLine;
+    if(it.category.includes("美容")) beautyTotal += finalLine;
+
+    return { ...it, finalLine, tags };
+  });
+
+  discountAmt = subTotal - finalTotal;
+
+  // 3. Calc Gifts
+  const gifts = [];
+  RULES.spend.forEach(r => {
+    let basis = r.scope === "zone_prefix" ? beautyTotal : finalTotal;
+    if(r.scope === "zone_prefix" && r.prefix && !r.prefix.includes("美容")) {
+       basis = 0; // Simplified
+    }
+
+    if(basis >= r.amt) {
+      let qty = r.mult ? Math.floor(basis / r.amt) * r.qty : r.qty;
+      if(qty > 0) {
+        let gName = r.gift;
+        if(PRODUCT_MAP.has(r.gift)) gName = PRODUCT_MAP.get(r.gift).name;
+        gName = gName.replace(/^(贈品|贈|Gift)[:\s|｜_]*/i, "");
+        gifts.push({ name: gName, qty: qty });
+      }
+    }
+  });
+
+  return { items: processedItems, subTotal, finalTotal, discountAmt, beautyTotal, gifts, warnings };
+}
+
+function refreshCart() {
+  const data = calcCart();
+  const list = document.getElementById("cartList");
+  list.innerHTML = "";
+
+  document.getElementById("barTotal").innerText = "$" + data.finalTotal.toLocaleString();
+  document.getElementById("barCount").innerText = CART.reduce((a,b)=>a+b.qty,0) + " 件商品";
+
+  data.items.forEach(it => {
+    let specStr = it.spec;
+    if(it.bundle.length >= 2 && it.name.includes("任選")) {
+      const idxs = SELECTED_BUNDLE.get(it._id) || [0,1];
+      specStr = `內容：${it.bundle[idxs[0]]?.name}、${it.bundle[idxs[1]]?.name}`;
+    }
+
+    const d = document.createElement("div");
+    d.className = "c-item";
+    let tagHtml = it.tags.map(t => `<span class="c-tag ${t.cls}">${t.text}</span>`).join("");
+
+    d.innerHTML = `
+      <div class="c-info">
+        <div class="c-title">${it.name}</div>
+        <div class="c-spec">${specStr}</div>
+        <div class="c-tags">${tagHtml}</div>
+        <div class="c-price">$${Math.round(it.finalLine).toLocaleString()}</div>
+      </div>
+      <div class="c-ctrl">
+        <div class="stepper">
+          <div class="s-btn" onclick="updateQty(${it._id}, -1)">－</div>
+          <div class="s-val">${it.qty}</div>
+          <div class="s-btn add" onclick="updateQty(${it._id}, 1)">＋</div>
+        </div>
+      </div>
+    `;
+    list.appendChild(d);
+  });
+
+  document.getElementById("sumBase").innerText = "$" + data.subTotal.toLocaleString();
+  document.getElementById("sumDisc").innerText = "-$" + Math.round(data.discountAmt).toLocaleString();
+  document.getElementById("sumPay").innerText = "$" + Math.round(data.finalTotal).toLocaleString();
+  document.getElementById("sumBeauty").innerText = "$" + Math.round(data.beautyTotal).toLocaleString();
+
+  const warnEl = document.getElementById("warnMsg");
+  if(data.warnings.length > 0) {
+    warnEl.style.display = "block";
+    warnEl.innerText = "⚠️ " + data.warnings[0];
+  } else {
+    warnEl.style.display = "none";
+  }
+
+  const next = RULES.spend.find(r => r.scope === "all" && r.amt > data.finalTotal);
+  if(next) {
+    document.getElementById("promoBar").style.display = "flex";
+    let gName = PRODUCT_MAP.has(next.gift) ? PRODUCT_MAP.get(next.gift).name : next.gift;
+    gName = gName.replace(/^(贈品|贈|Gift)[:\s|｜_]*/i, "");
+    document.getElementById("promoTxt").innerText = `再買 $${(next.amt - data.finalTotal).toLocaleString()} 贈 ${gName}`;
+  } else {
+    document.getElementById("promoBar").style.display = "none";
+  }
+
+  const finalList = document.getElementById("finalList");
+  let html = "";
+  data.items.forEach(i => html += `<div class="sum-line"><span>${i.name}</span><span>x${i.qty}</span></div>`);
+  data.gifts.forEach(g => html += `<div class="sum-line" style="color:#e65100"><span>🎁 ${g.name}</span><span>x${g.qty}</span></div>`);
+  finalList.innerHTML = html;
+}
+
+// --- 5. App UX Actions ---
+function openCart() {
+  if(CART.length === 0) return;
+  document.getElementById("drawer").classList.add("open");
+  isCartOpen = true;
+  history.pushState({modal: true}, null, "");
+}
+
+function closeCart() {
+  document.getElementById("drawer").classList.remove("open");
+  isCartOpen = false;
+  if(history.state && history.state.modal) history.back();
+}
+
+window.onpopstate = (e) => {
+  if(isCartOpen) {
+    document.getElementById("drawer").classList.remove("open");
+    isCartOpen = false;
+  }
+};
+
+window.onbeforeunload = (e) => {
+  if(CART.length > 0) return "您的訂單尚未送出，確定要離開嗎？";
+};
+
+document.getElementById("searchInp").addEventListener("input", renderList);
+
+function toggleSum() {
+  const b = document.getElementById("finalList");
+  const i = document.getElementById("sumIcon");
+  if(b.classList.contains("open")) {
+    b.classList.remove("open");
+    i.innerText = "expand_more";
+  } else {
+    b.classList.add("open");
+    i.innerText = "expand_less";
+  }
+}
+
+function submitOrder() {
+  const name = document.getElementById('fName').value;
+  const dept = document.getElementById('fDept').value;
+  if(!name || !dept) { alert('請填寫姓名與部門'); return; }
+  
+  const data = calcCart();
+  if(data.warnings.length > 0) {
+    if(!confirm("尚有優惠未湊滿，確定要送出嗎？")) return;
+  }
+
+  let csv = "\uFEFF訂購人,部門,付款方式,備註,商品代號,商品名稱,規格,數量,原價,折扣後小計\n";
+  const meta = `${name},${dept},${document.getElementById('fPay').value},${document.getElementById('fNote').value}`;
+  
+  data.items.forEach(it => {
+    let spec = it.spec;
+    if(it.bundle.length >= 2 && it.name.includes("任選")) {
+       const s = SELECTED_BUNDLE.get(it._id) || [0,1];
+       spec = `[${it.bundle[s[0]]?.name}+${it.bundle[s[1]]?.name}]`;
+    }
+    csv += `${meta},${it.code},"${it.name}","${spec}",${it.qty},${it.price},${Math.round(it.finalLine)}\n`;
+  });
+  
+  data.gifts.forEach(g => {
+    csv += `${meta},GIFT,"[贈品] ${g.name}","",${g.qty},0,0\n`;
+  });
+
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `訂單_${name}_${new Date().toISOString().split('T')[0]}.csv`;
+  a.click();
+  
+  CART = []; refreshCart(); closeCart(); renderList();
+  alert("訂單已匯出！");
+}
+
+// Start
+initApp();
+
+</script>
+</body>
+</html>
