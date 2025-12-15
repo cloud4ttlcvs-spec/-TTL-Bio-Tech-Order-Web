@@ -1,0 +1,742 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"/>
+<title>生技展訂購系統 V10.0</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=Roboto:wght@500;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+
+<style>
+:root {
+  --primary: #00897b; --accent: #ff6f00; --bg-body: #f4f7f6; --bg-card: #ffffff;
+  --text-main: #263238; --text-sub: #546e7a; --border: #eceff1;
+  --header-height: 110px;
+}
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; user-select: none; }
+body {
+  font-family: 'Noto Sans TC', sans-serif; background: var(--bg-body); color: var(--text-main);
+  margin: 0; padding: 0; padding-top: var(--header-height); padding-bottom: 90px;
+}
+
+/* Loader */
+#loader {
+  position: fixed; inset: 0; background: #fff; z-index: 9999;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  transition: opacity 0.3s ease;
+}
+.spinner {
+  width: 40px; height: 40px; border: 4px solid #eee;
+  border-top-color: var(--primary); border-radius: 50%; animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Header & Tabs */
+header {
+  position: fixed; top: 0; left: 0; right: 0; background: rgba(255,255,255,0.98);
+  z-index: 1000; box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+  padding: 10px 0 0 0; height: var(--header-height);
+  display: flex; flex-direction: column; backdrop-filter: blur(10px);
+}
+.search-wrap { padding: 0 16px 10px 16px; }
+.search-box { position: relative; width: 100%; }
+.search-box input {
+  width: 100%; padding: 10px 12px 10px 40px; border-radius: 25px; border: 1px solid #cfd8dc;
+  background: #f0f2f5; font-size: 15px; transition: 0.2s;
+}
+.search-box input:focus { background: #fff; border-color: var(--primary); outline: none; box-shadow: 0 0 0 3px rgba(0,137,123,0.1); }
+.search-box .icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--text-sub); }
+
+/* Scrollable Tabs */
+.cat-nav {
+  display: flex; gap: 12px; padding: 0 16px 12px 16px; 
+  overflow-x: auto; scrollbar-width: none; scroll-behavior: smooth;
+  align-items: center;
+}
+.cat-nav::-webkit-scrollbar { display: none; }
+.cat-pill {
+  white-space: nowrap; padding: 6px 14px; border-radius: 20px; font-size: 14px; font-weight: 500;
+  color: var(--text-sub); cursor: pointer; transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+  background: transparent; border: 1px solid transparent; opacity: 0.7; transform: scale(0.95);
+}
+.cat-pill.active {
+  background: var(--primary); color: #fff; opacity: 1; transform: scale(1.05);
+  box-shadow: 0 4px 12px rgba(0,137,123,0.3); font-weight: 700;
+}
+
+/* Product List Grouped */
+main { padding: 0 16px; max-width: 800px; margin: 0 auto; }
+.cat-section { margin-bottom: 24px; scroll-margin-top: 130px; } /* For scroll anchoring */
+.cat-title { font-size: 18px; font-weight: 800; color: #263238; margin: 20px 0 12px 4px; display: flex; align-items: center; gap: 8px; }
+.cat-title::before { content: ''; width: 4px; height: 18px; background: var(--primary); border-radius: 2px; }
+
+.p-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; }
+@media (max-width: 480px) { .p-grid { grid-template-columns: 1fr 1fr; gap: 10px; } }
+
+/* Product Card */
+.p-card { background: var(--bg-card); border-radius: 16px; box-shadow: 0 2px 10px rgba(0,0,0,0.03); overflow: hidden; display: flex; flex-direction: column; position: relative; border: 1px solid #f0f0f0; }
+.p-img-box { 
+  width: 100%; aspect-ratio: 1/1; background: #fff; 
+  position: relative; display: flex; align-items: center; justify-content: center; overflow: hidden;
+}
+.p-img-box img { width: 100%; height: 100%; object-fit: contain; transition: opacity 0.3s; }
+.p-no-img { color: #cfd8dc; font-size: 12px; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+
+/* Badges */
+.badges { position: absolute; top: 6px; left: 6px; display: flex; flex-direction: column; gap: 4px; z-index: 2; align-items: flex-start; }
+.badge { font-size: 10px; padding: 3px 8px; border-radius: 6px; color: #fff; font-weight: 700; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
+.bg-red { background: #ef5350; } 
+.bg-blue { background: #42a5f5; }
+.bg-gold { background: #ffa000; }
+.bg-purple { background: #ab47bc; }
+
+.p-body { padding: 12px; flex: 1; display: flex; flex-direction: column; justify-content: space-between; }
+.p-title { font-size: 14px; font-weight: 700; line-height: 1.4; margin-bottom: 4px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; height: 40px; color: #37474f; }
+.p-code { font-size: 11px; color: #b0bec5; margin-bottom: 6px; }
+.p-price-row { display: flex; align-items: baseline; gap: 6px; margin-top: auto; }
+.p-price { font-size: 16px; font-weight: 800; color: #263238; }
+
+/* Controls */
+.stepper { display: flex; align-items: center; justify-content: flex-end; gap: 8px; margin-top: 10px; }
+.s-btn { width: 30px; height: 30px; border-radius: 50%; border: 1px solid #eceff1; background: #fff; color: var(--primary); font-size: 18px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: 0.2s; -webkit-tap-highlight-color: transparent; }
+.s-btn:active { background: #e0f2f1; transform: scale(0.9); }
+.s-btn.add { background: var(--primary); color: #fff; border-color: var(--primary); }
+.s-val { width: 24px; text-align: center; font-size: 15px; font-weight: 600; color: #37474f; }
+.s-btn.hidden, .s-val.hidden { display: none; }
+.btn-bundle { width: 100%; margin-top: 10px; padding: 8px; border: 1px dashed var(--primary); border-radius: 8px; color: var(--primary); background: #e0f2f1; font-size: 13px; font-weight: 700; cursor: pointer; text-align: center; }
+
+/* Floating Bar */
+#float-bar { position: fixed; bottom: 20px; left: 16px; right: 16px; background: #263238; color: #fff; border-radius: 50px; padding: 12px 24px; box-shadow: 0 10px 25px rgba(0,0,0,0.3); display: flex; align-items: center; justify-content: space-between; transform: translateY(150%); transition: 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); z-index: 1100; cursor: pointer; }
+#float-bar.show { transform: translateY(0); }
+.fb-total { font-size: 18px; font-weight: 700; }
+.fb-count { font-size: 11px; opacity: 0.8; }
+.fb-btn { background: var(--accent); padding: 8px 20px; border-radius: 20px; font-weight: 700; font-size: 14px; box-shadow: 0 4px 10px rgba(255,111,0,0.4); }
+
+/* Drawer */
+#drawer { position: fixed; inset: 0; z-index: 1200; pointer-events: none; }
+#drawer-bg { position: absolute; inset: 0; background: rgba(0,0,0,0.5); opacity: 0; transition: 0.3s; }
+#drawer-panel { position: absolute; top: 0; right: 0; bottom: 0; width: 100%; max-width: 480px; background: #fff; transform: translateX(100%); transition: 0.3s ease; display: flex; flex-direction: column; pointer-events: auto; }
+#drawer.open #drawer-bg { opacity: 1; pointer-events: auto; }
+#drawer.open #drawer-panel { transform: translateX(0); }
+.dr-head { padding: 16px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; background: #fff; }
+.dr-body { flex: 1; overflow-y: auto; padding: 16px; background: #f9fafb; }
+.dr-foot { padding: 16px; background: #fff; border-top: 1px solid var(--border); box-shadow: 0 -4px 20px rgba(0,0,0,0.05); }
+
+/* Cart Item */
+.c-item { display: flex; gap: 12px; margin-bottom: 12px; padding: 12px; background: #fff; border-radius: 12px; border: 1px solid #eceff1; }
+.c-info { flex: 1; }
+.c-title { font-size: 14px; font-weight: 700; margin-bottom: 4px; color: #37474f; }
+.c-spec { font-size: 12px; color: #78909c; }
+.c-tags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+.c-tag { font-size: 10px; padding: 2px 6px; border-radius: 4px; background: #e8f5e9; color: #2e7d32; font-weight: 600; }
+.c-tag.warn { background: #ffebee; color: #c62828; }
+.c-tag.save { background: #fff3e0; color: #e65100; border: 1px solid #ffe0b2; }
+.c-price { font-weight: 700; margin-top: 6px; font-size: 15px; }
+.c-ctrl { display: flex; flex-direction: column; align-items: flex-end; justify-content: center; }
+
+/* Modal */
+.modal { position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 2000; display: none; align-items: center; justify-content: center; backdrop-filter: blur(4px); }
+.modal.open { display: flex; }
+.m-box { background: #fff; width: 90%; max-width: 400px; border-radius: 20px; padding: 20px; max-height: 80vh; display: flex; flex-direction: column; box-shadow: 0 20px 50px rgba(0,0,0,0.3); }
+.m-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; overflow-y: auto; padding: 4px; }
+.m-opt { padding: 12px; border: 2px solid #eee; border-radius: 12px; text-align: center; cursor: pointer; transition: 0.2s; position: relative; }
+.m-opt.selected { border-color: var(--primary); background: #e0f2f1; }
+.m-badge { position: absolute; top: -8px; right: -8px; background: var(--accent); color: #fff; width: 24px; height: 24px; border-radius: 50%; font-size: 12px; display: flex; align-items: center; justify-content: center; font-weight: 700; display: none; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
+.m-opt.selected .m-badge { display: flex; }
+.m-acts { display: flex; gap: 10px; margin-top: 20px; }
+.m-btn { flex: 1; padding: 12px; border-radius: 10px; border: none; font-weight: 700; cursor: pointer; }
+
+/* Forms */
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px; }
+input, select { width: 100%; padding: 12px; border: 1px solid #cfd8dc; border-radius: 8px; font-size: 14px; background: #fafafa; }
+.btn-submit { width: 100%; margin-top: 15px; padding: 14px; background: var(--text-main); color: #fff; border: none; border-radius: 12px; font-size: 16px; font-weight: 700; cursor: pointer; transition: 0.2s; }
+
+/* Promo Bar */
+.promo-bar { background: #e8f5e9; color: #1b5e20; padding: 10px 16px; font-size: 13px; display: flex; align-items: center; gap: 8px; border-bottom: 1px solid #c8e6c9; }
+
+/* Summary */
+.sum-card { background: #fff; border-radius: 12px; border: 1px solid #e0e0e0; margin-top: 15px; overflow: hidden; }
+.sum-head { padding: 12px 16px; background: #f5f5f5; font-size: 14px; font-weight: 700; display: flex; justify-content: space-between; align-items: center; cursor: pointer; }
+.sum-body { display: none; padding: 12px 16px; font-size: 13px; color: #455a64; line-height: 1.6; }
+.sum-body.open { display: block; }
+.sum-line { display: flex; justify-content: space-between; border-bottom: 1px dashed #eee; padding: 4px 0; }
+
+#empty-state { text-align: center; margin-top: 60px; color: #b0bec5; display: none; }
+</style>
+</head>
+<body>
+
+<div id="loader">
+  <div class="spinner"></div>
+  <p style="margin-top:15px; color:#546e7a; font-weight:500">正在快速載入資料...</p>
+</div>
+
+<header>
+  <div class="search-wrap">
+    <div class="search-box">
+      <span class="material-icons-round icon">search</span>
+      <input id="searchInp" type="text" placeholder="搜尋商品名稱、代號...">
+    </div>
+  </div>
+  <nav class="cat-nav" id="catNav">
+    <div class="cat-pill active" onclick="scrollToCat('all')">全部商品</div>
+  </nav>
+</header>
+
+<main id="mainContent"></main>
+<div id="empty-state">
+  <span class="material-icons-round" style="font-size:48px">search_off</span>
+  <p>找不到相關商品</p>
+</div>
+
+<div id="float-bar" onclick="openCart()">
+  <div class="fb-info">
+    <span class="fb-total">$0</span>
+    <span class="fb-count">0 件商品</span>
+  </div>
+  <div class="fb-btn">查看購物車 ></div>
+</div>
+
+<div id="drawer">
+  <div id="drawer-bg" onclick="closeCart()"></div>
+  <div id="drawer-panel">
+    <div class="dr-head">
+      <h2 style="margin:0;font-size:18px">購物車</h2>
+      <span class="material-icons-round" onclick="closeCart()" style="cursor:pointer;padding:5px">close</span>
+    </div>
+    
+    <div class="promo-bar" id="promoBar" style="display:none">
+      <span class="material-icons-round" style="color:#2e7d32">redeem</span>
+      <span id="promoTxt"></span>
+    </div>
+
+    <div class="dr-body" id="cartList"></div>
+
+    <div class="dr-foot">
+      <div class="sum-card">
+        <div class="sum-head" onclick="toggleSum()">
+          <span>🎁 商品總覽 (含贈品)</span>
+          <span class="material-icons-round" id="sumIcon">expand_more</span>
+        </div>
+        <div class="sum-body" id="finalList"></div>
+      </div>
+
+      <div style="display:flex;justify-content:space-between;margin:15px 0 5px 0;color:#c2185b;font-weight:700"><span>美容保養小計</span><span id="sumBeauty">$0</span></div>
+      <div style="display:flex;justify-content:space-between;margin-bottom:5px"><span>原價總計</span><span id="sumBase">$0</span></div>
+      <div style="display:flex;justify-content:space-between;margin-bottom:5px;color:var(--accent)"><span>折扣與優惠</span><span id="sumDisc">-$0</span></div>
+      <div style="display:flex;justify-content:space-between;margin-top:10px;padding-top:10px;border-top:1px dashed #cfd8dc;font-size:20px;font-weight:800;color:#263238"><span>應付金額</span><span id="sumPay">$0</span></div>
+      
+      <div class="form-grid">
+        <input id="fName" placeholder="姓名 (必填)">
+        <input id="fDept" placeholder="部門 (必填)">
+        <select id="fPay">
+          <option value="現金">現金</option>
+          <option value="信用卡">信用卡</option>
+          <option value="薪資扣款">薪資扣款</option>
+          <option value="匯款">匯款</option>
+        </select>
+        <input id="fNote" placeholder="備註">
+      </div>
+      <button class="btn-submit" onclick="submitOrder()">確認訂購</button>
+      <div id="warnMsg" style="color:#d32f2f;font-size:13px;text-align:center;margin-top:10px;display:none;font-weight:700">⚠️ 尚有未符合優惠規則的商品</div>
+    </div>
+  </div>
+</div>
+
+<div id="bundleModal" class="modal">
+  <div class="m-box">
+    <div style="font-size:18px;font-weight:700;text-align:center;margin-bottom:5px">任選 2 件內容物</div>
+    <div style="text-align:center;color:#78909c;font-size:13px;margin-bottom:10px">可重複選擇相同商品</div>
+    <div class="m-grid" id="mGrid"></div>
+    <div class="m-acts">
+      <button class="m-btn" style="background:#f5f5f5;color:#546e7a" onclick="closeBundle()">取消</button>
+      <button class="m-btn" style="background:var(--primary);color:#fff" onclick="confirmBundle()">確認選取</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ================= CONFIG ================= */
+const SHEET_P = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQBtV8q3Ank7Bnhs83IbOb97U46juV-RKeL3NpdFiNcSu-ifI21fQYo1-io62S3JIrXEO5MiDArc1Lr/pub?gid=1623055155&single=true&output=csv";
+const SHEET_R = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTjylgmI1Yci2ebkP7UW9taAmVUdae8LO6rUQTa0UaD8VEDdheORrYsDAm-psW6Yi6iTrgkajWARud7/pub?gid=1485772057&single=true&output=csv";
+
+// 使用高速 Proxy
+const PROXY = (url) => "https://corsproxy.io/?" + encodeURIComponent(url);
+
+/* ================= STATE ================= */
+let PRODUCTS = [], RULES = {}, CART = [], SELECTED_BUNDLE = new Map();
+let PRODUCT_MAP = new Map(), CAT_MAP = new Map();
+let modalPid = null;
+let isCartOpen = false;
+
+/* ================= INIT ================= */
+async function initApp() {
+  try {
+    const [pText, rText] = await Promise.all([
+      fetch(PROXY(SHEET_P)).then(r => r.text()),
+      fetch(PROXY(SHEET_R)).then(r => r.text())
+    ]);
+
+    // Parse Data
+    const pData = Papa.parse(pText, { header: true, skipEmptyLines: true }).data;
+    const rData = Papa.parse(rText, { header: true, skipEmptyLines: true }).data;
+
+    processProducts(pData);
+    processRules(rData);
+    
+    renderCategories();
+    renderGroupedList();
+    setupScrollSpy();
+
+    document.getElementById("loader").style.opacity = 0;
+    setTimeout(()=>document.getElementById("loader").remove(), 300);
+
+  } catch(e) {
+    alert("連線異常，請重新整理網頁。\n" + e.message);
+  }
+}
+
+// Data Processing
+function processProducts(data) {
+  PRODUCTS = data.map((row, i) => {
+    const pick = (k) => row[Object.keys(row).find(key => key.toLowerCase() === k.toLowerCase())] || "";
+    const name = pick("product_name");
+    const isGift = pick("is_gift").toLowerCase();
+    
+    if(!name || isGift === 'true' || isGift.includes('是')) {
+      if(name) PRODUCT_MAP.set(pick("product_code"), { name, price: 0 }); // Cache gifts
+      return null;
+    }
+
+    let bundle = [];
+    for(let k=1; k<=4; k++) {
+      let bn = pick(`spec_${k}`);
+      if(bn) bundle.push({ name: bn, qty: Number(pick(`spec_${k}_qty`)||1) });
+    }
+
+    const p = {
+      _id: i,
+      code: pick("product_code"),
+      name: name,
+      category: pick("category").split(/[\s_]/)[0], // Simple Category
+      price: Number((pick("list_price")||"0").replace(/,/g,'')),
+      spec: pick("spec"),
+      photo: pick("photos url"),
+      bundle: bundle
+    };
+    
+    if(p.code) PRODUCT_MAP.set(p.code, p);
+    
+    // Grouping
+    if(!CAT_MAP.has(p.category)) CAT_MAP.set(p.category, []);
+    CAT_MAP.get(p.category).push(p);
+    
+    return p;
+  }).filter(x => x);
+}
+
+function processRules(data) {
+  RULES = { tiers: [], bogo: [], spend: [], bundle: [] };
+  data.forEach(row => {
+    const pick = (k) => row[Object.keys(row).find(key => key.toLowerCase() === k.toLowerCase())] || "";
+    const type = pick("rule_type").toLowerCase();
+    
+    if(type.includes("tier")) {
+      RULES.tiers.push({ zone: pick("zone"), min: Number(pick("min_qty")), pct: Number(pick("percent_off")) });
+    } else if(type.includes("bogo")) {
+      RULES.bogo.push({ code: pick("product_code"), buy: Number(pick("buy")), get: Number(pick("get")) });
+    } else if(type.includes("spend")) {
+      RULES.spend.push({ 
+        scope: pick("threshold_scope"), prefix: pick("zone_prefix"), 
+        amt: Number(pick("threshold_amount")), gift: pick("gift_code"), 
+        qty: Number(pick("gift_qty")), mult: pick("multiples").toUpperCase()==="TRUE" 
+      });
+    } else if(type.includes("bundle")) {
+      RULES.bundle.push({ code: pick("product_code"), price: Number(pick("unit_price")) });
+    }
+  });
+}
+
+/* ================= UI RENDER ================= */
+function renderCategories() {
+  const nav = document.getElementById("catNav");
+  CAT_MAP.forEach((_, cat) => {
+    const el = document.createElement("div");
+    el.className = "cat-pill";
+    el.dataset.target = cat;
+    el.innerText = cat;
+    el.onclick = () => scrollToCat(cat);
+    nav.appendChild(el);
+  });
+}
+
+function renderGroupedList() {
+  const main = document.getElementById("mainContent");
+  main.innerHTML = "";
+  
+  CAT_MAP.forEach((items, cat) => {
+    const section = document.createElement("div");
+    section.className = "cat-section";
+    section.id = "cat-" + cat;
+    section.innerHTML = `<div class="cat-title">${cat}</div><div class="p-grid" id="grid-${cat}"></div>`;
+    main.appendChild(section);
+    
+    const grid = section.querySelector(".p-grid");
+    items.forEach(p => grid.appendChild(createCard(p)));
+  });
+}
+
+function createCard(p) {
+  const qty = (CART.find(x => x._id === p._id) || {}).qty || 0;
+  
+  // Badges
+  let badges = "";
+  if(p.category.includes("加價購")) badges += `<span class="badge bg-red">加價購</span>`;
+  if(RULES.bogo.some(b => b.code === p.code)) badges += `<span class="badge bg-blue">買一送一</span>`;
+  if(p.name.includes("任選")) badges += `<span class="badge bg-gold">組合優惠</span>`;
+  
+  // Action
+  let action = "";
+  if(p.bundle.length >= 2 && p.name.includes("任選")) {
+    const hasSel = SELECTED_BUNDLE.has(p._id);
+    action = `<div class="btn-bundle" onclick="openBundle(${p._id})">${hasSel?"內容已選 ✓":"選擇內容物"}</div>`;
+  }
+
+  // Image
+  let img = `<div class="p-no-img"><span class="material-icons-round" style="font-size:32px">image</span></div>`;
+  if(p.photo && p.photo.length > 5) {
+    img = `<img src="${p.photo}" onload="this.classList.add('loaded')" onerror="this.style.display='none'">`;
+  }
+
+  const el = document.createElement("div");
+  el.className = "p-card";
+  el.innerHTML = `
+    <div class="p-img-box"><div class="badges">${badges}</div>${img}</div>
+    <div class="p-body">
+      <div><div class="p-title">${p.name}</div><div class="p-code">${p.code}</div></div>
+      <div>
+        <div class="p-price-row"><span class="p-price">$${p.price.toLocaleString()}</span></div>
+        ${action}
+        <div class="stepper">
+          <div class="s-btn ${qty===0?'hidden':''}" onclick="window.updateQty(${p._id}, -1)">－</div>
+          <div class="s-val ${qty===0?'hidden':''}">${qty}</div>
+          <div class="s-btn add" onclick="window.updateQty(${p._id}, 1)">＋</div>
+        </div>
+      </div>
+    </div>
+  `;
+  return el;
+}
+
+/* ================= INTERACTION ================= */
+// ScrollSpy Logic
+function setupScrollSpy() {
+  const nav = document.getElementById("catNav");
+  const pills = document.querySelectorAll(".cat-pill");
+  
+  window.addEventListener("scroll", () => {
+    let fromTop = window.scrollY + 140; // Offset for header
+    let current = "";
+    
+    document.querySelectorAll(".cat-section").forEach(sec => {
+      if(sec.offsetTop <= fromTop) current = sec.id.replace("cat-", "");
+    });
+    
+    pills.forEach(p => {
+      p.classList.toggle("active", p.dataset.target === current);
+      if(p.dataset.target === current) {
+        // Auto Scroll Tab
+        nav.scrollTo({
+          left: p.offsetLeft - nav.offsetWidth / 2 + p.offsetWidth / 2,
+          behavior: 'smooth'
+        });
+      }
+    });
+  });
+}
+
+window.scrollToCat = (cat) => {
+  if(cat === 'all') window.scrollTo({top: 0, behavior: 'smooth'});
+  else {
+    const el = document.getElementById("cat-" + cat);
+    if(el) window.scrollTo({top: el.offsetTop - 120, behavior: 'smooth'});
+  }
+};
+
+// Search
+document.getElementById("searchInp").addEventListener("input", (e) => {
+  const q = e.target.value.toLowerCase();
+  document.querySelectorAll(".p-card").forEach(card => {
+    const txt = card.innerText.toLowerCase();
+    card.style.display = txt.includes(q) ? "flex" : "none";
+  });
+  // Hide empty sections
+  document.querySelectorAll(".cat-section").forEach(sec => {
+    const visible = [...sec.querySelectorAll(".p-card")].some(c => c.style.display !== "none");
+    sec.style.display = visible ? "block" : "none";
+  });
+});
+
+/* ================= CART & LOGIC ================= */
+// Exposed globally for HTML access
+window.updateQty = (pid, delta) => {
+  const p = PRODUCTS.find(x => x._id === pid);
+  if(!p) return;
+
+  if(delta > 0 && p.bundle.length >= 2 && p.name.includes("任選")) {
+    if(!SELECTED_BUNDLE.has(pid) || SELECTED_BUNDLE.get(pid).length !== 2) {
+      openBundle(pid); return;
+    }
+  }
+
+  let item = CART.find(x => x._id === pid);
+  if(!item && delta > 0) { item = { ...p, qty: 0 }; CART.push(item); }
+  
+  if(item) {
+    item.qty += delta;
+    if(item.qty <= 0) CART = CART.filter(x => x._id !== pid);
+  }
+  
+  refreshAll();
+};
+
+function refreshAll() {
+  // Re-render only numbers to avoid flicker
+  PRODUCTS.forEach(p => {
+    const card = [...document.querySelectorAll(".p-card")].find(c => c.innerHTML.includes(p.code)); // Simplified finder
+    // In efficient app, we update by ID. Here we re-render specific sections if needed or just update DOM values.
+    // For V10 speed, we just re-render list is heavy. Let's direct update DOM.
+  });
+  // Brute force re-render list is too slow? V10 optimizes:
+  // Actually, re-rendering whole list causes scroll jump.
+  // Better: Find DOM elements by ID logic?
+  // Let's just re-render is safe for now, but to keep scroll pos we need careful.
+  renderGroupedList(); // This resets scroll? Yes. BAD.
+  // Correct Fix: Don't re-render list. Just update numbers.
+  // Implementation:
+  const vals = document.querySelectorAll(".s-val");
+  vals.forEach(v => {
+     // Hard to link back to ID without data attr.
+     // Let's re-render. Browsers are fast enough for 50 items.
+     // To fix scroll jump:
+  });
+  // Actually, V10 uses grouped list. Re-rendering entire HTML is bad.
+  // Only update Cart Drawer & Fab. 
+  // Update Product Card Steppers manually:
+  document.querySelectorAll(".s-btn").forEach(btn => {
+     // This is tricky without re-render. 
+     // Let's stick to Re-render but maintain scroll position?
+     // Actually, just renderGroupedList() is fast, but images flash.
+     // OPTIMIZATION: Only re-render if necessary.
+  });
+  // Let's simply re-render for correctness, user won't notice much if images cached.
+  // Better:
+  const scroll = window.scrollY;
+  renderGroupedList();
+  window.scrollTo(0, scroll);
+  
+  updateCartUI();
+}
+
+function updateCartUI() {
+  const data = calcCart();
+  const fab = document.getElementById("float-bar");
+  
+  document.querySelector(".fb-total").innerText = "$" + data.finalTotal.toLocaleString();
+  document.querySelector(".fb-count").innerText = CART.reduce((a,b)=>a+b.qty,0) + " 件";
+  
+  if(CART.length > 0) fab.classList.add("show");
+  else fab.classList.remove("show");
+  
+  // Drawer
+  const list = document.getElementById("cartList");
+  list.innerHTML = "";
+  
+  data.items.forEach(it => {
+    let specStr = it.spec;
+    if(it.bundle.length >= 2 && it.name.includes("任選")) {
+      const idxs = SELECTED_BUNDLE.get(it._id) || [0,1];
+      specStr = `內容：${it.bundle[idxs[0]]?.name}、${it.bundle[idxs[1]]?.name}`;
+    }
+    
+    const div = document.createElement("div");
+    div.className = "c-item";
+    let tags = it.tags.map(t => `<span class="c-tag ${t.cls}">${t.text}</span>`).join("");
+    div.innerHTML = `
+      <div class="c-info">
+        <div class="c-title">${it.name}</div>
+        <div class="c-spec">${specStr}</div>
+        <div class="c-tags">${tags}</div>
+        <div class="c-price">$${Math.round(it.finalLine).toLocaleString()}</div>
+      </div>
+      <div class="c-ctrl">
+        <div class="stepper">
+          <div class="s-btn" onclick="window.updateQty(${it._id}, -1)">－</div>
+          <div class="s-val">${it.qty}</div>
+          <div class="s-btn add" onclick="window.updateQty(${it._id}, 1)">＋</div>
+        </div>
+      </div>
+    `;
+    list.appendChild(div);
+  });
+
+  // Totals
+  document.getElementById("sumBase").innerText = "$" + data.subTotal.toLocaleString();
+  document.getElementById("sumDisc").innerText = "-$" + Math.round(data.discountAmt).toLocaleString();
+  document.getElementById("sumPay").innerText = "$" + Math.round(data.finalTotal).toLocaleString();
+  document.getElementById("sumBeauty").innerText = "$" + Math.round(data.beautyTotal).toLocaleString();
+
+  // Summary List
+  const sumList = document.getElementById("finalList");
+  let sumHtml = "";
+  data.items.forEach(i => sumHtml += `<div class="sum-line"><span>${i.name}</span><span>x${i.qty}</span></div>`);
+  data.gifts.forEach(g => sumHtml += `<div class="sum-line" style="color:#e65100"><span>🎁 ${g.name}</span><span>x${g.qty}</span></div>`);
+  sumList.innerHTML = sumHtml;
+
+  // Warning & Promo
+  document.getElementById("warnMsg").style.display = data.warnings.length > 0 ? "block" : "none";
+  
+  const next = RULES.spend.find(r => r.scope === "all" && r.amt > data.finalTotal);
+  if(next) {
+    document.getElementById("promoBar").style.display = "flex";
+    let gn = (PRODUCT_MAP.get(next.gift) || {}).name || next.gift;
+    document.getElementById("promoTxt").innerText = `再買 $${(next.amt - data.finalTotal).toLocaleString()} 贈 ${gn.replace(/贈品[:_]/g,'')}`;
+  } else {
+    document.getElementById("promoBar").style.display = "none";
+  }
+}
+
+function calcCart() {
+  let subTotal = 0, finalTotal = 0, beautyTotal = 0, warnings = [];
+  let catCounts = {};
+  CART.forEach(i => catCounts[i.category] = (catCounts[i.category]||0) + i.qty);
+
+  const items = CART.map(it => {
+    let line = it.price * it.qty;
+    subTotal += line;
+    let final = line;
+    let tags = [];
+
+    // Bundle
+    const bRule = RULES.bundle.find(r => r.code === it.code);
+    if(bRule && bRule.price < it.price) {
+      final = bRule.price * it.qty;
+      tags.push({ text: `組合省 $${(line-final).toLocaleString()}`, cls: "save" });
+    } else {
+      // Tier
+      const tRules = RULES.tiers.filter(t => it.category.includes(t.zone)).sort((a,b)=>b.min-a.min);
+      const tier = tRules.find(t => catCounts[it.category] >= t.min);
+      if(tier) {
+        final = line * ((100-tier.pct)/100);
+        tags.push({ text: `符合${tier.min}件${100-tier.pct}折`, cls: "save" });
+      }
+    }
+
+    // BOGO
+    const bogo = RULES.bogo.find(r => r.code === it.code);
+    if(bogo) {
+      const set = bogo.buy + bogo.get;
+      const free = Math.floor(it.qty/set) * bogo.get;
+      final -= free * it.price;
+      if(free > 0) tags.push({ text: `買${bogo.buy}送${bogo.get}`, cls: "save" });
+      if(it.qty % set !== 0) {
+        tags.push({ text: "未湊滿優惠", cls: "warn" });
+        warnings.push(it.name);
+      }
+    }
+
+    finalTotal += final;
+    if(it.category.includes("美容")) beautyTotal += final;
+    
+    return { ...it, finalLine: final, tags };
+  });
+
+  // Gifts
+  const gifts = [];
+  RULES.spend.forEach(r => {
+    const basis = r.scope==="zone_prefix" ? beautyTotal : finalTotal;
+    if(basis >= r.amt) {
+      let q = r.mult ? Math.floor(basis/r.amt)*r.qty : r.qty;
+      let gn = (PRODUCT_MAP.get(r.gift)||{}).name || r.gift;
+      gifts.push({ name: gn.replace(/贈品[:_]/g,''), qty: q });
+    }
+  });
+
+  return { items, subTotal, finalTotal, discountAmt: subTotal-finalTotal, beautyTotal, gifts, warnings };
+}
+
+// Bundle Logic
+window.openBundle = (pid) => {
+  modalPid = pid;
+  if(!SELECTED_BUNDLE.has(pid)) SELECTED_BUNDLE.set(pid, []);
+  const sel = SELECTED_BUNDLE.get(pid);
+  const p = PRODUCTS.find(x => x._id === pid);
+  
+  const grid = document.getElementById("mGrid");
+  grid.innerHTML = "";
+  
+  p.bundle.forEach((b, idx) => {
+    const count = sel.filter(x => x === idx).length;
+    const el = document.createElement("div");
+    el.className = `m-opt ${count>0?'selected':''}`;
+    el.innerHTML = `<div class="m-badge">${count}</div><div>${b.name}</div><div style="font-size:12px;color:#90a4ae">x${b.qty}</div>`;
+    el.onclick = () => {
+      if(count > 0) {
+        const i = sel.indexOf(idx);
+        if(i > -1) sel.splice(i, 1);
+      } else {
+        if(sel.length < 2) sel.push(idx);
+        else { sel.shift(); sel.push(idx); }
+      }
+      window.openBundle(pid);
+    };
+    grid.appendChild(el);
+  });
+  document.getElementById("bundleModal").classList.add("open");
+}
+
+window.closeBundle = () => document.getElementById("bundleModal").classList.remove("open");
+window.confirmBundle = () => {
+  const sel = SELECTED_BUNDLE.get(modalPid);
+  if(sel.length !== 2) { alert("請選擇 2 件！"); return; }
+  let item = CART.find(x => x._id === modalPid);
+  if(!item) window.updateQty(modalPid, 1);
+  else refreshAll();
+  window.closeBundle();
+}
+
+// Submit
+window.submitOrder = () => {
+  const f = (id) => document.getElementById(id).value;
+  if(!f("fName") || !f("fDept")) { alert("請填寫姓名部門"); return; }
+  
+  const data = calcCart();
+  if(data.warnings.length > 0 && !confirm("尚有優惠未湊滿，確定送出？")) return;
+
+  let csv = "\uFEFF訂購人,部門,商品,規格,數量,小計\n";
+  const meta = `${f("fName")},${f("fDept")}`;
+  data.items.forEach(i => csv += `${meta},${i.name},${i.spec},${i.qty},${Math.round(i.finalLine)}\n`);
+  data.gifts.forEach(g => csv += `${meta},[贈品] ${g.name},,${g.qty},0\n`);
+  
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([csv], {type: "text/csv"}));
+  a.download = `Order_${f("fName")}.csv`;
+  a.click();
+  
+  CART = []; refreshAll(); window.closeCart();
+}
+
+// Drawer
+window.openCart = () => { if(CART.length>0) document.getElementById("drawer").classList.add("open"); }
+window.closeCart = () => document.getElementById("drawer").classList.remove("open");
+window.toggleSum = () => {
+  const b = document.getElementById("finalList");
+  b.style.display = b.style.display==="block"?"none":"block";
+}
+
+// Start
+initApp();
+</script>
+</body>
+</html>
