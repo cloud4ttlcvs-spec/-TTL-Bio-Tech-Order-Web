@@ -1,0 +1,1104 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"/>
+<title>生技展訂購系統 V19.5</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&family=Roboto:wght@500;700;900&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+
+<style>
+:root {
+  --primary: #00897b; --primary-light: #e0f2f1; --accent: #ff6f00; 
+  --bg-body: #f8f9fa; --bg-card: #ffffff; --text-main: #263238; --text-sub: #546e7a;
+  --border: #eceff1; --header-height: 115px;
+  --shadow-card: 0 4px 20px rgba(0,0,0,0.04);
+}
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; user-select: none; }
+body {
+  font-family: 'Noto Sans TC', sans-serif; background: var(--bg-body); color: var(--text-main);
+  margin: 0; padding: 0; padding-bottom: 120px;
+  overscroll-behavior-y: none;
+}
+
+/* V19.5 Double Flash Highlight Animation */
+@keyframes highlightPulse {
+  0% { background-color: #fff; transform: scale(1); border-color: #e0e0e0; }
+  50% { background-color: #fffde7; transform: scale(1.02); border-color: #ffd600; box-shadow: 0 0 20px rgba(255, 214, 0, 0.4); }
+  100% { background-color: #fff; transform: scale(1); border-color: #e0e0e0; }
+}
+.flash-highlight { 
+  scroll-margin-top: 180px; /* Offset for header */
+  animation: highlightPulse 0.5s ease-in-out 2; /* Run 0.5s animation 2 times */
+}
+
+/* Ranking UI (Compact) */
+#ranking-section { background: #fff; margin-bottom: 12px; padding-bottom: 10px; border-bottom: 1px solid #f0f0f0; display: none; }
+.rank-head { padding: 10px 12px 0 12px; display: flex; align-items: center; gap: 12px; overflow: hidden; }
+.rank-title { font-size: 14px; font-weight: 900; color: #d81b60; white-space: nowrap; flex-shrink: 0; display: flex; align-items: center; gap: 4px; }
+.rank-tabs { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; flex: 1; mask-image: linear-gradient(to right, black 85%, transparent 100%); -webkit-mask-image: linear-gradient(to right, black 85%, transparent 100%); }
+.rank-tabs::-webkit-scrollbar { display: none; }
+.r-tab { font-size: 12px; font-weight: 500; color: #90a4ae; cursor: pointer; white-space: nowrap; padding: 4px 10px; border-radius: 20px; background: #f5f5f5; transition: 0.2s; }
+.r-tab.active { color: #fff; background: #d81b60; font-weight: 700; box-shadow: 0 2px 5px rgba(216, 27, 96, 0.3); }
+.rank-list { display: flex; gap: 8px; padding: 10px 12px; overflow-x: auto; scroll-behavior: smooth; scrollbar-width: none; -ms-overflow-style: none; }
+.rank-list::-webkit-scrollbar { display: none; }
+.r-card { flex: 0 0 76px; display: flex; flex-direction: column; align-items: center; gap: 4px; cursor: pointer; transition: transform 0.1s; }
+.r-card:active { transform: scale(0.96); }
+.r-img-wrap { width: 76px; height: 76px; border-radius: 14px; background: #fff; border: 1px solid #eee; position: relative; padding: 2px; box-shadow: 0 2px 6px rgba(0,0,0,0.03); overflow: hidden; }
+.r-img { width: 100%; height: 100%; object-fit: contain; }
+.r-badge { position: absolute; top: 0; left: 0; width: 22px; height: 22px; border-bottom-right-radius: 8px; background: rgba(0,0,0,0.7); color: #fff; font-size: 11px; font-weight: 900; display: flex; align-items: center; justify-content: center; z-index: 2; }
+.r-card[data-rank="1"] .r-badge { background: #ffd700; color: #3e2723; }
+.r-card[data-rank="2"] .r-badge { background: #cfd8dc; color: #37474f; }
+.r-card[data-rank="3"] .r-badge { background: #d7ccc8; color: #3e2723; }
+.r-sold-tag { position: absolute; bottom: 3px; right: 3px; background: linear-gradient(135deg, #ff7043, #f4511e); color: #fff; font-size: 9px; font-weight: 700; padding: 2px 6px; border-radius: 8px; box-shadow: 0 2px 4px rgba(244, 81, 30, 0.2); z-index: 2; }
+.r-name { font-size: 10px; font-weight: 500; color: #37474f; text-align: center; line-height: 1.3; height: 2.6em; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; width: 100%; }
+
+/* --- Cart Optimization --- */
+.dr-body { flex: 1; overflow-y: auto; padding: 12px; background: #f4f6f8; }
+.c-item { display: flex; gap: 10px; margin-bottom: 8px; padding: 8px 12px; background: #fff; border-radius: 10px; border: 1px solid #e0e0e0; box-shadow: 0 1px 2px rgba(0,0,0,0.02); align-items: center; }
+.c-info { flex: 1; }
+.c-title { font-size: 14px; margin-bottom: 2px; line-height: 1.3; }
+.c-spec { font-size: 12px; margin-bottom: 2px; }
+.c-price-box { margin-top: 2px; }
+.c-tags { margin-top: 2px; }
+
+/* ... (Standard Styles) ... */
+#welcome-overlay { position: fixed; inset: 0; z-index: 9999; background: rgba(236, 239, 241, 0.85); backdrop-filter: blur(8px); display: flex; align-items: center; justify-content: center; transition: opacity 0.5s ease; }
+#welcome-overlay.fade-out { opacity: 0; pointer-events: none; }
+.balloon-card { background: rgba(255, 255, 255, 0.9); width: 85%; max-width: 360px; padding: 40px 30px; border-radius: 40px 40px 40px 10px; box-shadow: 0 20px 50px rgba(0, 137, 123, 0.2); text-align: center; border: 1px solid rgba(255, 255, 255, 0.5); animation: floatBalloon 3s ease-in-out infinite; position: relative; }
+.balloon-card::after { content: ''; position: absolute; bottom: -15px; left: 10px; width: 0; height: 0; border-left: 15px solid transparent; border-right: 0 solid transparent; border-top: 20px solid rgba(255, 255, 255, 0.9); transform: rotate(10deg); }
+@keyframes floatBalloon { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+.w-logo { font-size: 48px; margin-bottom: 16px; display: inline-block; }
+.w-title { font-size: 22px; font-weight: 900; color: var(--primary); margin-bottom: 8px; line-height: 1.3; }
+.w-sub { font-size: 14px; color: var(--text-sub); margin-bottom: 32px; font-weight: 500; line-height: 1.6; }
+.w-btn { background: var(--primary); color: #fff; border: none; padding: 14px 40px; border-radius: 50px; font-size: 16px; font-weight: 700; cursor: pointer; box-shadow: 0 8px 20px rgba(0, 137, 123, 0.3); transition: 0.2s; }
+.w-btn:active { transform: scale(0.95); background: #00796b; }
+
+.gamification-box { padding: 16px 20px; background: linear-gradient(to bottom, #fff, #fcfcfc); border-bottom: 1px solid #f0f0f0; }
+.game-txt { font-size: 13px; font-weight: 700; color: #37474f; display: flex; justify-content: space-between; align-items: center; }
+.game-icon-wrap { cursor: pointer; padding: 4px 8px; background: #fff8e1; border-radius: 20px; border: 1px solid #ffe0b2; display: flex; align-items: center; gap: 4px; transition: 0.2s; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+.game-icon-wrap:active { transform: scale(0.95); background: #ffecb3; }
+.game-icon { animation: bounce 2s infinite; font-size: 16px; }
+.game-hint { font-size: 11px; color: var(--accent); }
+@keyframes bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
+.progress-wrap { height: 10px; width: 100%; background: #eee; border-radius: 5px; overflow: hidden; margin-top: 8px; }
+.progress-bar { height: 100%; width: 0%; background: linear-gradient(90deg, #ffca28, #ff6f00); border-radius: 5px; transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1); }
+.progress-bar.full { background: linear-gradient(90deg, #66bb6a, #43a047); }
+
+.gift-list { display: flex; flex-direction: column; gap: 8px; padding: 8px 4px; flex: 1; overflow-y: auto; min-height: 0; }
+.gift-item { display: flex; align-items: center; gap: 12px; padding: 12px; border-radius: 12px; border: 1px dashed #e0e0e0; color: #bdbdbd; transition: 0.3s; flex-shrink: 0; }
+.gift-item.unlocked { background: #f1f8e9; border: 1px solid #c5e1a5; color: #33691e; box-shadow: 0 4px 10px rgba(0,0,0,0.05); transform: scale(1.02); }
+.g-status { font-size: 20px; }
+.g-info { flex: 1; }
+.g-amt { font-size: 12px; font-weight: 700; margin-bottom: 2px; }
+.g-name { font-size: 14px; }
+.g-tag { font-size: 10px; background: #fff; padding: 2px 6px; border-radius: 4px; border: 1px solid #a5d6a7; color: #2e7d32; display: inline-block; margin-top: 4px; }
+
+@keyframes shimmer { 0% { background-position: -468px 0; } 100% { background-position: 468px 0; } }
+.skeleton { background: #f6f7f8; background-image: linear-gradient(to right, #f6f7f8 0%, #edeef1 20%, #f6f7f8 40%, #f6f7f8 100%); background-repeat: no-repeat; background-size: 800px 104px; animation: shimmer 1s linear infinite forwards; border-radius: 8px; }
+.sk-card { height: 280px; border-radius: 16px; background: #fff; padding: 12px; margin-bottom: 12px; }
+
+#toast-container { position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%); z-index: 9999; pointer-events: none; width: 90%; max-width: 320px; display: flex; flex-direction: column-reverse; gap: 8px; align-items: center; }
+.toast { background: rgba(33, 33, 33, 0.95); color: #fff; padding: 12px 24px; border-radius: 50px; font-size: 14px; text-align: center; box-shadow: 0 8px 20px rgba(0,0,0,0.2); opacity: 0; transform: translateY(20px); animation: toastIn 0.3s forwards, toastOut 0.3s forwards 2.5s; backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; gap: 8px; transition: 0.3s; }
+.toast.game { background: linear-gradient(135deg, #ffa726, #ff6f00); font-weight: 700; box-shadow: 0 10px 25px rgba(255, 111, 0, 0.4); }
+@keyframes toastIn { to { opacity: 1; transform: translateY(0); } }
+@keyframes toastOut { to { opacity: 0; transform: translateY(-10px); } }
+
+@keyframes flashWarn { 0%, 100% { background: #ffebee; transform: translateX(0); } 20%, 60% { background: #ff5252; color: #fff; transform: translateX(-5px); } 40%, 80% { background: #ff5252; color: #fff; transform: translateX(5px); } }
+.flash-anim { animation: flashWarn 0.6s ease-in-out; }
+
+.flying-img { position: fixed; z-index: 9999; pointer-events: none; border-radius: 50%; box-shadow: 0 5px 15px rgba(0,0,0,0.2); transition: transform 1.2s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 1.2s; width: 60px; height: 60px; object-fit: cover; background: #fff; border: 2px solid #fff; }
+
+header { position: sticky; top: 0; z-index: 1000; background: rgba(255,255,255,0.95); box-shadow: 0 2px 15px rgba(0,0,0,0.03); backdrop-filter: blur(12px); }
+.search-wrap { padding: 8px 16px 0 16px; }
+.search-box { position: relative; width: 100%; }
+.search-box input { width: 100%; padding: 10px 12px 10px 42px; border-radius: 12px; border: 1px solid #e0e0e0; background: #f5f7f9; font-size: 15px; transition: 0.3s; }
+.search-box input:focus { background: #fff; border-color: var(--primary); outline: none; box-shadow: 0 0 0 3px rgba(0,137,123,0.1); }
+.search-box .icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--text-sub); }
+
+.cat-nav { display: flex; gap: 8px; padding: 8px 16px 12px 16px; overflow-x: auto; scrollbar-width: none; }
+.cat-nav::-webkit-scrollbar { display: none; }
+.cat-pill { white-space: nowrap; padding: 7px 18px; border-radius: 24px; font-size: 14px; font-weight: 500; color: var(--text-sub); background: #fff; border: 1px solid #e0e0e0; cursor: pointer; transition: 0.25s cubic-bezier(0.25, 0.8, 0.25, 1); }
+.cat-pill.active { background: var(--primary); color: #fff; border-color: var(--primary); box-shadow: 0 4px 10px rgba(0,137,123,0.25); font-weight: 700; transform: scale(1.02); }
+
+main { padding: 16px; max-width: 900px; margin: 0 auto; min-height: 80vh; touch-action: pan-y; }
+#list { display: grid; grid-template-columns: repeat(auto-fill, minmax(165px, 1fr)); gap: 12px; align-content: start; }
+@media (max-width: 480px) { #list { grid-template-columns: 1fr 1fr; gap: 10px; } }
+
+.p-card { background: #fff; border-radius: 16px; overflow: hidden; position: relative; box-shadow: var(--shadow-card); border: 1px solid #f0f0f0; display: flex; flex-direction: column; transition: transform 0.15s; scroll-margin-top: 180px; }
+.p-card:active { transform: scale(0.97); }
+.p-img-box { width: 100%; aspect-ratio: 1/1; background: #fff; position: relative; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+.p-img-box img { width: 100%; height: 100%; object-fit: contain; transition: opacity 0.4s ease; opacity: 0; }
+.p-img-box img.loaded { opacity: 1; }
+.p-no-img { font-size: 12px; color: #b0bec5; display: flex; flex-direction: column; align-items: center; }
+.badges { position: absolute; top: 8px; left: 8px; display: flex; flex-direction: column; gap: 4px; z-index: 2; align-items: flex-start; }
+.badge { font-size: 10px; padding: 4px 8px; border-radius: 6px; color: #fff; font-weight: 700; box-shadow: 0 2px 6px rgba(0,0,0,0.2); letter-spacing: 0.5px; backdrop-filter: blur(4px); }
+.bg-red { background: rgba(239, 83, 80, 0.95); }
+.bg-blue { background: rgba(66, 165, 245, 0.95); }
+.bg-gold { background: linear-gradient(135deg, #ffa726, #fb8c00); }
+.bg-purple { background: rgba(171, 71, 188, 0.95); }
+.bg-teal { background: #26a69a; }
+
+.p-body { padding: 12px; flex: 1; display: flex; flex-direction: column; justify-content: space-between; }
+.p-title { font-size: 14px; font-weight: 700; line-height: 1.4; color: #37474f; margin-bottom: 4px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; height: 40px; }
+.p-code { font-size: 11px; color: #cfd8dc; margin-bottom: 8px; }
+.p-price-row { display: flex; align-items: baseline; gap: 6px; margin-top: auto; }
+.p-price { font-size: 17px; font-weight: 800; color: #263238; }
+
+.stepper { display: flex; align-items: center; justify-content: flex-end; gap: 8px; margin-top: 10px; }
+.s-btn { width: 32px; height: 32px; border-radius: 50%; border: 1px solid #eceff1; background: #fff; color: var(--primary); font-size: 20px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: 0.2s; }
+.s-btn:active { background: var(--primary-light); transform: scale(0.9); }
+.s-btn.add { background: var(--primary); color: #fff; border-color: var(--primary); box-shadow: 0 2px 5px rgba(0,137,123,0.3); }
+.s-val { width: 24px; text-align: center; font-size: 15px; font-weight: 600; color: #37474f; }
+.s-btn.hidden, .s-val.hidden { display: none; }
+.btn-bundle { width: 100%; margin-top: 8px; padding: 10px; border: 1px dashed var(--primary); border-radius: 10px; color: var(--primary); background: var(--primary-light); font-size: 13px; font-weight: 700; text-align: center; cursor: pointer; transition: 0.2s; }
+.btn-bundle:active { transform: scale(0.98); background: #b2dfdb; }
+
+#float-bar { position: fixed; bottom: 20px; left: 16px; right: 16px; background: #263238; color: #fff; border-radius: 60px; padding: 10px 10px 10px 24px; box-shadow: 0 15px 35px rgba(0,0,0,0.25); display: flex; align-items: center; justify-content: space-between; transform: translateY(200%); transition: 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); z-index: 1100; cursor: pointer; backdrop-filter: blur(10px); }
+#float-bar.show { transform: translateY(0); }
+.fb-total { font-size: 18px; font-weight: 700; }
+.fb-count { font-size: 12px; opacity: 0.7; }
+.fb-btn { background: var(--accent); color: #fff; padding: 10px 24px; border-radius: 40px; font-weight: 700; font-size: 15px; box-shadow: 0 4px 15px rgba(255,111,0,0.4); display: flex; align-items: center; gap: 6px; }
+
+#drawer { position: fixed; inset: 0; z-index: 1200; pointer-events: none; }
+#drawer-bg { position: absolute; inset: 0; background: rgba(0,0,0,0.6); opacity: 0; transition: 0.3s; backdrop-filter: blur(4px); }
+#drawer-panel { position: absolute; top: 0; right: 0; bottom: 0; width: 100%; max-width: 480px; background: #fff; transform: translateX(100%); transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1); display: flex; flex-direction: column; pointer-events: auto; box-shadow: -5px 0 30px rgba(0,0,0,0.15); }
+#drawer.open #drawer-bg { opacity: 1; pointer-events: auto; }
+#drawer.open #drawer-panel { transform: translateX(0); }
+
+.dr-head { padding: 16px 20px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; background: #fff; }
+.dr-foot { padding: 20px; background: #fff; border-top: 1px solid var(--border); box-shadow: 0 -4px 20px rgba(0,0,0,0.05); }
+
+.c-tag { font-size: 11px; padding: 3px 8px; border-radius: 6px; font-weight: 600; display: inline-flex; align-items: center; gap: 4px; }
+.c-tag.save { background: #fff3e0; color: #e65100; border: 1px solid #ffe0b2; }
+.c-tag.warn { background: #ffebee; color: #c62828; border: 1px solid #ffcdd2; }
+.c-price { font-weight: 800; font-size: 16px; color: #263238; }
+.c-old { text-decoration: line-through; color: #90a4ae; font-size: 12px; }
+.c-ctrl { display: flex; flex-direction: column; align-items: flex-end; justify-content: center; }
+
+.sum-card { background: #fff; border-radius: 12px; border: 1px solid #e0e0e0; margin-top: 15px; overflow: hidden; }
+.sum-head { padding: 12px 16px; background: #f5f5f5; font-size: 14px; font-weight: 700; display: flex; justify-content: space-between; align-items: center; cursor: pointer; color: #37474f; transition: 0.2s; }
+.sum-head:hover { background: #eeeeee; }
+.sum-body { display: none; padding: 12px 16px; font-size: 13px; color: #546e7a; line-height: 1.6; background: #fff; }
+.sum-body.open { display: block; animation: slideDown 0.2s ease-out; }
+@keyframes slideDown { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
+.sum-line { display: flex; justify-content: space-between; border-bottom: 1px dashed #eee; padding: 6px 0; }
+
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 15px; }
+input, select { width: 100%; padding: 14px; border: 1px solid #cfd8dc; border-radius: 12px; font-size: 14px; background: #fafafa; transition: 0.2s; }
+input:focus, select:focus { border-color: var(--primary); background: #fff; outline: none; box-shadow: 0 0 0 3px rgba(0,137,123,0.1); }
+.btn-bar { display: flex; gap: 10px; margin-top: 20px; }
+.btn-submit { flex: 2; padding: 16px; background: var(--text-main); color: #fff; border: none; border-radius: 14px; font-size: 16px; font-weight: 700; cursor: pointer; transition: 0.2s; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+.btn-submit:active { transform: scale(0.98); opacity: 0.9; }
+.btn-clear { flex: 0 0 50px; padding: 0; background: #ffebee; color: #ef5350; border: none; border-radius: 14px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: 0.2s; }
+.btn-clear:active { background: #ffcdd2; }
+.promo-bar { background: #e8f5e9; color: #1b5e20; padding: 12px 16px; font-size: 13px; display: flex; align-items: center; gap: 8px; border-bottom: 1px solid #c8e6c9; font-weight: 500; }
+
+.modal { position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 2000; display: none; align-items: center; justify-content: center; backdrop-filter: blur(6px); }
+.modal.open { display: flex; animation: fadeIn 0.2s ease-out; }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+.m-box { background: #fff; width: 90%; max-width: 420px; border-radius: 24px; padding: 24px; max-height: 85vh; display: flex; flex-direction: column; box-shadow: 0 25px 50px rgba(0,0,0,0.25); transform: scale(0.95); transition: 0.2s; }
+.modal.open .m-box { transform: scale(1); }
+.m-head { font-size: 20px; font-weight: 700; margin-bottom: 8px; text-align: center; color: #263238; flex-shrink: 0; }
+.m-sub { text-align: center; color: #78909c; font-size: 14px; margin-bottom: 20px; flex-shrink: 0; }
+.m-grid { display: flex; flex-direction: column; gap: 10px; overflow-y: auto; padding: 4px; flex: 1; min-height: 0; }
+.m-row { display: flex; justify-content: space-between; align-items: center; padding: 16px; border: 1px solid #eceff1; border-radius: 16px; transition: 0.2s; background: #fafafa; flex-shrink: 0; }
+.m-row:hover { background: #fff; border-color: var(--primary); box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+.m-name { font-weight: 700; font-size: 15px; color: #37474f; }
+.m-ctrl { display: flex; align-items: center; gap: 12px; }
+.m-btn-s { width: 32px; height: 32px; border-radius: 50%; background: #fff; border: 1px solid #cfd8dc; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 18px; color: var(--primary); transition: 0.1s; }
+.m-btn-s:active { background: var(--primary); color: #fff; border-color: var(--primary); }
+.m-val { font-weight: 700; width: 24px; text-align: center; font-size: 16px; }
+.m-acts { display: flex; gap: 12px; margin-top: 24px; flex-shrink: 0; }
+.m-btn { flex: 1; padding: 14px; border-radius: 12px; border: none; font-weight: 700; cursor: pointer; font-size: 16px; transition: 0.2s; }
+.m-btn.disabled { opacity: 0.5; pointer-events: none; background: #cfd8dc; }
+#empty-state { text-align: center; margin-top: 80px; color: #b0bec5; display: none; }
+
+/* Receipt Modal Styles */
+.receipt-paper { background: #fff; padding: 0; width: 100%; border-radius: 0; box-shadow: none; display: flex; flex-direction: column; height: 100%; }
+.rc-head { background: var(--primary); color: #fff; padding: 20px; text-align: center; }
+.rc-body { flex: 1; overflow-y: auto; padding: 20px; background: #fff; }
+.rc-row { display: flex; justify-content: space-between; margin-bottom: 12px; font-size: 14px; color: #455a64; }
+.rc-row.bold { font-weight: 700; color: #263238; font-size: 16px; margin-top: 10px; padding-top: 10px; border-top: 2px dashed #eceff1; }
+.rc-item { margin-bottom: 15px; border-bottom: 1px dashed #eee; padding-bottom: 8px; }
+.rc-name { font-weight: 700; color: #37474f; margin-bottom: 4px; }
+.rc-meta { display: flex; justify-content: space-between; font-size: 13px; color: #78909c; }
+.rc-actions { padding: 20px; background: #fafafa; border-top: 1px solid #eee; }
+.btn-email { width: 100%; padding: 12px; border: 1px solid #cfd8dc; background: #fff; border-radius: 10px; color: #546e7a; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 10px; }
+.btn-close-rc { width: 100%; padding: 14px; background: var(--text-main); color: #fff; border: none; border-radius: 10px; font-weight: 700; font-size: 16px; }
+.email-input-box { display: none; gap: 8px; margin-bottom: 10px; }
+.email-input-box.show { display: flex; }
+</style>
+</head>
+<body>
+
+<div id="welcome-overlay">
+  <div class="balloon-card">
+    <span class="material-icons-round w-logo" style="color:#00897b">spa</span>
+    <div class="w-title">Welcome<br>TTL Bio-Tech Order Web</div>
+    <div class="w-sub">健康美麗的路上<br>台酒生技與您同行</div>
+    <button class="w-btn" onclick="closeWelcome()">開始訂購</button>
+  </div>
+</div>
+
+<div id="toast-container"></div>
+
+<div id="loader" style="background:#f4f6f8; align-items:flex-start; padding: 120px 16px 0;">
+  <div style="width:100%; max-width:800px; margin:0 auto; display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+    <div class="skeleton sk-card"></div><div class="skeleton sk-card"></div>
+    <div class="skeleton sk-card"></div><div class="skeleton sk-card"></div>
+  </div>
+</div>
+
+<header>
+  <div class="search-wrap">
+    <div class="search-box">
+      <span class="material-icons-round icon">search</span>
+      <input id="searchInp" type="text" placeholder="搜尋商品...">
+    </div>
+  </div>
+  
+  <div id="ranking-section">
+    <div class="rank-head">
+      <div class="rank-title"><span class="material-icons-round" style="color:#d81b60;font-size:18px;">local_fire_department</span> 熱銷</div>
+      <div class="rank-tabs">
+        <div class="r-tab active" onclick="switchRank('all')">全站</div>
+        <div class="r-tab" onclick="switchRank('health')">保健</div>
+        <div class="r-tab" onclick="switchRank('beauty')">美容</div>
+        <div class="r-tab" onclick="switchRank('cleaning')">清潔</div>
+      </div>
+    </div>
+    <div class="rank-list" id="rankList"></div>
+  </div>
+
+  <div class="cat-wrap">
+    <nav class="cat-nav" id="catNav"></nav>
+  </div>
+</header>
+
+<main id="list"></main>
+<div id="empty-state">
+  <span class="material-icons-round" style="font-size:48px">search_off</span>
+  <p>找不到相關商品</p>
+</div>
+
+<div id="float-bar" onclick="openCart()">
+  <div class="fb-info">
+    <span class="fb-total">$0</span>
+    <span class="fb-count">0 件商品</span>
+  </div>
+  <div class="fb-btn">查看購物車 <span class="material-icons-round" style="font-size:18px">arrow_forward</span></div>
+</div>
+
+<div id="drawer">
+  <div id="drawer-bg" onclick="closeCart()"></div>
+  <div id="drawer-panel">
+    <div class="dr-head">
+      <div style="display:flex; align-items:center; gap:8px;">
+        <span class="material-icons-round" onclick="closeCart()" style="cursor:pointer;color:#00897b;font-weight:700">arrow_back_ios</span>
+        <h2 style="margin:0;font-size:20px;font-weight:700;color:#263238">購物車</h2>
+      </div>
+      <span class="material-icons-round" onclick="closeCart()" style="cursor:pointer;padding:8px;color:#546e7a;background:#f5f5f5;border-radius:50%">close</span>
+    </div>
+    
+    <div class="gamification-box">
+      <div class="game-txt">
+        <span id="gameMsg">加油！再 $500 送贈品</span>
+        <div class="game-icon-wrap" onclick="openGiftList()">
+          <span class="game-icon">🎁</span>
+          <span class="game-hint">查看好禮</span>
+        </div>
+      </div>
+      <div class="progress-wrap">
+        <div class="progress-bar" id="gameBar"></div>
+      </div>
+    </div>
+
+    <div class="dr-body" id="cartList"></div>
+
+    <div class="dr-foot">
+      <div class="sum-card">
+        <div class="sum-head" onclick="toggleSum()">
+          <span>🎁 商品總覽 (含贈品)</span>
+          <span class="material-icons-round" id="sumIcon">expand_more</span>
+        </div>
+        <div class="sum-body" id="finalList"></div>
+      </div>
+
+      <div style="display:flex;justify-content:space-between;margin:15px 0 5px 0;color:#c2185b;font-weight:700"><span>美容保養小計</span><span id="sumBeauty">$0</span></div>
+      <div style="display:flex;justify-content:space-between;margin-bottom:5px;color:#546e7a"><span>原價總計</span><span id="sumBase">$0</span></div>
+      <div style="display:flex;justify-content:space-between;margin-bottom:5px;color:var(--accent)"><span>折扣與優惠</span><span id="sumDisc">-$0</span></div>
+      <div style="display:flex;justify-content:space-between;margin-top:10px;padding-top:10px;border-top:1px dashed #cfd8dc;font-size:22px;font-weight:800;color:#263238"><span>應付金額</span><span id="sumPay">$0</span></div>
+      
+      <div class="form-grid">
+        <input id="fName" placeholder="姓名 (必填)">
+        <input id="fDept" placeholder="部門 (必填)">
+        <select id="fPay">
+          <option value="現金">現金</option>
+          <option value="信用卡">信用卡</option>
+          <option value="薪資扣款">薪資扣款</option>
+          <option value="匯款">匯款</option>
+        </select>
+        <input id="fNote" placeholder="備註">
+      </div>
+      <div class="btn-bar">
+        <button class="btn-clear" onclick="clearCart()"><span class="material-icons-round">delete_outline</span></button>
+        <button class="btn-submit" onclick="submitOrder()">確認訂購</button>
+      </div>
+      <div id="warnMsg" style="color:#ef5350;font-size:13px;text-align:center;margin-top:10px;display:none;font-weight:700;background:#ffebee;padding:8px;border-radius:8px;"></div>
+    </div>
+  </div>
+</div>
+
+<div id="bundleModal" class="modal">
+  <div class="m-box">
+    <div class="m-head">任選 2 件內容物</div>
+    <div class="m-sub">已選擇 <span id="mCount" style="color:var(--accent);font-weight:700">0</span> / 2 件</div>
+    <div class="m-grid" id="mGrid"></div>
+    <div class="m-acts">
+      <button class="m-btn" style="background:#f5f5f5;color:#546e7a" onclick="closeBundle()">取消</button>
+      <button id="mConfirmBtn" class="m-btn disabled" style="background:var(--primary);color:#fff" onclick="confirmBundle()">確認選取</button>
+    </div>
+  </div>
+</div>
+
+<div id="giftModal" class="modal">
+  <div class="m-box">
+    <div class="m-head" style="margin-bottom:20px">🎁 滿額贈達標清單</div>
+    <div class="gift-list" id="giftListGrid"></div>
+    <button class="m-btn" style="background:#f5f5f5;color:#546e7a;margin-top:20px;flex-shrink:0" onclick="closeGiftList()">關閉</button>
+  </div>
+</div>
+
+<div id="receiptModal" class="modal" style="z-index:2200;">
+  <div class="m-box receipt-paper" style="max-height:90vh; max-width:400px; padding:0;">
+    <div class="rc-head">
+      <h2 style="margin:0;font-size:18px;">訂購完成</h2>
+      <div style="font-size:12px;opacity:0.8;margin-top:4px;" id="rcOrderId"></div>
+    </div>
+    <div class="rc-body" id="rcBody"></div>
+    <div class="rc-actions">
+      <button class="btn-email" onclick="toggleEmailInput()">
+        <span class="material-icons-round">email</span> 寄送訂購紀錄到 Email
+      </button>
+      <div class="email-input-box" id="emailBox">
+        <input type="email" id="rcEmail" placeholder="請輸入 Email..." style="flex:1;">
+        <button class="btn-submit" style="flex:0 0 80px;padding:10px;" onclick="sendReceipt()">發送</button>
+      </div>
+      <div style="font-size:11px;color:#90a4ae;text-align:center;margin-bottom:15px;">
+        請自行截圖留存，或使用上方按鈕寄送。
+      </div>
+      <button class="btn-close-rc" onclick="closeReceipt()">關閉並完成</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const SHEET_P = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRVtfpccKivWeh0AcCFRmfELivETrvxF-IfCJE8zUo0i_qfRc2YyG4bdK2adofSNGYgsbhxKtu8lmeM/pub?gid=0&single=true&output=csv";
+const SHEET_R = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQU95r9_TOPlQXY-lcBS_RH3tRc0mtRyuazxHHWljpRusbzBiWsEfm3Pa_HZmKW5Ob5TOq4W5O-vumI/pub?gid=2071879068&single=true&output=csv";
+const SHEET_RANK = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQj5QLrtaWikGcLNwMawbjiN8ZQDgFzW1RV7UECFgLzECWj16I2ugE_B6tzzLICCynsk1L6lAuJfccS/pub?gid=93142219&single=true&output=csv";
+const GAS_URL = "https://script.google.com/macros/s/AKfycbxQ9Etloak3ZNv6yfyMCK9KbjoLyDqjRQHHVlASY5iMwwy_c4NCPxWpMK1YkzSXstHN/exec";
+const PROXY = (url) => "https://corsproxy.io/?" + encodeURIComponent(url);
+
+let PRODUCTS = [], RULES = {}, CART = [], SELECTED_BUNDLE = new Map();
+let PRODUCT_MAP = new Map(); 
+let RANKINGS = { all:[], health:[], beauty:[], cleaning:[] };
+let currentCat = "", categories = [];
+let modalPid = null, isCartOpen = false;
+let tempBundleSelection = [];
+let lastOrderData = null; 
+
+function closeWelcome() {
+  const el = document.getElementById('welcome-overlay');
+  el.classList.add('fade-out');
+  setTimeout(() => el.style.display = 'none', 500);
+}
+
+function saveState() {
+  const state = { cart: CART, bundles: Array.from(SELECTED_BUNDLE.entries()) };
+  localStorage.setItem('v17_cart_data', JSON.stringify(state));
+}
+
+function loadState() {
+  const raw = localStorage.getItem('v17_cart_data');
+  if(!raw) return;
+  try {
+    const data = JSON.parse(raw);
+    CART = data.cart.map(oldItem => {
+      const freshItem = PRODUCT_MAP.get(oldItem.code);
+      if(freshItem) return { ...freshItem, qty: oldItem.qty };
+      return null;
+    }).filter(x => x);
+    SELECTED_BUNDLE = new Map(data.bundles);
+    refreshCart();
+    renderList();
+    if(CART.length > 0) {
+      const fab = document.getElementById("float-bar");
+      fab.classList.remove("show");
+      void fab.offsetWidth;
+      fab.classList.add("show");
+    }
+  } catch(e) { console.error("Load state failed", e); }
+}
+
+function showToast(msg, type='normal') {
+  const c = document.getElementById('toast-container');
+  const t = document.createElement('div');
+  t.className = 'toast';
+  if(type === 'game') t.classList.add('game');
+  let icon = 'check_circle';
+  if (type === 'warn') icon = 'error_outline';
+  if (type === 'game') icon = 'stars'; 
+  t.innerHTML = `<span class="material-icons-round" style="color:${type==='warn'?'#ff5252':(type==='game'?'#fff':'#69f0ae')}">${icon}</span> ${msg}`;
+  c.appendChild(t); 
+  setTimeout(() => t.remove(), type === 'game' ? 3000 : 2500);
+  return t; 
+}
+
+function animateFly(startEl) {
+  const card = startEl.closest('.p-card') || startEl.closest('.r-card');
+  if (!card) return;
+  const rect = startEl.getBoundingClientRect();
+  const target = document.querySelector('.fb-btn').getBoundingClientRect();
+  const fly = document.createElement('img');
+  let imgEl = card.querySelector('img.p-img') || card.querySelector('img.r-img') || card.querySelector('img');
+  fly.src = imgEl ? imgEl.src : ''; 
+  if(!fly.src) return;
+  fly.className = 'flying-img';
+  fly.style.transform = 'scale(1.5)';
+  fly.style.top = rect.top + 'px';
+  fly.style.left = rect.left + 'px';
+  document.body.appendChild(fly);
+  setTimeout(() => {
+    fly.style.transform = 'scale(0.2)'; 
+    fly.style.top = target.top + 'px';
+    fly.style.left = target.left + 'px';
+    fly.style.opacity = '0.8';
+  }, 50);
+  setTimeout(() => fly.remove(), 1200); 
+}
+
+// V19.5 Jump Function with Double Flash
+function jumpToProduct(pid) {
+  setCategory(""); // Reset filter to show all
+  setTimeout(() => {
+    const el = document.getElementById(`p-${pid}`);
+    if(el) {
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+      el.classList.add("flash-highlight");
+      // Matches CSS animation duration (0.5s * 2 = 1.0s) + small buffer
+      setTimeout(()=>el.classList.remove("flash-highlight"), 1200);
+    }
+  }, 100);
+}
+
+async function initApp() {
+  try {
+    const [pText, rText, rankText] = await Promise.all([
+      fetch(PROXY(SHEET_P)).then(r => r.text()),
+      fetch(PROXY(SHEET_R)).then(r => r.text()),
+      fetch(PROXY(SHEET_RANK)).then(r => r.text())
+    ]);
+
+    const pData = Papa.parse(pText, { header: true, skipEmptyLines: true }).data;
+    PRODUCTS = pData.map((row, i) => {
+      const pick = (k) => row[Object.keys(row).find(key => key.toLowerCase() === k.toLowerCase())] || "";
+      const name = pick("product_name");
+      if(!name) return null;
+      const isGift = pick("is_gift").toLowerCase();
+      if(isGift === 'true' || isGift.includes('是')) {
+        PRODUCT_MAP.set(pick("product_code"), { name, price: 0 }); 
+        return null;
+      }
+      let bundle = [];
+      for(let k=1; k<=4; k++) {
+        let sn = pick(`spec_${k}`);
+        let sq = Number(pick(`spec_${k}_qty`)||1);
+        if(sn) bundle.push({ name: sn, qty: sq });
+      }
+      const p = {
+        _id: i, code: pick("product_code"), name: name, category: pick("category").trim(),
+        price: Number((pick("list_price")||"0").replace(/,/g,'')), spec: pick("spec"), photo: pick("photos url"), bundle: bundle
+      };
+      if(p.code) PRODUCT_MAP.set(p.code, p);
+      return p;
+    }).filter(x => x);
+
+    const rData = Papa.parse(rText, { header: true, skipEmptyLines: true }).data;
+    RULES = { tiers: [], bogo: [], spend: [], bundle: [] };
+    rData.forEach(row => {
+      const pick = (k) => row[Object.keys(row).find(key => key.toLowerCase() === k.toLowerCase())] || "";
+      const type = pick("rule_type").toLowerCase();
+      if(type.includes("tier")) RULES.tiers.push({ zone: pick("zone").trim(), min: Number(pick("min_qty")), pct: Number(pick("percent_off")) });
+      else if(type.includes("bogo")) RULES.bogo.push({ code: pick("product_code"), buy: Number(pick("buy")), get: Number(pick("get")) });
+      else if(type.includes("spend")) RULES.spend.push({ scope: pick("threshold_scope"), prefix: pick("zone_prefix"), amt: Number(pick("threshold_amount")), gift: pick("gift_code"), qty: Number(pick("gift_qty")), mult: pick("multiples").toUpperCase()==="TRUE" });
+      else if(type.includes("bundle")) RULES.bundle.push({ code: pick("product_code"), price: Number(pick("unit_price")) });
+    });
+
+    processRankings(rankText);
+
+    renderUI();
+    document.getElementById("loader").style.opacity = 0;
+    setTimeout(()=>document.getElementById("loader").remove(), 300);
+    loadState();
+  } catch(e) { alert("連線異常，請稍後重試。\n" + e.message); }
+}
+
+// V19.5 Logic: Top 10 for ALL categories
+function processRankings(csvText) {
+  RANKINGS = { all:[], health:[], beauty:[], cleaning:[] };
+  
+  const rows = Papa.parse(csvText, { header: false }).data;
+  let rawList = [];
+  let processedCodes = new Set();
+
+  rows.forEach(r => {
+    if(r.length < 6) return;
+    const code = r[0];
+    let qtyStr = r[5] || "0";
+    const qty = parseFloat(qtyStr.toString().replace(/,/g, ''));
+    
+    if(PRODUCT_MAP.has(code) && qty > 0 && !processedCodes.has(code)) {
+      const p = PRODUCT_MAP.get(code);
+      rawList.push({ ...p, sold: qty });
+      processedCodes.add(code);
+    }
+  });
+
+  rawList.sort((a,b) => b.sold - a.sold);
+
+  // 1. Fill 'all' (Top 10)
+  RANKINGS.all = rawList.slice(0, 10);
+
+  // 2. Filter & Fill Categories (Top 10 each)
+  RANKINGS.health = rawList.filter(i => getRankingCategory(i.name, i.category) === 'health').slice(0, 10);
+  RANKINGS.beauty = rawList.filter(i => getRankingCategory(i.name, i.category) === 'beauty').slice(0, 10);
+  RANKINGS.cleaning = rawList.filter(i => getRankingCategory(i.name, i.category) === 'cleaning').slice(0, 10);
+
+  if(RANKINGS.all.length > 0) {
+    document.getElementById("ranking-section").style.display = "block";
+    renderRanking("all");
+  }
+}
+
+function getRankingCategory(name, originalCat) {
+  const n = name.toLowerCase();
+  const c = originalCat.toLowerCase();
+
+  if (n.includes("易洗樂") || n.includes("洗潔") || n.includes("洗衣") || n.includes("洗碗") || n.includes("菜瓜布") || c.includes("清潔") || n.includes("洗") || n.includes("皂")) {
+    return "cleaning";
+  }
+
+  const beautyKeywords = ["vinata", "面膜", "精華", "霜", "露", "乳液", "潔顏", "卸妝", "美白", "保濕", "抗皺", "潤", "透", "亮", "膚", "痘", "洗髮", "沐浴"];
+  if (c.includes("美容") || c.includes("保養") || beautyKeywords.some(kw => n.includes(kw))) {
+    return "beauty";
+  }
+
+  const healthKeywords = ["安可健", "s11", "益生菌", "納豆", "紅麴", "魚油", "鈣", "葡萄糖胺", "葉黃素", "膠囊", "錠", "酵素"];
+  if (c.includes("保健") || c.includes("健康") || healthKeywords.some(kw => n.includes(kw))) {
+    return "health";
+  }
+
+  return "other"; 
+}
+
+function renderRanking(type) {
+  const list = document.getElementById("rankList");
+  list.innerHTML = "";
+  
+  const data = RANKINGS[type] || [];
+  
+  data.forEach((p, idx) => {
+    const card = document.createElement("div");
+    card.className = "r-card";
+    card.dataset.rank = idx + 1; 
+    
+    // V19.5 Click -> Jump
+    card.onclick = () => jumpToProduct(p._id);
+
+    let imgHtml = `<div class="p-no-img" style="height:100%;justify-content:center;font-size:10px">無圖</div>`;
+    if(p.photo && p.photo.length > 5) {
+      imgHtml = `<img src="${p.photo}" class="r-img" loading="lazy">`;
+    }
+
+    card.innerHTML = `
+      <div class="r-img-wrap">
+        <div class="r-badge">${idx + 1}</div>
+        <div class="r-sold-tag">售${p.sold.toLocaleString()}件</div>
+        ${imgHtml}
+      </div>
+      <div class="r-name">${p.name}</div>
+    `;
+    list.appendChild(card);
+  });
+}
+
+function switchRank(type) {
+  document.querySelectorAll(".r-tab").forEach(el => el.classList.remove("active"));
+  event.target.classList.add("active");
+  renderRanking(type);
+}
+
+function renderUI() {
+  const nav = document.getElementById("catNav");
+  let rawCats = [...new Set(PRODUCTS.map(p => p.category))].filter(Boolean);
+  const cleaningBase = "清潔用品";
+  const hasCleaning = rawCats.some(c => c.includes(cleaningBase));
+  if(hasCleaning) {
+      rawCats = rawCats.filter(c => !c.includes(cleaningBase));
+      rawCats.push("清潔-洗潔", "清潔-洗衣", "清潔-皂"); 
+  }
+  const allPill = document.createElement("div");
+  allPill.className = "cat-pill active";
+  allPill.innerText = "全部商品";
+  allPill.onclick = () => setCategory("");
+  nav.appendChild(allPill);
+  rawCats.forEach(c => {
+    let displayName = c.includes("清潔-") ? c : c.split(/[\s_]/)[0];
+    const pill = document.createElement("div");
+    pill.className = "cat-pill";
+    pill.innerText = displayName;
+    pill.onclick = () => setCategory(c); 
+    nav.appendChild(pill);
+  });
+  categories = rawCats;
+  renderList();
+  const listEl = document.querySelector("main");
+  let ts = 0;
+  listEl.addEventListener('touchstart', (e) => { ts = e.changedTouches[0].screenX; }, {passive: true});
+  listEl.addEventListener('touchend', (e) => {
+    let te = e.changedTouches[0].screenX;
+    if (Math.abs(ts - te) > 60) { 
+      let idx = categories.indexOf(currentCat);
+      if (te < ts) { 
+        if (currentCat === "") setCategory(categories[0]);
+        else if (idx < categories.length - 1) setCategory(categories[idx+1]);
+      } else { 
+        if (idx > 0) setCategory(categories[idx-1]);
+        else setCategory("");
+      }
+    }
+  }, {passive: true});
+}
+
+function renderList() {
+  const grid = document.getElementById("list");
+  grid.innerHTML = "";
+  const q = document.getElementById("searchInp").value.toLowerCase().trim();
+  const filtered = PRODUCTS.filter(p => {
+    if (currentCat.includes("清潔-")) {
+        if (!p.category.includes("清潔")) return false;
+        if (currentCat === "清潔-洗潔" && !p.name.includes("洗潔")) return false;
+        if (currentCat === "清潔-洗衣" && !p.name.includes("洗衣")) return false;
+        if (currentCat === "清潔-皂" && !p.name.includes("皂")) return false;
+    } else if (currentCat && p.category !== currentCat) {
+        if (!p.category.includes(currentCat)) return false; 
+    }
+    if(q && !p.name.toLowerCase().includes(q) && !p.code.toLowerCase().includes(q)) return false;
+    return true;
+  });
+  document.getElementById("empty-state").style.display = filtered.length === 0 ? "block" : "none";
+  filtered.forEach(p => {
+    const inCart = CART.find(x => x._id === p._id);
+    const qty = inCart ? inCart.qty : 0;
+    let badges = "";
+    if(p.category.includes("加價購")) badges += `<span class="badge bg-red">加價購</span>`;
+    if(RULES.bogo.some(b => b.code === p.code)) badges += `<span class="badge bg-blue">買一送一</span>`;
+    if(p.name.includes("任選")) badges += `<span class="badge bg-gold">優惠組合</span>`;
+    if(RULES.tiers.some(t => p.category.includes(t.zone))) badges += `<span class="badge bg-purple">多件優惠</span>`;
+    let actionBtn = "";
+    if(p.bundle.length >= 2 && p.name.includes("任選")) {
+      const hasSel = SELECTED_BUNDLE.has(p._id);
+      actionBtn = `<div class="btn-bundle" onclick="openBundle(${p._id})">${hasSel ? "內容已選 ✓" : "選擇內容物"}</div>`;
+    }
+    let imgHtml = `<div class="p-no-img"><span class="material-icons-round" style="font-size:32px">image_not_supported</span>無圖片</div>`;
+    if(p.photo && p.photo.length > 5) {
+      imgHtml = `<img src="${p.photo}" class="p-img" onload="this.classList.add('loaded')" onerror="this.style.display='none';this.parentElement.innerHTML='<div class=\'p-no-img\'>暫無圖片</div>'">`;
+    }
+    const card = document.createElement("div");
+    card.className = "p-card";
+    card.id = `p-${p._id}`;
+    card.innerHTML = `
+      <div class="p-img-box"><div class="badges">${badges}</div>${imgHtml}</div>
+      <div class="p-body">
+        <div><div class="p-title">${p.name}</div><div class="p-code">${p.code}</div></div>
+        <div>
+          <div class="p-price-row"><span class="p-price">$${p.price.toLocaleString()}</span></div>
+          ${actionBtn}
+          <div class="stepper">
+            <div class="s-btn ${qty===0?'hidden':''}" onclick="window.updateQty(this, ${p._id}, -1)">－</div>
+            <div class="s-val ${qty===0?'hidden':''}">${qty}</div>
+            <div class="s-btn add" onclick="window.updateQty(this, ${p._id}, 1)">＋</div>
+          </div>
+        </div>
+      </div>
+    `;
+    grid.appendChild(card);
+  });
+}
+
+function setCategory(cat) {
+  currentCat = cat;
+  document.querySelectorAll(".cat-pill").forEach(el => {
+    let match = false;
+    if(cat === "") match = (el.innerText === "全部商品");
+    else if(cat.includes("清潔-")) match = (el.innerText === cat);
+    else match = cat.includes(el.innerText);
+    el.classList.toggle("active", match);
+  });
+  const activePill = document.querySelector(".cat-pill.active");
+  if(activePill) activePill.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+  renderList();
+  window.scrollTo({top: 0, behavior: 'smooth'});
+}
+
+function openBundle(pid) {
+  modalPid = pid;
+  const p = PRODUCTS.find(x => x._id === pid);
+  const grid = document.getElementById("mGrid");
+  grid.innerHTML = "";
+  tempBundleSelection = SELECTED_BUNDLE.has(pid) ? [...SELECTED_BUNDLE.get(pid)] : [];
+  updateModalUI();
+  p.bundle.forEach((b, idx) => {
+    const row = document.createElement("div");
+    row.className = "m-row";
+    row.dataset.idx = idx;
+    row.innerHTML = `<div style="flex:1"><div class="m-name">${b.name}</div><div style="font-size:12px;color:#90a4ae">規格: ${b.qty}</div></div>
+      <div class="m-ctrl"><div class="m-btn-s minus">－</div><div class="m-val">0</div><div class="m-btn-s plus">＋</div></div>`;
+    row.querySelector(".minus").onclick = () => modifyTemp(idx, -1);
+    row.querySelector(".plus").onclick = () => modifyTemp(idx, 1);
+    grid.appendChild(row);
+  });
+  updateModalCounts();
+  document.getElementById("bundleModal").classList.add("open");
+}
+
+function modifyTemp(idx, delta) {
+  if (delta > 0) { if (tempBundleSelection.length < 2) tempBundleSelection.push(idx); } else { const i = tempBundleSelection.indexOf(idx); if (i > -1) tempBundleSelection.splice(i, 1); }
+  updateModalUI(); updateModalCounts();
+}
+
+function updateModalUI() {
+  document.getElementById("mCount").innerText = tempBundleSelection.length;
+  const btn = document.getElementById("mConfirmBtn");
+  if (tempBundleSelection.length === 2) { btn.classList.remove("disabled"); btn.innerText = "確認選取"; } else { btn.classList.add("disabled"); btn.innerText = `還差 ${2 - tempBundleSelection.length} 件`; }
+}
+
+function updateModalCounts() {
+  const rows = document.getElementById("mGrid").children;
+  Array.from(rows).forEach(row => {
+    const idx = parseInt(row.dataset.idx);
+    const count = tempBundleSelection.filter(x => x === idx).length;
+    row.querySelector(".m-val").innerText = count;
+    if(count > 0) row.style.borderColor = "var(--primary)"; else row.style.borderColor = "#eceff1";
+  });
+}
+
+function confirmBundle() {
+  if (tempBundleSelection.length !== 2) return;
+  SELECTED_BUNDLE.set(modalPid, [...tempBundleSelection]);
+  let item = CART.find(x => x._id === modalPid);
+  if (!item) window.updateQty(null, modalPid, 1);
+  else { saveState(); refreshCart(); renderList(); }
+  closeBundle();
+}
+
+function closeBundle() { document.getElementById("bundleModal").classList.remove("open"); }
+
+function openGiftList() {
+  const currentTotal = parseFloat(document.getElementById("sumPay").innerText.replace('$','').replace(/,/g,'')) || 0;
+  const gifts = RULES.spend.filter(r => r.scope === 'all').sort((a,b) => a.amt - b.amt);
+  const grid = document.getElementById("giftListGrid");
+  grid.innerHTML = "";
+  gifts.forEach(g => {
+    const reached = currentTotal >= g.amt;
+    let gName = (PRODUCT_MAP.get(g.gift) || {}).name || g.gift;
+    gName = gName.replace(/^(贈品|贈|Gift)[:\s|｜_]*/i, "");
+    const div = document.createElement("div");
+    div.className = `gift-item ${reached ? 'unlocked' : ''}`;
+    div.innerHTML = `<div class="g-status material-icons-round">${reached ? 'check_circle' : 'lock'}</div>
+      <div class="g-info"><div class="g-amt">滿 $${g.amt.toLocaleString()}</div><div class="g-name">${gName} x${g.qty}</div>${reached ? '<div class="g-tag">已獲得</div>' : ''}</div>`;
+    grid.appendChild(div);
+  });
+  document.getElementById("giftModal").classList.add("open");
+  history.pushState({modal: 'gift'}, null, "");
+}
+
+window.closeGiftList = () => {
+  document.getElementById("giftModal").classList.remove("open");
+  if(history.state && history.state.modal === 'gift') history.back();
+};
+
+window.updateQty = (btnEl, pid, delta) => {
+  const p = PRODUCTS.find(x => x._id === pid);
+  if(!p) return;
+  if(delta > 0 && p.category.includes("加價購")) {
+    const mainCount = CART.reduce((acc, it) => acc + (!it.category.includes("加價購") ? it.qty : 0), 0);
+    if(mainCount === 0) { showToast("請先選購主商品，才能加購喔！", "warn"); return; }
+  }
+  if(delta > 0 && p.bundle.length >= 2 && p.name.includes("任選")) {
+    if(!SELECTED_BUNDLE.has(pid) || SELECTED_BUNDLE.get(pid).length !== 2) { openBundle(pid); return; }
+  }
+  let item = CART.find(x => x._id === pid);
+  if(!item && delta > 0) { item = { ...p, qty: 0 }; CART.push(item); }
+  if(item) { item.qty += delta; if(item.qty <= 0) CART = CART.filter(x => x._id !== pid); }
+  if(delta > 0 && btnEl) animateFly(btnEl);
+  if(delta > 0) {
+    const addedToast = showToast("已加入購物車");
+    setTimeout(() => {
+        const data = calcCart();
+        const next = RULES.spend.find(r => r.scope === "all" && r.amt > data.finalTotal);
+        let msg = "", isGame = false;
+        if(next) { const diff = next.amt - data.finalTotal; msg = `加油！再 $${diff.toLocaleString()} 送贈品`; isGame = true; } 
+        else if (data.finalTotal > 0) {
+           const max = Math.max(...RULES.spend.filter(r => r.scope==="all").map(r=>r.amt));
+           if(data.finalTotal >= max && max > 0) { msg = "🎉 太棒了！已解鎖所有滿額贈品"; isGame = true; }
+        }
+        if (isGame && msg) { if(addedToast && addedToast.parentNode) addedToast.remove(); showToast(msg, "game"); }
+    }, 1100); 
+  }
+  saveState(); refreshCart(); renderList();
+  const fab = document.getElementById("float-bar"); fab.classList.remove("show"); void fab.offsetWidth; if(CART.length > 0) fab.classList.add("show");
+}
+
+function clearCart() {
+  if(confirm("確定要清空購物車嗎？")) { CART = []; SELECTED_BUNDLE.clear(); saveState(); refreshCart(); renderList(); closeCart(); showToast("購物車已清空"); }
+}
+
+function calcCart() {
+  let subTotal = 0, finalTotal = 0, beautyTotal = 0, discountAmt = 0;
+  let warnings = [];
+  let catCounts = {};
+  CART.forEach(it => {
+    const matchedRule = RULES.tiers.find(r => it.category.includes(r.zone));
+    if(matchedRule) { const zone = matchedRule.zone; catCounts[zone] = (catCounts[zone] || 0) + it.qty; }
+  });
+  const processedItems = CART.map(it => {
+    const originalLine = it.price * it.qty; subTotal += originalLine; let finalLine = originalLine; let tags = [];
+    const bundleRule = RULES.bundle.find(b => b.code === it.code);
+    if(bundleRule && bundleRule.price < it.price) {
+      finalLine = bundleRule.price * it.qty; tags.push({ text: `現省 $${((it.price - bundleRule.price) * it.qty).toLocaleString()}`, cls: "save" });
+    } else {
+      const matchedRule = RULES.tiers.find(r => it.category.includes(r.zone));
+      if(matchedRule) {
+         const zone = matchedRule.zone;
+         const tierRules = RULES.tiers.filter(r => r.zone === zone).sort((a,b) => b.min - a.min);
+         const tier = tierRules.find(t => catCounts[zone] >= t.min);
+         if(tier) { finalLine = originalLine * ((100 - tier.pct) / 100); tags.push({ text: `已享 ${100-tier.pct} 折`, cls: "save" }); }
+      }
+    }
+    const bogo = RULES.bogo.find(b => b.code === it.code);
+    if(bogo) {
+      const set = bogo.buy + bogo.get; const free = Math.floor(it.qty/set) * bogo.get; finalLine -= free * it.price;
+      if(free > 0) tags.push({ text: `買${bogo.buy}送${bogo.get}`, cls: "save" });
+      if(it.qty % set !== 0) { tags.push({ text: `未湊滿優惠 (再選 ${set - (it.qty%set)} 件)`, cls: "warn" }); warnings.push(`${it.name}`); }
+    }
+    finalTotal += finalLine; if(it.category.includes("美容")) beautyTotal += finalLine;
+    return { ...it, finalLine, tags };
+  });
+  discountAmt = subTotal - finalTotal;
+  const gifts = [];
+  RULES.spend.forEach(r => {
+    let basis = r.scope === "zone_prefix" ? beautyTotal : finalTotal;
+    if(r.scope === "zone_prefix" && r.prefix && !r.prefix.includes("美容")) basis = 0; 
+    if(basis >= r.amt) {
+      let qty = r.mult ? Math.floor(basis / r.amt) * r.qty : r.qty;
+      if(qty > 0) {
+        let gName = r.gift; if(PRODUCT_MAP.has(r.gift)) gName = PRODUCT_MAP.get(r.gift).name;
+        gName = gName.replace(/^(贈品|贈|Gift)[:\s|｜_]*/i, ""); gifts.push({ name: gName, qty: qty });
+      }
+    }
+  });
+  return { items: processedItems, subTotal, finalTotal, discountAmt, beautyTotal, gifts, warnings };
+}
+
+function refreshCart() {
+  const data = calcCart();
+  const list = document.getElementById("cartList");
+  list.innerHTML = "";
+  document.querySelector(".fb-total").innerText = "$" + Math.round(data.finalTotal).toLocaleString();
+  document.querySelector(".fb-count").innerText = CART.reduce((a,b)=>a+b.qty,0) + " 件";
+  data.items.forEach(it => {
+    let specStr = it.spec;
+    if(it.bundle.length > 0) {
+       if(it.name.includes("任選")) {
+          const idxs = SELECTED_BUNDLE.get(it._id);
+          specStr = `組合：${it.bundle[idxs[0]]?.name}、${it.bundle[idxs[1]]?.name}`;
+       } else { specStr = it.bundle.map(b => `${b.name}x${b.qty}`).join("、"); }
+    }
+    const div = document.createElement("div"); div.className = "c-item";
+    let tags = it.tags.map(t => `<span class="c-tag ${t.cls}">${t.text}</span>`).join("");
+    let priceHtml = `$${Math.round(it.finalLine).toLocaleString()}`;
+    if(it.finalLine < it.price * it.qty) priceHtml = `<span class="c-old">$${(it.price*it.qty).toLocaleString()}</span> $${Math.round(it.finalLine).toLocaleString()}`;
+    div.innerHTML = `<div class="c-info"><div class="c-title">${it.name}</div><div class="c-spec">${specStr || ''}</div><div class="c-tags">${tags}</div><div class="c-price-box">${priceHtml}</div></div>
+      <div class="c-ctrl"><div class="stepper"><div class="s-btn" onclick="window.updateQty(this, ${it._id}, -1)">－</div><div class="s-val">${it.qty}</div><div class="s-btn add" onclick="window.updateQty(this, ${it._id}, 1)">＋</div></div></div>`;
+    list.appendChild(div);
+  });
+  document.getElementById("sumBase").innerText = "$" + data.subTotal.toLocaleString();
+  document.getElementById("sumDisc").innerText = "-$" + Math.round(data.discountAmt).toLocaleString();
+  document.getElementById("sumPay").innerText = "$" + Math.round(data.finalTotal).toLocaleString();
+  document.getElementById("sumBeauty").innerText = "$" + Math.round(data.beautyTotal).toLocaleString();
+  const warnEl = document.getElementById("warnMsg");
+  if(data.warnings.length > 0) { warnEl.style.display = "block"; warnEl.innerText = "⚠️ " + [...new Set(data.warnings)].join("、"); } else { warnEl.style.display = "none"; }
+  const next = RULES.spend.find(r => r.scope === "all" && r.amt > data.finalTotal);
+  const max = Math.max(...RULES.spend.filter(r => r.scope==="all").map(r=>r.amt));
+  if(next) {
+    document.getElementById("gameMsg").innerText = `加油！再 $${(next.amt - data.finalTotal).toLocaleString()} 解鎖贈品`;
+    document.getElementById("gameBar").style.width = ((data.finalTotal/next.amt)*100) + "%";
+    document.getElementById("gameBar").classList.remove("full");
+  } else if (data.finalTotal >= max && max > 0) {
+    document.getElementById("gameMsg").innerText = "🎉 太棒了！已解鎖所有滿額贈品";
+    document.getElementById("gameBar").style.width = "100%";
+    document.getElementById("gameBar").classList.add("full");
+  } else {
+    document.getElementById("gameMsg").innerText = "選購商品解鎖滿額好禮";
+    document.getElementById("gameBar").style.width = "0%";
+  }
+  const finalList = document.getElementById("finalList");
+  let sumHtml = "";
+  data.items.forEach(i => sumHtml += `<div class="sum-line"><span>${i.name}</span><span>x${i.qty}</span></div>`);
+  data.gifts.forEach(g => sumHtml += `<div class="sum-line" style="color:#e65100"><span>🎁 ${g.name}</span><span>x${g.qty}</span></div>`);
+  finalList.innerHTML = sumHtml;
+}
+
+window.openCart = () => { if(CART.length === 0) return; document.getElementById("drawer").classList.add("open"); isCartOpen = true; history.pushState({modal: 'cart'}, null, ""); };
+window.closeCart = () => { document.getElementById("drawer").classList.remove("open"); isCartOpen = false; if(history.state && history.state.modal === 'cart') history.back(); };
+window.onpopstate = (e) => {
+  const giftModal = document.getElementById("giftModal");
+  if(giftModal.classList.contains("open")) { giftModal.classList.remove("open"); return; }
+  const rcModal = document.getElementById("receiptModal");
+  if(rcModal.classList.contains("open")) { return; } 
+  if(isCartOpen) { document.getElementById("drawer").classList.remove("open"); isCartOpen = false; }
+};
+window.onbeforeunload = (e) => { if(CART.length > 0) return "訂單尚未送出"; };
+document.getElementById("searchInp").addEventListener("input", renderList);
+window.toggleSum = () => {
+  const b = document.getElementById("finalList"); const i = document.getElementById("sumIcon");
+  if(b.classList.contains("open")) { b.classList.remove("open"); i.innerText = "expand_more"; } else { b.classList.add("open"); i.innerText = "expand_less"; }
+};
+
+window.submitOrder = () => {
+  const f = (id) => document.getElementById(id).value.trim();
+  if(!f("fName") || !f("fDept")) { showToast("請填寫姓名與部門", "warn"); return; }
+  
+  const data = calcCart();
+  
+  if(data.warnings.length > 0) {
+    const warnEl = document.getElementById("warnMsg");
+    warnEl.scrollIntoView({ behavior: "smooth", block: "center" });
+    warnEl.classList.remove("flash-anim");
+    void warnEl.offsetWidth; 
+    warnEl.classList.add("flash-anim");
+    showToast("尚有優惠未湊滿，無法送出！", "warn");
+    return;
+  }
+
+  const btn = document.querySelector(".btn-submit");
+  const originalText = btn.innerText;
+  btn.innerText = "資料傳送中...";
+  btn.disabled = true; btn.style.opacity = "0.7";
+
+  const allDiscountNotes = [];
+  const itemsPayload = data.items.map(it => {
+    let spec = it.spec || "";
+    let bundleSummary = "";
+    if(it.bundle.length > 0) {
+       if(it.name.includes("任選")) {
+          const s = SELECTED_BUNDLE.get(it._id) || [0,1];
+          spec = `[自選] ${it.bundle[s[0]]?.name} + ${it.bundle[s[1]]?.name}`;
+          bundleSummary = `${it.bundle[s[0]]?.name}|${it.bundle[s[1]]?.name}`;
+       } else {
+          spec = "[" + it.bundle.map(b=>b.name).join("+") + "]";
+          bundleSummary = it.bundle.map(b=>b.name).join("|");
+       }
+    }
+    let chargeQty = it.qty, freeQty = 0;
+    const bogo = RULES.bogo.find(b => b.code === it.code);
+    if(bogo) {
+      const set = bogo.buy + bogo.get; const sets = Math.floor(it.qty / set);
+      freeQty = sets * bogo.get; chargeQty = it.qty - freeQty;
+    }
+    it.tags.forEach(t => { if(t.cls === 'save') allDiscountNotes.push(`${it.name}: ${t.text}`); });
+    return { product_code: it.code, product_name: it.name, spec: spec, category: it.category, unit_price: it.price, qty: it.qty, charge_qty: chargeQty, free_qty: freeQty, line_total: Math.round(it.finalLine), bundle_summary: bundleSummary };
+  });
+
+  const giftsPayload = data.gifts.map(g => ({ product_code: "GIFT", product_name: `[贈品] ${g.name}`, qty: g.qty }));
+  if(giftsPayload.length > 0) allDiscountNotes.push("已符合滿額贈資格");
+
+  lastOrderData = {
+    employee_name: f("fName"), department: f("fDept"), payment_method: f("fPay"), remarks: f("fNote"),
+    totals: { base: data.subTotal, discount: Math.round(data.discountAmt), pay: Math.round(data.finalTotal) },
+    discount_notes: allDiscountNotes, items: itemsPayload, gifts: giftsPayload
+  };
+
+  fetch(GAS_URL, {
+    method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: "payload=" + encodeURIComponent(JSON.stringify(lastOrderData))
+  })
+  .then(response => response.json())
+  .then(res => {
+    if(res.ok) {
+      showToast("訂單送出成功！");
+      openReceipt(res.order_id); 
+    } else {
+      alert("訂單送出失敗：" + (res.error || "未知錯誤"));
+    }
+  })
+  .catch(err => { console.error(err); alert("連線發生錯誤"); })
+  .finally(() => { btn.innerText = originalText; btn.disabled = false; btn.style.opacity = "1"; });
+};
+
+function openReceipt(orderId) {
+  const modal = document.getElementById("receiptModal");
+  const body = document.getElementById("rcBody");
+  document.getElementById("rcOrderId").innerText = `No. ${orderId}`;
+  let html = "";
+  lastOrderData.items.forEach(it => {
+    html += `<div class="rc-item"><div class="rc-name">${it.product_name}</div><div class="rc-meta"><span>${it.spec}</span><span>x${it.qty}</span><span>$${it.line_total}</span></div></div>`;
+  });
+  if(lastOrderData.gifts.length > 0) {
+    html += `<div class="rc-row bold" style="color:#e65100">滿額贈品</div>`;
+    lastOrderData.gifts.forEach(g => {
+      html += `<div class="rc-item"><div class="rc-name" style="color:#e65100">🎁 ${g.product_name}</div><div class="rc-meta"><span></span><span>x${g.qty}</span><span>免費</span></div></div>`;
+    });
+  }
+  html += `<div class="rc-row bold"><span>總計金額</span><span>$${lastOrderData.totals.pay}</span></div>`;
+  body.innerHTML = html;
+  modal.classList.add("open");
+}
+
+function closeReceipt() {
+  document.getElementById("receiptModal").classList.remove("open");
+  CART = []; SELECTED_BUNDLE.clear(); 
+  saveState(); refreshCart(); closeCart(); renderList();
+  document.getElementById("fNote").value = "";
+  lastOrderData = null;
+}
+
+function toggleEmailInput() {
+  const box = document.getElementById("emailBox");
+  box.classList.toggle("show");
+  if(box.classList.contains("show")) document.getElementById("rcEmail").focus();
+}
+
+function sendReceipt() {
+  const email = document.getElementById("rcEmail").value.trim();
+  if(!email || !email.includes('@')) { showToast("請輸入有效的 Email", "warn"); return; }
+  const btn = document.querySelector("#emailBox .btn-submit");
+  const orgTxt = btn.innerText;
+  btn.innerText = "..."; btn.disabled = true;
+  const payload = { action: 'send_email', email: email, order_id: document.getElementById("rcOrderId").innerText, order_data: lastOrderData };
+  fetch(GAS_URL, { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: "payload=" + encodeURIComponent(JSON.stringify(payload)) })
+  .then(res => res.json())
+  .then(res => {
+    if(res.ok) { showToast("✅ 已寄送至信箱"); toggleEmailInput(); } else { alert("寄送失敗"); }
+  })
+  .catch(err => alert("連線錯誤"))
+  .finally(() => { btn.innerText = orgTxt; btn.disabled = false; });
+}
+
+initApp();
+</script>
+</body>
+</html>
