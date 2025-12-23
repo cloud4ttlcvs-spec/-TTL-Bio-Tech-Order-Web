@@ -12,7 +12,7 @@
 /* --- CORE VARIABLES --- */
 :root {
   --primary: #00897b; --primary-light: #e0f2f1; --accent: #ff6f00; 
-  --beauty: #d81b60; /* Beauty Pink */
+  --beauty: #d81b60; /* Pink for Beauty */
   --bg-body: #f8f9fa; --bg-card: #ffffff; --text-main: #263238; --text-sub: #546e7a;
   --border: #eceff1; --header-height: 115px;
   --shadow-card: 0 4px 20px rgba(0,0,0,0.04);
@@ -21,17 +21,30 @@
 body {
   font-family: 'Noto Sans TC', sans-serif; background: var(--bg-body); color: var(--text-main);
   margin: 0; padding: 0; padding-bottom: 140px;
-  overscroll-behavior-y: none;
+  overscroll-behavior-y: none; /* Prevent pull-to-refresh */
 }
+/* V23.2: Lock body scroll strictly */
+body.noscroll { overflow: hidden; height: 100vh; }
 body.modal-open { overflow: hidden; }
 
-/* --- ORIGINAL LAYOUT PRESERVED --- */
-main { padding: 12px; max-width: 900px; margin: 0 auto; margin-top: 10px; }
-.grid-layout { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; align-content: start; width: 100%; }
-@media (max-width: 480px) { .grid-layout { grid-template-columns: repeat(2, 1fr) !important; gap: 10px; } }
+/* --- LAYOUT (PRESERVED FROM V23.2) --- */
+main { 
+  padding: 12px; max-width: 900px; margin: 0 auto; margin-top: 10px; 
+}
+.grid-layout { 
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); 
+  gap: 12px; align-content: start; width: 100%;
+}
+@media (max-width: 480px) { 
+  .grid-layout { grid-template-columns: repeat(2, 1fr) !important; gap: 10px; } 
+}
 
-/* Ranking UI */
-#ranking-section { background: #fff; margin: 10px 12px 20px; padding: 12px; border-radius: 16px; border: 1px solid #eceff1; box-shadow: 0 4px 15px rgba(0,0,0,0.03); display: none; }
+/* --- Ranking UI --- */
+#ranking-section { 
+  background: #fff; margin: 10px 12px 20px; padding: 12px; 
+  border-radius: 16px; border: 1px solid #eceff1; 
+  box-shadow: 0 4px 15px rgba(0,0,0,0.03); display: none; 
+}
 .rank-head { padding: 0 4px 8px; display: flex; align-items: center; gap: 12px; overflow: hidden; }
 .rank-title { font-size: 15px; font-weight: 900; color: #d81b60; white-space: nowrap; flex-shrink: 0; display: flex; align-items: center; gap: 4px; }
 .rank-tabs { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; flex: 1; mask-image: linear-gradient(to right, black 85%, transparent 100%); -webkit-mask-image: linear-gradient(to right, black 85%, transparent 100%); }
@@ -52,60 +65,116 @@ main { padding: 12px; max-width: 900px; margin: 0 auto; margin-top: 10px; }
 .r-name { font-size: 10px; font-weight: 500; color: #37474f; text-align: center; line-height: 1.3; height: 2.6em; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; width: 100%; }
 
 /* --- Float Bar & Buttons --- */
-#float-bar { position: fixed; bottom: 20px; left: 16px; right: 16px; background: #263238; color: #fff; border-radius: 60px; padding: 10px 10px 10px 24px; box-shadow: 0 15px 35px rgba(0,0,0,0.25); display: flex; align-items: center; justify-content: space-between; z-index: 2000 !important; cursor: pointer; backdrop-filter: blur(10px); transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+#float-bar { 
+  position: fixed; bottom: 20px; left: 16px; right: 16px; 
+  background: #263238; color: #fff; border-radius: 60px; 
+  padding: 10px 10px 10px 24px; box-shadow: 0 15px 35px rgba(0,0,0,0.25); 
+  display: flex; align-items: center; justify-content: space-between; 
+  z-index: 2000 !important; cursor: pointer; backdrop-filter: blur(10px); 
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
 #float-bar.hidden { transform: translateY(200%); }
 .fb-total { font-size: 18px; font-weight: 700; }
 .fb-count { font-size: 12px; opacity: 0.7; }
 .fb-btn { background: var(--accent); color: #fff; padding: 10px 24px; border-radius: 40px; font-weight: 700; font-size: 15px; box-shadow: 0 4px 15px rgba(255,111,0,0.4); display: flex; align-items: center; gap: 6px; }
 
-#gift-fab { position: fixed; bottom: 90px; left: 20px; width: 50px; height: 50px; border-radius: 50%; background: #fff; border: 2px solid #ffd54f; box-shadow: 0 4px 15px rgba(255, 160, 0, 0.3); display: flex; align-items: center; justify-content: center; font-size: 24px; cursor: pointer; z-index: 1090; transition: transform 0.2s; display: none; }
+#gift-fab {
+  position: fixed; bottom: 90px; left: 20px;
+  width: 50px; height: 50px; border-radius: 50%;
+  background: #fff; border: 2px solid #ffd54f;
+  box-shadow: 0 4px 15px rgba(255, 160, 0, 0.3);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 24px; cursor: pointer; z-index: 1090;
+  transition: transform 0.2s;
+  display: none; 
+}
 #gift-fab:active { transform: scale(0.9); }
 @keyframes shakeGift { 0% { transform: rotate(0deg); } 25% { transform: rotate(-15deg); } 50% { transform: rotate(15deg); } 75% { transform: rotate(-15deg); } 100% { transform: rotate(0deg); } }
 .gift-shake { animation: shakeGift 0.5s ease-in-out 2; box-shadow: 0 0 20px rgba(255, 193, 7, 0.8) !important; }
 
-#back-to-top { position: fixed; bottom: 90px; right: 20px; width: 45px; height: 45px; border-radius: 50%; background: rgba(255, 255, 255, 0.9); color: var(--primary); box-shadow: 0 4px 12px rgba(0,0,0,0.15); border: 1px solid #eee; display: flex; align-items: center; justify-content: center; z-index: 1090; cursor: pointer; opacity: 0; pointer-events: none; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); transform: translateY(20px); }
+#back-to-top {
+  position: fixed; bottom: 90px; right: 20px; 
+  width: 45px; height: 45px; border-radius: 50%;
+  background: rgba(255, 255, 255, 0.9); color: var(--primary);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15); border: 1px solid #eee;
+  display: flex; align-items: center; justify-content: center;
+  z-index: 1090; cursor: pointer; opacity: 0; pointer-events: none;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); transform: translateY(20px);
+}
 #back-to-top.show { opacity: 1; pointer-events: auto; transform: translateY(0); }
 
-/* --- V23.3 Top Notification Pill --- */
+/* --- Top Notification --- */
 #top-notify {
-  position: fixed; top: 16px; left: 50%; transform: translateX(-50%) translateY(-150%);
+  position: fixed; top: 16px; left: 16px; right: 16px;
   background: rgba(33, 33, 33, 0.95); color: #fff;
-  padding: 10px 20px; border-radius: 30px; 
-  display: flex; align-items: center; gap: 10px;
+  padding: 12px 20px; border-radius: 16px; 
+  display: flex; flex-direction: column; gap: 4px;
   box-shadow: 0 8px 30px rgba(0,0,0,0.3); 
   z-index: 3000; transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.4s;
-  backdrop-filter: blur(8px); opacity: 0; pointer-events: none; white-space: nowrap;
+  backdrop-filter: blur(8px);
+  transform: translateY(-150%); opacity: 0; pointer-events: none;
 }
-#top-notify.show { transform: translateX(-50%) translateY(0); opacity: 1; pointer-events: auto; }
-.tn-icon { color: #ffd54f; font-size: 20px; }
-.tn-text { font-size: 14px; font-weight: 700; }
+#top-notify.show { transform: translateY(0); opacity: 1; pointer-events: auto; }
+.tn-head { display: flex; align-items: center; gap: 8px; font-weight: 700; color: #ffd54f; font-size: 14px; margin-bottom: 2px; }
+.tn-body { font-size: 13px; line-height: 1.5; color: #fff; white-space: normal; }
 
-/* --- Milestone Card --- */
-#milestone-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 3000; display: flex; align-items: center; justify-content: center; opacity: 0; pointer-events: none; transition: opacity 0.3s; backdrop-filter: blur(2px); }
+/* --- V23.2 Milestone Card (High Z-Index & Clean UI) --- */
+#milestone-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.5); 
+  z-index: 3000; /* V23.2: Above Everything */
+  display: flex; align-items: center; justify-content: center;
+  opacity: 0; pointer-events: none; transition: opacity 0.3s; backdrop-filter: blur(2px);
+}
 #milestone-overlay.open { opacity: 1; pointer-events: auto; }
-.ms-card-v { background: #fff; width: 90%; max-width: 380px; border-radius: 20px; box-shadow: 0 20px 60px rgba(0,0,0,0.25); display: flex; flex-direction: column; overflow: hidden; max-height: 80vh; transform: scale(0.9); transition: transform 0.3s; }
+
+.ms-card-v {
+  background: #fff; width: 95%; max-width: 400px; 
+  border-radius: 20px; box-shadow: 0 20px 60px rgba(0,0,0,0.25); 
+  display: flex; flex-direction: column; overflow: hidden;
+  max-height: 85vh; transform: scale(0.9); transition: transform 0.3s;
+}
 #milestone-overlay.open .ms-card-v { transform: scale(1); }
-@keyframes shrinkToFab { 0% { transform: scale(1) translate(0, 0); opacity: 1; } 100% { transform: scale(0.1) translate(-120vw, 100vh); opacity: 0; } }
 .ms-card-v.shrinking { animation: shrinkToFab 0.6s ease-in forwards; }
 
-.ms-header { background: #fcfcfc; padding: 20px; border-bottom: 1px solid #eee; text-align: center; }
-.ms-title-v { font-size: 18px; font-weight: 900; color: #37474f; margin-bottom: 6px; }
-.ms-subtitle { font-size: 13px; color: var(--accent); font-weight: 700; background: #fff3e0; display: inline-block; padding: 4px 10px; border-radius: 20px; }
-.ms-list { padding: 0 20px; overflow-y: auto; flex: 1; overscroll-behavior: contain; }
-.ms-item { display: flex; gap: 12px; padding: 16px 0; border-bottom: 1px dashed #f0f0f0; position: relative; opacity: 0.5; transition: 0.3s; }
-.ms-item.active { opacity: 1; }
-.ms-item:last-child { border-bottom: none; }
-.ms-status-col { display: flex; flex-direction: column; align-items: center; width: 24px; flex-shrink: 0; }
-.ms-dot { width: 24px; height: 24px; border-radius: 50%; background: #e0e0e0; color: #fff; font-size: 14px; display: flex; align-items: center; justify-content: center; font-weight: 900; z-index: 2; }
-.ms-item.active .ms-dot { background: #43a047; box-shadow: 0 2px 6px rgba(67, 160, 71, 0.3); }
-.ms-line { width: 2px; flex: 1; background: #f0f0f0; margin-top: 4px; }
-.ms-item:last-child .ms-line { display: none; }
-.ms-content { flex: 1; display: flex; align-items: center; gap: 10px; }
-.ms-thumb { width: 40px; height: 40px; border-radius: 8px; border: 1px solid #eee; object-fit: contain; background: #fff; flex-shrink: 0; }
-.ms-details { flex: 1; }
-.ms-name { font-size: 14px; font-weight: 700; color: #37474f; line-height: 1.3; }
-.ms-threshold { font-size: 12px; color: #90a4ae; margin-top: 2px; }
-.ms-footer { padding: 16px 20px; border-top: 1px solid #eee; }
+.ms-header { background: #fff; padding: 16px; border-bottom: 1px solid #eee; }
+.ms-title-v { font-size: 18px; font-weight: 900; color: #37474f; margin-bottom: 10px; text-align: center; }
+
+/* Dual Summary Bars */
+.ms-summary-row {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 8px 12px; border-radius: 8px; margin-bottom: 6px; font-size: 13px; font-weight: 700;
+}
+.ms-sum-all { background: #fff8e1; color: var(--accent); }
+.ms-sum-beauty { background: #fce4ec; color: var(--beauty); }
+
+/* Dual Track Grid (V23.0 Design) */
+.ms-dual-body {
+  flex: 1; overflow-y: auto; padding: 10px;
+  display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+  background: #fafafa;
+  /* V23.2: Fix Scroll Bleeding */
+  overscroll-behavior: contain;
+}
+
+.ms-track-col { display: flex; flex-direction: column; gap: 12px; position: relative; }
+.ms-track-title { text-align: center; font-size: 12px; color: #90a4ae; font-weight: 700; margin-bottom: 4px; }
+
+.ms-dual-item {
+  background: #fff; border: 1px solid #eee; border-radius: 12px;
+  padding: 10px; display: flex; flex-direction: column; align-items: center; gap: 6px;
+  opacity: 0.5; transition: 0.3s; text-align: center;
+}
+.ms-dual-item.active { opacity: 1; border-color: var(--accent); box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
+.ms-track-col.beauty .ms-dual-item.active { border-color: var(--beauty); }
+
+.ms-d-img { width: 50px; height: 50px; object-fit: contain; }
+.ms-d-name { font-size: 11px; color: #37474f; line-height: 1.3; height: 2.6em; overflow: hidden; }
+/* V23.2: Fix Threshold Display */
+.ms-d-th { font-size: 10px; color: #fff; background: #bdbdbd; padding: 2px 6px; border-radius: 10px; font-weight: 700; }
+.ms-dual-item.active .ms-d-th { background: var(--accent); }
+.ms-track-col.beauty .ms-dual-item.active .ms-d-th { background: var(--beauty); }
+
+.ms-footer { padding: 16px; border-top: 1px solid #eee; background: #fff; }
 .ms-back-btn { width: 100%; padding: 12px; background: #f5f5f5; color: #546e7a; border: none; border-radius: 12px; font-weight: 700; font-size: 14px; cursor: pointer; }
 
 /* --- General --- */
@@ -178,7 +247,7 @@ header { position: sticky; top: 0; z-index: 1000; background: rgba(255,255,255,0
 .c-tag.warn { background: #ffebee; color: #c62828; border: 1px solid #ffcdd2; }
 .c-ctrl { display: flex; flex-direction: column; align-items: flex-end; justify-content: center; }
 
-/* V23.3 In-Cart Improvements */
+/* V24.0 In-Cart Improvements */
 .g-section-title { font-size: 13px; font-weight: 900; color: #78909c; margin: 12px 0 6px 0; padding-left: 8px; border-left: 3px solid #cfd8dc; }
 .g-section-title.beauty { color: #d81b60; border-left-color: #d81b60; }
 @keyframes giftPulse { 0% { transform: scale(1); } 50% { transform: scale(1.2); } 100% { transform: scale(1); } }
@@ -302,11 +371,12 @@ input:focus, select:focus { border-color: var(--primary); background: #fff; outl
   <div class="ms-card-v" id="msCard">
     <div class="ms-header">
        <div class="ms-title-v">🎁 滿額贈進度</div>
-       <div class="ms-subtitle" id="msNextGoal"></div>
+       <div class="ms-summary-row ms-sum-all"><div>全站滿額</div><div id="ms-val-all">$0</div></div>
+       <div class="ms-summary-row ms-sum-beauty"><div>美容滿額</div><div id="ms-val-beauty">$0</div></div>
     </div>
-    <div class="ms-list" id="msNodes"></div>
+    <div class="ms-dual-body" id="msNodes"></div>
     <div class="ms-footer">
-       <button class="ms-back-btn" onclick="minimizeMilestoneCard()">返回購物</button>
+       <button class="ms-back-btn" onclick="closeMilestoneCard()">返回購物</button>
     </div>
   </div>
 </div>
@@ -467,9 +537,12 @@ input:focus, select:focus { border-color: var(--primary); background: #fff; outl
 </div>
 
 <script>
-const SHEET_P = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRVtfpccKivWeh0AcCFRmfELivETrvxF-IfCJE8zUo0i_qfRc2YyG4bdK2adofSNGYgsbhxKtu8lmeM/pub?gid=0&single=true&output=csv";
+const GIFT_IMAGES = {}; 
+
+const SHEET_P = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQBtV8q3Ank7Bnhs83IbOb97U46juV-RKeL3NpdFiNcSu-ifI21fQYo1-io62S3JIrXEO5MiDArc1Lr/pub?gid=1623055155&single=true&output=csv";
 const SHEET_R = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQU95r9_TOPlQXY-lcBS_RH3tRc0mtRyuazxHHWljpRusbzBiWsEfm3Pa_HZmKW5Ob5TOq4W5O-vumI/pub?gid=2071879068&single=true&output=csv";
 const SHEET_RANK = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQj5QLrtaWikGcLNwMawbjiN8ZQDgFzW1RV7UECFgLzECWj16I2ugE_B6tzzLICCynsk1L6lAuJfccS/pub?gid=93142219&single=true&output=csv";
+const SHEET_GIFTS_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQBtV8q3Ank7Bnhs83IbOb97U46juV-RKeL3NpdFiNcSu-ifI21fQYo1-io62S3JIrXEO5MiDArc1Lr/pub?gid=1623055155&single=true&output=csv";
 const GAS_URL = "https://script.google.com/macros/s/AKfycbxQ9Etloak3ZNv6yfyMCK9KbjoLyDqjRQHHVlASY5iMwwy_c4NCPxWpMK1YkzSXstHN/exec";
 const PROXY = (url) => "https://corsproxy.io/?" + encodeURIComponent(url);
 
@@ -523,7 +596,7 @@ window.switchRank = function(type) {
   renderRanking(type);
 };
 
-// V23.3: Dual Track Gift List in Cart
+// V24.0: Dual Track Gift List
 window.openGiftList = function() {
     const currentTotal = parseFloat(document.getElementById("sumPay").innerText.replace('$','').replace(/,/g,'')) || 0;
     const currentBeauty = parseFloat(document.getElementById("sumBeauty").innerText.replace('$','').replace(/,/g,'')) || 0;
@@ -560,7 +633,6 @@ function createGiftItem(g, reached) {
     let gName = (PRODUCT_MAP.get(g.gift) || {}).name || g.gift;
     gName = gName.replace(/^(贈品|贈|Gift)[:\s|｜_]*/i, "");
     
-    // V23.3: Use Product Image for List too if available
     let imgUrl = GIFT_MAP.get(g.gift) || '';
     let imgHtml = imgUrl ? `<img src="${imgUrl}" style="width:40px;height:40px;object-fit:contain;border-radius:6px;border:1px solid #eee;">` : '';
 
@@ -642,7 +714,7 @@ window.updateQty = function(btnEl, pid, delta) {
   if(CART.length > 0) fab.classList.add("show");
 };
 
-// --- MILESTONE LOGIC (VERTICAL SCROLL) ---
+// --- MILESTONE LOGIC (DUAL TRACK + TRUE HISTORY) ---
 
 window.showMilestoneCard = function() {
     renderMilestoneContent();
@@ -672,51 +744,57 @@ window.minimizeMilestoneCard = function() {
 function renderMilestoneContent() {
     const data = calcCart();
     const currentTotal = data.finalTotal;
-    const gifts = RULES.spend.filter(r => r.scope === 'all').sort((a,b) => a.amt - b.amt);
+    const currentBeauty = data.beautyTotal;
     
-    if(gifts.length === 0) return;
+    document.getElementById('ms-val-all').innerText = `$${currentTotal.toLocaleString()}`;
+    document.getElementById('ms-val-beauty').innerText = `$${currentBeauty.toLocaleString()}`;
 
-    // Calculate Next Goal
-    const nextGift = gifts.find(g => g.amt > currentTotal);
-    const goalText = nextGift 
-      ? `距離下一階還差 $${(nextGift.amt - currentTotal).toLocaleString()}` 
-      : "🎉 已解鎖所有贈品！";
-    document.getElementById('msNextGoal').innerText = goalText;
+    const giftsAll = RULES.spend.filter(r => r.scope === 'all').sort((a,b) => a.amt - b.amt);
+    const giftsBeauty = RULES.spend.filter(r => r.scope === 'zone_prefix').sort((a,b) => a.amt - b.amt);
 
     const container = document.getElementById('msNodes');
     container.innerHTML = '';
-
-    gifts.forEach((g, idx) => {
+    
+    const leftCol = document.createElement('div');
+    leftCol.className = 'ms-track-col';
+    leftCol.innerHTML = '<div class="ms-track-title">全站滿額</div>';
+    
+    const rightCol = document.createElement('div');
+    rightCol.className = 'ms-track-col beauty';
+    rightCol.innerHTML = '<div class="ms-track-title" style="color:var(--beauty)">美容滿額</div>';
+    
+    giftsAll.forEach(g => {
         const isReached = currentTotal >= g.amt;
-        
-        let gName = (PRODUCT_MAP.get(g.gift) || {}).name || g.gift;
-        gName = gName.replace(/^(贈品|贈|Gift)[:\s|｜_]*/i, "");
-        let imgUrl = GIFT_MAP.get(g.gift) || '';
-        let imgHtml = imgUrl ? `<img src="${imgUrl}" class="ms-thumb">` : '<div class="ms-thumb" style="display:flex;align-items:center;justify-content:center;font-size:20px;">🎁</div>';
-        
-        const item = document.createElement('div');
-        item.className = `ms-item ${isReached ? 'active' : ''}`;
-        
-        item.innerHTML = `
-          <div class="ms-status-col">
-            <div class="ms-dot">${isReached ? '✓' : (idx + 1)}</div>
-            <div class="ms-line"></div>
-          </div>
-          <div class="ms-content">
-            ${imgHtml}
-            <div class="ms-details">
-              <div class="ms-name">${gName}</div>
-              <div class="ms-threshold">滿 $${g.amt.toLocaleString()}</div>
-            </div>
-          </div>
-        `;
-        container.appendChild(item);
+        leftCol.appendChild(createDualItem(g, isReached));
     });
+    
+    giftsBeauty.forEach(g => {
+        const isReached = currentBeauty >= g.amt;
+        rightCol.appendChild(createDualItem(g, isReached));
+    });
+    
+    container.appendChild(leftCol);
+    container.appendChild(rightCol);
+}
+
+function createDualItem(g, isReached) {
+    let gName = (PRODUCT_MAP.get(g.gift) || {}).name || g.gift;
+    gName = gName.replace(/^(贈品|贈|Gift)[:\s|｜_]*/i, "");
+    let imgUrl = GIFT_MAP.get(g.gift) || '';
+    let imgHtml = imgUrl ? `<img src="${imgUrl}" class="ms-d-img">` : '<div class="ms-d-img" style="background:#eee;display:flex;align-items:center;justify-content:center;font-size:16px">🎁</div>';
+    
+    const item = document.createElement('div');
+    item.className = `ms-dual-item ${isReached ? 'active' : ''}`;
+    item.innerHTML = `
+      <div class="ms-d-th">$${(g.amt).toLocaleString()}</div>
+      ${imgHtml}
+      <div class="ms-d-name">${gName}</div>
+    `;
+    return item;
 }
 
 function checkNewGifts(currentGifts) {
     const currentNames = currentGifts.map(g => g.name);
-    // V23.0 Fix: Notification for ALL accumulated gifts if not shown before
     const newUnlocks = currentNames.filter(n => !achievedGifts.includes(n));
     
     if(newUnlocks.length > 0) {
@@ -730,17 +808,14 @@ function checkNewGifts(currentGifts) {
 
         fab.classList.add('gift-shake');
         
-        // V23.0 Multi-line Support
         let html = "";
         newUnlocks.forEach(name => {
            html += `<div>• ${name}</div>`;
         });
         txt.innerHTML = html;
         
-        // Show Pill -> Slide Down
         notify.classList.add('show');
         
-        // Auto Hide
         setTimeout(() => {
             fab.classList.remove('gift-shake');
             notify.classList.remove('show');
@@ -769,7 +844,6 @@ function loadState() {
       return null;
     }).filter(x => x);
     
-    // Silent init
     const cData = calcCart();
     achievedGifts = cData.gifts.map(g => g.name);
     
@@ -889,10 +963,11 @@ function highlightText(text, query) {
 
 async function initApp() {
   try {
-    const [pText, rText, rankText] = await Promise.all([
+    const [pText, rText, rankText, gText] = await Promise.all([
       fetch(PROXY(SHEET_P)).then(r => r.text()),
       fetch(PROXY(SHEET_R)).then(r => r.text()),
-      fetch(PROXY(SHEET_RANK)).then(r => r.text())
+      fetch(PROXY(SHEET_RANK)).then(r => r.text()),
+      fetch(PROXY(SHEET_GIFTS_URL)).then(r => r.text())
     ]);
 
     const pData = Papa.parse(pText, { header: true, skipEmptyLines: true }).data;
@@ -929,6 +1004,14 @@ async function initApp() {
       else if(type.includes("bogo")) RULES.bogo.push({ code: pick("product_code"), buy: Number(pick("buy")), get: Number(pick("get")) });
       else if(type.includes("spend")) RULES.spend.push({ scope: pick("threshold_scope"), prefix: pick("zone_prefix"), amt: Number(pick("threshold_amount")), gift: pick("gift_code"), qty: Number(pick("gift_qty")), mult: pick("multiples").toUpperCase()==="TRUE" });
       else if(type.includes("bundle")) RULES.bundle.push({ code: pick("product_code"), price: Number(pick("unit_price")) });
+    });
+
+    const gData = Papa.parse(gText, { header: true, skipEmptyLines: true }).data;
+    gData.forEach(row => {
+        const pick = (k) => row[Object.keys(row).find(key => key.toLowerCase() === k.toLowerCase())] || "";
+        const code = pick("product_code");
+        const url = pick("photos url");
+        if(code && url) GIFT_MAP.set(code, url);
     });
 
     processRankings(rankText);
@@ -1260,7 +1343,7 @@ window.clearCart = function() {
   }
 };
 
-// V23.3: In-Cart Feedback Update
+// V24.0: In-Cart Feedback Update (Pulse & Celebrate)
 window.updateCartItem = function(index, delta) {
     const item = CART[index];
     if(!item) return;
@@ -1269,7 +1352,7 @@ window.updateCartItem = function(index, delta) {
     const giftIcon = document.querySelector('.game-icon');
     if(giftIcon) {
         giftIcon.classList.remove('gift-pulse');
-        void giftIcon.offsetWidth; // Trigger reflow
+        void giftIcon.offsetWidth; 
         giftIcon.classList.add('gift-pulse');
     }
 
@@ -1293,11 +1376,19 @@ window.updateCartItem = function(index, delta) {
         const msg = document.getElementById("gameMsg");
         const originalMsg = msg.innerText;
         msg.innerText = `🎉 恭喜！已獲得新贈品`;
-        msg.classList.add('success'); // Green text
+        msg.classList.add('success'); 
+        
+        // Also show Top Pill
+        const notify = document.getElementById('top-notify');
+        const txt = document.getElementById('tn-text');
+        txt.innerText = `已獲得 ${newUnlocks[newUnlocks.length-1]}!`;
+        notify.classList.add('show');
+        setTimeout(() => notify.classList.remove('show'), 3000);
+
         setTimeout(() => {
             msg.innerText = originalMsg; 
             msg.classList.remove('success');
-            refreshCart(); // Refresh to show correct next goal
+            refreshCart(); 
         }, 2500);
         achievedGifts = currentGiftNames;
     }
@@ -1437,7 +1528,7 @@ window.onpopstate = (e) => {
         document.body.classList.remove('modal-open');
         return;
     }
-    // Handle Gift Modal (V22.4 Fix: Don't close drawer if just closing gift)
+    // Handle Gift Modal
     const giftModal = document.getElementById("giftModal"); 
     if(giftModal.classList.contains("open")) { 
         giftModal.classList.remove("open"); 
