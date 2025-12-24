@@ -1,0 +1,632 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"/>
+<title>TTL 生技展 - 戰情管理中心 V32</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&family=Roboto:wght@500;700;900&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+
+<style>
+/* --- Theme Variables --- */
+:root {
+  --primary: #00897b; --primary-dark: #00695c; --accent: #ff6f00;
+  --bg-body: #f0f2f5; --bg-card: #ffffff; --text-main: #263238; --text-sub: #546e7a;
+  --danger: #d32f2f; --warning: #f57c00; --success: #388e3c;
+  --header-height: 60px; --sidebar-width: 240px;
+}
+* { box-sizing: border-box; }
+body { font-family: 'Noto Sans TC', sans-serif; background: var(--bg-body); color: var(--text-main); margin: 0; padding: 0; display: flex; height: 100vh; overflow: hidden; }
+
+/* Sidebar */
+#sidebar { width: var(--sidebar-width); background: #263238; color: #fff; flex-shrink: 0; display: flex; flex-direction: column; padding: 20px 0; transition: 0.3s; overflow-y: auto; }
+.brand { font-size: 20px; font-weight: 900; padding: 0 24px 30px; display: flex; align-items: center; gap: 10px; color: var(--primary); flex-shrink: 0; }
+.nav-item { padding: 12px 24px; cursor: pointer; display: flex; align-items: center; gap: 12px; color: #b0bec5; font-weight: 500; transition: 0.2s; border-left: 4px solid transparent; }
+.nav-item:hover { background: #37474f; color: #fff; }
+.nav-item.active { background: #37474f; color: #fff; border-left-color: var(--accent); }
+
+/* Main Content */
+#main { flex: 1; display: flex; flex-direction: column; overflow: hidden; position: relative; }
+header { height: var(--header-height); background: #fff; border-bottom: 1px solid #e0e0e0; display: flex; align-items: center; justify-content: space-between; padding: 0 24px; flex-shrink: 0; }
+.page-title { font-size: 18px; font-weight: 700; color: var(--text-main); }
+.update-time { font-size: 12px; color: var(--text-sub); }
+.content-scroll { flex: 1; overflow-y: auto; padding: 24px; }
+
+/* View Sections */
+.view-section { display: none; animation: fadeIn 0.3s; }
+.view-section.active { display: block; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+
+/* KPI Cards (Clickable) */
+.kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px; }
+.kpi-card { 
+  background: #fff; padding: 20px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.03); border: 1px solid #eee; 
+  display: flex; flex-direction: column; justify-content: space-between; height: 110px; position: relative; overflow: hidden; 
+  cursor: pointer; transition: transform 0.2s, box-shadow 0.2s;
+}
+.kpi-card:hover { transform: translateY(-3px); box-shadow: 0 5px 15px rgba(0,0,0,0.08); border-color: var(--primary); }
+.kpi-label { font-size: 13px; color: var(--text-sub); font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
+.kpi-val { font-size: 28px; font-weight: 900; color: var(--text-main); margin-top: 4px; }
+.kpi-icon { position: absolute; right: 15px; bottom: 15px; font-size: 40px; opacity: 0.1; color: var(--text-main); }
+.kpi-card.alert .kpi-val { color: var(--danger); }
+
+/* Charts Fix */
+.chart-row { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; margin-bottom: 24px; height: 350px; }
+.chart-box { background: #fff; border-radius: 12px; padding: 16px; border: 1px solid #eee; box-shadow: 0 2px 10px rgba(0,0,0,0.03); display: flex; flex-direction: column; height: 100%; }
+.chart-head { font-size: 14px; font-weight: 700; margin-bottom: 12px; color: var(--text-main); flex-shrink: 0; }
+.chart-body { flex: 1; position: relative; min-height: 0; width: 100%; overflow: hidden; }
+
+/* Data Tables */
+.data-panel { background: #fff; border-radius: 12px; border: 1px solid #eee; box-shadow: 0 2px 15px rgba(0,0,0,0.05); display: flex; flex-direction: column; height: calc(100vh - 140px); min-height: 400px; }
+.panel-head { padding: 16px 20px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; }
+.search-wrap { position: relative; width: 300px; }
+.search-wrap input { width: 100%; padding: 10px 12px 10px 36px; border: 1px solid #e0e0e0; border-radius: 8px; font-size: 14px; background: #fafafa; transition:0.2s; }
+.search-wrap input:focus { background:#fff; border-color:var(--primary); outline:none; }
+.search-wrap .icon { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); font-size: 18px; color: #90a4ae; }
+
+.table-wrap { flex: 1; overflow: auto; position: relative; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th { 
+  position: sticky; top: 0; background: #fafafa; z-index: 2; text-align: left; padding: 12px 16px; 
+  font-weight: 700; color: var(--text-sub); border-bottom: 2px solid #eee; white-space: nowrap; 
+  cursor: pointer; user-select: none;
+}
+th:hover { background: #eee; color: var(--primary); }
+td { padding: 12px 16px; border-bottom: 1px solid #f0f0f0; color: #37474f; vertical-align: middle; white-space: nowrap; }
+tr:hover { background: #fcfcfc; }
+
+/* Expanded Rows */
+.region-row { background: #f5f7f9; display: none; }
+.region-row.open { display: table-row; }
+.region-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; padding: 15px; }
+.r-box { background: #fff; padding: 10px; border-radius: 8px; border: 1px solid #e0e0e0; display: flex; justify-content: space-between; align-items: center; }
+.r-name { font-weight: 700; color: #546e7a; font-size: 12px; }
+.r-qty { font-weight: 900; color: var(--primary); font-size: 14px; }
+
+/* Badges & Buttons */
+.st-badge { padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: 700; display: inline-flex; align-items: center; gap: 4px; }
+.st-ok { background: #e8f5e9; color: #2e7d32; }
+.st-warn { background: #fff3e0; color: #ef6c00; }
+.st-err { background: #ffebee; color: #c62828; }
+.act-btn { cursor: pointer; padding: 6px; border-radius: 4px; color: var(--text-sub); transition: 0.1s; }
+.act-btn:hover { background: #eceff1; color: var(--primary); }
+.expand-btn { cursor: pointer; color: #90a4ae; transition: 0.2s; }
+.expand-btn.open { transform: rotate(180deg); color: var(--primary); }
+
+/* Sales Trends */
+.val-up { color: #2e7d32; font-weight: 700; }
+.val-down { color: #c62828; font-weight: 700; }
+
+/* Modal */
+#loading-mask { position: fixed; inset: 0; background: rgba(255,255,255,0.95); z-index: 2000; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 15px; }
+.spinner { width: 40px; height: 40px; border: 4px solid #e0f2f1; border-top-color: var(--primary); border-radius: 50%; animation: spin 0.8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.modal { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 3000; display: none; align-items: center; justify-content: center; backdrop-filter: blur(2px); }
+.modal.open { display: flex; }
+.m-card { background: #fff; width: 500px; max-width: 90%; border-radius: 16px; box-shadow: 0 10px 40px rgba(0,0,0,0.2); overflow: hidden; display: flex; flex-direction: column; max-height: 85vh; }
+.m-head { padding: 16px 24px; background: var(--primary); color: #fff; font-weight: 700; font-size: 16px; display: flex; justify-content: space-between; align-items: center; }
+.m-body { padding: 24px; overflow-y: auto; flex: 1; }
+.m-foot { padding: 16px 24px; border-top: 1px solid #eee; display: flex; justify-content: flex-end; gap: 10px; background: #fafafa; }
+.m-btn { padding: 10px 20px; border-radius: 8px; border: none; font-weight: 700; cursor: pointer; font-size: 14px; }
+.m-btn.cancel { background: #eceff1; color: var(--text-main); }
+.m-btn.save { background: var(--primary); color: #fff; }
+.m-form-row { margin-bottom: 12px; }
+.m-label { font-size: 12px; color: var(--text-sub); margin-bottom: 4px; display: block; font-weight: 700; }
+.m-input { width: 100%; padding: 10px; border: 1px solid #cfd8dc; border-radius: 8px; font-size: 14px; }
+.m-list { border: 1px solid #eee; border-radius: 8px; padding: 10px; max-height: 200px; overflow-y: auto; background: #fafafa; }
+.m-item { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px dashed #eee; font-size: 13px; }
+
+@media (max-width: 768px) {
+  body { flex-direction: column; height: auto; overflow: auto; }
+  #sidebar { width: 100%; flex-direction: row; padding: 10px 20px; align-items: center; justify-content: space-between; overflow-x: auto; }
+  .brand { padding: 0; font-size: 16px; margin-bottom: 0; flex-shrink: 0; }
+  .nav-item { padding: 8px 12px; white-space: nowrap; font-size: 13px; border-left: none; border-bottom: 3px solid transparent; }
+  .nav-item.active { background: transparent; border-bottom-color: var(--accent); }
+  #main { height: auto; }
+  .data-panel { height: 600px; }
+  .chart-row { grid-template-columns: 1fr; height: auto; }
+}
+</style>
+</head>
+<body>
+
+<div id="loading-mask">
+  <div class="spinner"></div>
+  <div style="font-weight:700;color:#546e7a;margin-top:10px">讀取 4 大資料庫...</div>
+</div>
+
+<nav id="sidebar">
+  <div class="brand">
+    <span class="material-icons-round" style="color:var(--primary);background:#fff;border-radius:50%;padding:4px;">spa</span>
+    <span>TTL 戰情中心</span>
+  </div>
+  <div class="nav-item active" onclick="switchTab('dashboard')">
+    <span class="material-icons-round">dashboard</span> 總覽儀表板
+  </div>
+  <div class="nav-item" onclick="switchTab('inventory')">
+    <span class="material-icons-round">inventory_2</span> 庫存總表 (各地)
+  </div>
+  <div class="nav-item" onclick="switchTab('sales')">
+    <span class="material-icons-round">trending_up</span> 銷售總表 (YoY)
+  </div>
+  <div class="nav-item" onclick="switchTab('orders')">
+    <span class="material-icons-round">edit_note</span> 訂單管理
+  </div>
+</nav>
+
+<div id="main">
+  <header>
+    <div class="page-title" id="pageTitle">總覽儀表板</div>
+    <div class="update-time" id="lastUpdate">--</div>
+  </header>
+
+  <div class="content-scroll">
+    
+    <div id="view-dashboard" class="view-section active">
+      <div class="kpi-grid">
+        <div class="kpi-card" onclick="navigateTo('orders', 'today')">
+          <span class="kpi-label">今日訂單營收 (Est.)</span>
+          <div class="kpi-val" id="kpi-revenue">$0</div>
+          <span class="material-icons-round kpi-icon">payments</span>
+        </div>
+        <div class="kpi-card" onclick="navigateTo('sales', '')">
+          <span class="kpi-label">今年累積銷量</span>
+          <div class="kpi-val" id="kpi-year-sales">0</div>
+          <span class="material-icons-round kpi-icon">leaderboard</span>
+        </div>
+        <div class="kpi-card alert" onclick="navigateTo('inventory', 'alert')">
+          <span class="kpi-label">庫存缺貨品項</span>
+          <div class="kpi-val" id="kpi-alert">0</div>
+          <span class="material-icons-round kpi-icon" style="color:var(--danger);opacity:0.2">warning</span>
+        </div>
+        <div class="kpi-card" onclick="navigateTo('orders', '')">
+          <span class="kpi-label">有效訂單數</span>
+          <div class="kpi-val" id="kpi-orders">0</div>
+          <span class="material-icons-round kpi-icon">shopping_cart</span>
+        </div>
+      </div>
+      
+      <div class="chart-row">
+        <div class="chart-box">
+          <div class="chart-head">🔥 熱銷品庫存水位 (Top 15)</div>
+          <div class="chart-body"><canvas id="stockChart"></canvas></div>
+        </div>
+        <div class="chart-box">
+          <div class="chart-head">📦 類別銷售佔比</div>
+          <div class="chart-body"><canvas id="catChart"></canvas></div>
+        </div>
+      </div>
+    </div>
+
+    <div id="view-table-container" class="view-section" style="display:none">
+      <div class="data-panel">
+        <div class="panel-head">
+          <div style="font-weight:700;color:var(--text-sub)" id="table-subtitle">列表</div>
+          <div class="search-wrap">
+            <span class="material-icons-round icon">search</span>
+            <input id="tableSearch" type="text" placeholder="搜尋關鍵字..." oninput="renderCurrentTable()">
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table id="mainTable"></table>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div id="editModal" class="modal">
+  <div class="m-card">
+    <div class="m-head">
+      <span>編輯訂單</span>
+      <span class="material-icons-round" style="cursor:pointer" onclick="closeModal()">close</span>
+    </div>
+    <div class="m-body">
+      <input type="hidden" id="e-oid">
+      <div class="m-form-row">
+        <label class="m-label">訂購人姓名</label>
+        <input class="m-input" id="e-name">
+      </div>
+      <div class="m-form-row">
+        <label class="m-label">部門單位</label>
+        <input class="m-input" id="e-dept">
+      </div>
+      <div class="m-form-row">
+        <label class="m-label">備註</label>
+        <input class="m-input" id="e-note">
+      </div>
+      <div class="m-form-row">
+        <label class="m-label">商品明細 (僅供檢視)</label>
+        <div class="m-list" id="e-items"></div>
+      </div>
+      <div class="m-form-row" style="text-align:right;color:var(--danger);font-weight:900;font-size:18px;">
+        總金額: $<span id="e-total">0</span>
+      </div>
+    </div>
+    <div class="m-foot">
+      <button class="m-btn" style="background:#ffebee;color:#c62828;margin-right:auto" onclick="deleteOrderAction()">刪除此單</button>
+      <button class="m-btn cancel" onclick="closeModal()">取消</button>
+      <button class="m-btn save" onclick="saveOrderAction()">儲存變更</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// --- SECURITY ---
+const ADMIN_TOKEN = prompt("請輸入後台管理密碼：");
+if (!ADMIN_TOKEN) {
+    document.body.innerHTML = "<div style='display:flex;height:100vh;align-items:center;justify-content:center;color:#ef5350;font-weight:900;font-size:24px'>Access Denied</div>";
+    throw new Error("Stop");
+}
+
+// --- CONFIG ---
+const GAS_URL = "https://script.google.com/macros/s/AKfycbxQ9Etloak3ZNv6yfyMCK9KbjoLyDqjRQHHVlASY5iMwwy_c4NCPxWpMK1YkzSXstHN/exec";
+const ORDERS_CSV = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRIGbs4rMOfytnlajoBKcTZ5a0HhozeDAb2HMmsHsfUzfzrE0_O_y0QhhXD_SQjiwjoDKV_BJWoJwyp/pub?output=csv";
+const INVENTORY_CSV = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ7k1DqiuXajsGDzeprSAwhj5NEW5DdZLXV3eSRYvAFUmpC16tygyD5bjwEtndESJFzjQ0NrTzxTZ2P/pub?gid=2146920129&single=true&output=csv";
+const SALES_CSV = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQj5QLrtaWikGcLNwMawbjiN8ZQDgFzW1RV7UECFgLzECWj16I2ugE_B6tzzLICCynsk1L6lAuJfccS/pub?gid=93142219&single=true&output=csv";
+
+// --- STATE ---
+let DATA = { orders: [], inventory: [], sales: [], soldMap: {} };
+let CURRENT_TAB = 'dashboard'; 
+let ACTIVE_FILTER = ''; 
+let SORT = { key: null, asc: true };
+let CHART_INST = null;
+let CAT_CHART_INST = null;
+
+// --- INIT ---
+async function init() {
+  try {
+    const [ord, inv, sales] = await Promise.all([
+      fetchCSV(ORDERS_CSV), fetchCSV(INVENTORY_CSV), fetchCSV(SALES_CSV)
+    ]);
+    processOrders(ord);
+    processInventory(inv);
+    processSales(sales);
+    
+    updateDashboard();
+    document.getElementById('lastUpdate').innerText = "更新於: " + new Date().toLocaleTimeString();
+    document.getElementById('loading-mask').style.display = 'none';
+  } catch(e) { alert("資料載入異常: " + e.message); }
+}
+
+async function fetchCSV(url) {
+  const res = await fetch(url);
+  return Papa.parse(await res.text(), { header: false }).data; 
+}
+
+// --- DATA PROCESSING ---
+
+function processOrders(rows) {
+  DATA.soldMap = {};
+  DATA.orders = rows.slice(1).map(r => {
+    const safe = (i) => r[i] || "";
+    let rawJson = null;
+    try { rawJson = JSON.parse(safe(10)); } catch(e) {} 
+    
+    if (rawJson) {
+        if(rawJson.items) rawJson.items.forEach(it => {
+            const code = it.product_code || it.product_name;
+            if(code) DATA.soldMap[code] = (DATA.soldMap[code] || 0) + (it.qty || 0);
+        });
+        if(rawJson.gifts) rawJson.gifts.forEach(g => {
+            const code = g.product_code || g.product_name.replace('[贈] ','');
+            if(code) DATA.soldMap[code] = (DATA.soldMap[code] || 0) + (g.qty || 0);
+        });
+    }
+    return {
+      id: safe(0), time: safe(1), name: safe(2), dept: safe(3), note: safe(5),
+      total: Number(safe(8).toString().replace(/,/g, '')) || 0,
+      raw: rawJson
+    };
+  }).filter(o => o.id);
+}
+
+function processInventory(rows) {
+  // Logic: Row 4 (Index 3) is Header. Main info in C(2) to N(13). Region in O(14)+.
+  const h = rows[3]; 
+  const regionHeaders = [];
+  for(let i=14; i<h.length; i++) {
+      if(h[i] && h[i].trim()) regionHeaders.push({ name: h[i], idx: i });
+  }
+
+  // Get Main Headers names for dynamic table generation
+  const mainHeaderNames = h.slice(2, 14); // C to N
+
+  DATA.inventory = rows.slice(4).map(r => {
+    // Basic ID check (Col C or D)
+    if(!r[2] && !r[3]) return null;
+    
+    const code = r[2]; // C
+    const name = r[3]; // D (Assumption based on usual layout, or adjust if D is name)
+    
+    // Find Total Stock (Look for keyword in header or fallback to specific col)
+    let total = 0;
+    // Assuming '庫存' is in one of these columns, let's grab value from Col H (Index 7) or I (8) if unsure.
+    // Or just grab the whole C-N set for display.
+    const mainData = r.slice(2, 14);
+    
+    // Try to parse total from a specific column if known, else usage is display only
+    // Let's assume '現有庫存' is somewhere. 
+    // For calculating 'Low Stock', we need a number. Let's try to parse the first big number found.
+    const stockCandidates = mainData.map(v => Number(v.replace(/,/g,''))).filter(n => !isNaN(n) && n > 0);
+    total = stockCandidates.length > 0 ? Math.max(...stockCandidates) : 0;
+
+    const regions = regionHeaders.map(rh => ({ name: rh.name, qty: Number(r[rh.idx]) || 0 }));
+    
+    // Check against Sold Map
+    const reserved = DATA.soldMap[code] || DATA.soldMap[name] || 0;
+    const available = total - reserved;
+    let status = available <= 0 ? '缺貨' : '充足';
+
+    return { code, name, total, reserved, available, status, mainData, regions, mainHeaderNames };
+  }).filter(x => x);
+}
+
+function processSales(rows) {
+  // Logic: C=Last$, D=This$, E=LastQty, F=ThisQty. Index: C=2, D=3, E=4, F=5
+  // Header detection: Look for "今年實銷"
+  let hIdx = 0;
+  rows.some((r, i) => { if(JSON.stringify(r).includes("今年實銷")) { hIdx = i; return true; }});
+  
+  DATA.sales = rows.slice(hIdx + 1).map(r => {
+    const name = r[1] || r[0]; // B or A
+    if(!name) return null;
+    const lastRev = Number((r[2]||"0").replace(/,/g,''));
+    const thisRev = Number((r[3]||"0").replace(/,/g,''));
+    const lastQty = Number((r[4]||"0").replace(/,/g,''));
+    const thisQty = Number((r[5]||"0").replace(/,/g,''));
+    const yoy = lastRev > 0 ? ((thisRev - lastRev)/lastRev*100).toFixed(1) : (thisRev>0?100:0);
+
+    return { name, lastRev, thisRev, lastQty, thisQty, yoy: Number(yoy) };
+  }).filter(x => x);
+}
+
+// --- UI & NAVIGATION ---
+
+function switchTab(tab) {
+    CURRENT_TAB = tab;
+    ACTIVE_FILTER = ''; // Reset filter
+    document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+    // Find nav item by text is hard, just highlight by onclick context or manual
+    // Simple fix: iterate and check
+    
+    document.querySelectorAll('.view-section').forEach(el => el.style.display = 'none');
+    
+    if (tab === 'dashboard') {
+        document.getElementById('view-dashboard').style.display = 'block';
+        document.getElementById('pageTitle').innerText = "總覽儀表板";
+        updateDashboard();
+    } else {
+        document.getElementById('view-table-container').style.display = 'block';
+        const titles = {'orders':'訂單管理', 'inventory':'庫存總表', 'sales':'銷售總表'};
+        document.getElementById('pageTitle').innerText = titles[tab];
+        document.getElementById('tableSearch').value = "";
+        renderCurrentTable();
+    }
+}
+
+function navigateTo(tab, filter) {
+    switchTab(tab);
+    ACTIVE_FILTER = filter;
+    renderCurrentTable();
+    if(filter === 'today') document.getElementById('tableSearch').value = "今日訂單";
+}
+
+function updateDashboard() {
+    const today = new Date().toDateString();
+    const todayOrders = DATA.orders.filter(o => new Date(o.time).toDateString() === today);
+    document.getElementById('kpi-revenue').innerText = "$" + todayOrders.reduce((a,b) => a + b.total, 0).toLocaleString();
+    document.getElementById('kpi-orders').innerText = DATA.orders.length;
+    
+    const alerts = DATA.inventory.filter(i => i.status === '缺貨').length;
+    document.getElementById('kpi-alert').innerText = alerts;
+    if(alerts>0) document.querySelector('.kpi-card.alert').style.border = "2px solid var(--danger)";
+
+    const totalSalesQty = DATA.sales.reduce((a,b) => a + b.thisQty, 0);
+    document.getElementById('kpi-year-sales').innerText = totalSalesQty.toLocaleString();
+
+    // Chart logic fix
+    if(CHART_INST) CHART_INST.destroy();
+    if(CAT_CHART_INST) CAT_CHART_INST.destroy();
+
+    const topSales = [...DATA.sales].sort((a,b) => b.thisQty - a.thisQty).slice(0, 10);
+    
+    // Fix: Height constraint
+    CHART_INST = new Chart(document.getElementById('stockChart'), {
+        type: 'bar',
+        data: {
+            labels: topSales.map(s => s.name.substring(0,8)),
+            datasets: [{ label: '今年銷量', data: topSales.map(s => s.thisQty), backgroundColor: '#00897b', borderRadius:4 }]
+        },
+        options: { responsive:true, maintainAspectRatio:false }
+    });
+
+    let cats = {'保健':0, '美容':0, '清潔':0, '其他':0};
+    DATA.orders.forEach(o => {
+        if(o.raw && o.raw.items) o.raw.items.forEach(it => {
+            if(it.category.includes('保健')) cats['保健']+=it.line_total;
+            else if(it.category.includes('美容')) cats['美容']+=it.line_total;
+            else if(it.category.includes('清潔')) cats['清潔']+=it.line_total;
+            else cats['其他']+=it.line_total;
+        });
+    });
+    CAT_CHART_INST = new Chart(document.getElementById('catChart'), {
+        type: 'doughnut',
+        data: { labels: Object.keys(cats), datasets: [{ data:Object.values(cats), backgroundColor:['#ffa726','#d81b60','#42a5f5','#bdbdbd'] }] },
+        options: { responsive:true, maintainAspectRatio:false }
+    });
+}
+
+// --- SORTING ---
+function sortData(key) {
+    if (SORT.key === key) SORT.asc = !SORT.asc;
+    else { SORT.key = key; SORT.asc = true; }
+    renderCurrentTable();
+}
+
+// --- TABLE RENDER ---
+function renderCurrentTable() {
+    const q = document.getElementById('tableSearch').value.toLowerCase();
+    const table = document.getElementById('mainTable');
+    let html = "";
+    
+    // Filter Logic
+    let list = [];
+    if (CURRENT_TAB === 'orders') {
+        list = DATA.orders.filter(o => o.id.toLowerCase().includes(q) || o.name.includes(q));
+        if (ACTIVE_FILTER === 'today') {
+            const today = new Date().toDateString();
+            list = list.filter(o => new Date(o.time).toDateString() === today);
+        }
+        
+        // Sorting
+        if(SORT.key) list.sort((a,b) => (a[SORT.key] > b[SORT.key] ? 1 : -1) * (SORT.asc ? 1 : -1));
+
+        html = `<thead><tr>
+            <th onclick="sortData('id')">單號</th>
+            <th onclick="sortData('time')">時間</th>
+            <th onclick="sortData('name')">姓名/部門</th>
+            <th onclick="sortData('total')">總金額</th>
+            <th>操作</th>
+        </tr></thead><tbody>`;
+        
+        list.forEach(o => {
+            html += `<tr>
+                <td>${o.id}</td>
+                <td>${o.time.split(' ')[0]}</td>
+                <td><b>${o.name}</b> <span style="font-size:12px;color:#999">${o.dept}</span></td>
+                <td style="font-weight:700">$${o.total.toLocaleString()}</td>
+                <td>
+                    <span class="material-icons-round act-btn" onclick="openEditModal('${o.id}')">edit</span>
+                    <span class="material-icons-round act-btn" style="color:#ef5350" onclick="deleteOrderPrompt('${o.id}')">delete</span>
+                </td>
+            </tr>`;
+        });
+    }
+    
+    else if (CURRENT_TAB === 'inventory') {
+        list = DATA.inventory.filter(i => (i.code && i.code.toLowerCase().includes(q)) || (i.name && i.name.includes(q)));
+        if (ACTIVE_FILTER === 'alert') list = list.filter(i => i.status === '缺貨');
+
+        // Dynamic Header from C-N
+        const headers = list.length > 0 ? list[0].mainHeaderNames : [];
+        let headerHtml = `<th style="width:40px"></th>`;
+        headers.forEach((h, idx) => headerHtml += `<th onclick="sortInv(${idx})">${h}</th>`);
+        
+        html = `<thead><tr>${headerHtml}</tr></thead><tbody>`;
+        
+        list.forEach(i => {
+            let rowHtml = `<td style="text-align:center"><span class="material-icons-round expand-btn">expand_more</span></td>`;
+            i.mainData.forEach(val => rowHtml += `<td>${val}</td>`);
+            
+            let regionHtml = i.regions.map(r => 
+                `<div class="r-box"><span class="r-name">${r.name}</span><span class="r-qty">${r.qty}</span></div>`
+            ).join("");
+
+            html += `<tr onclick="toggleRegion(this)">${rowHtml}</tr>
+                     <tr class="region-row"><td colspan="${headers.length+1}"><div class="region-grid">${regionHtml}</div></td></tr>`;
+        });
+    }
+    
+    else if (CURRENT_TAB === 'sales') {
+        list = DATA.sales.filter(s => s.name.includes(q));
+        if(SORT.key) list.sort((a,b) => (a[SORT.key] > b[SORT.key] ? 1 : -1) * (SORT.asc ? 1 : -1));
+
+        html = `<thead><tr>
+            <th onclick="sortData('name')">品名</th>
+            <th onclick="sortData('yoy')">YoY (成長)</th>
+            <th onclick="sortData('lastRev')">去年金額</th>
+            <th onclick="sortData('thisRev')">今年金額</th>
+            <th onclick="sortData('lastQty')">去年銷量</th>
+            <th onclick="sortData('thisQty')">今年銷量</th>
+        </tr></thead><tbody>`;
+        
+        list.forEach(s => {
+            const icon = s.yoy >= 0 ? 'trending_up' : 'trending_down';
+            const cls = s.yoy >= 0 ? 'val-up' : 'val-down';
+            html += `<tr>
+                <td style="font-weight:700">${s.name}</td>
+                <td class="${cls}"><span class="material-icons-round" style="font-size:14px;vertical-align:middle">${icon}</span> ${s.yoy}%</td>
+                <td style="color:#90a4ae">$${s.lastRev.toLocaleString()}</td>
+                <td style="font-weight:700">$${s.thisRev.toLocaleString()}</td>
+                <td style="color:#90a4ae">${s.lastQty}</td>
+                <td style="font-weight:700">${s.thisQty}</td>
+            </tr>`;
+        });
+    }
+
+    table.innerHTML = html;
+}
+
+function toggleRegion(row) {
+    const next = row.nextElementSibling;
+    if(next && next.classList.contains('region-row')) {
+        next.classList.toggle('open');
+        row.querySelector('.expand-btn').classList.toggle('open');
+    }
+}
+
+// --- ACTIONS ---
+let currentEditOrder = null;
+
+function openEditModal(oid) {
+  const order = DATA.orders.find(o => o.id === oid);
+  if(!order || !order.raw) { alert("此為舊版資料，無法編輯。"); return; }
+  currentEditOrder = order;
+  document.getElementById('e-oid').value = order.id;
+  document.getElementById('e-name').value = order.raw.employee_name;
+  document.getElementById('e-dept').value = order.raw.department;
+  document.getElementById('e-note').value = order.raw.remarks;
+  document.getElementById('e-total').innerText = order.raw.totals.pay.toLocaleString();
+  
+  let html = '';
+  if(order.raw.items) order.raw.items.forEach(it => html += `<div class="m-item"><span>${it.product_name}</span><span>x${it.qty}</span></div>`);
+  if(order.raw.gifts) order.raw.gifts.forEach(g => html += `<div class="m-item" style="color:var(--accent)"><span>🎁 ${g.product_name}</span><span>x${g.qty}</span></div>`);
+  document.getElementById('e-items').innerHTML = html;
+  document.getElementById('editModal').classList.add('open');
+}
+
+function closeModal() { document.getElementById('editModal').classList.remove('open'); currentEditOrder = null; }
+
+function saveOrderAction() {
+  if(!currentEditOrder) return;
+  currentEditOrder.raw.employee_name = document.getElementById('e-name').value;
+  currentEditOrder.raw.department = document.getElementById('e-dept').value;
+  currentEditOrder.raw.remarks = document.getElementById('e-note').value;
+  currentEditOrder.raw.action = "update_order";
+  currentEditOrder.raw.order_id = currentEditOrder.id;
+  callGAS(currentEditOrder.raw, "修改成功");
+}
+
+function deleteOrderPrompt(oid) {
+    currentEditOrder = DATA.orders.find(o => o.id === oid);
+    deleteOrderAction();
+}
+
+function deleteOrderAction() {
+  if(!confirm("確定要刪除此訂單嗎？")) return;
+  callGAS({ action: "delete_order", order_id: currentEditOrder.id }, "刪除成功");
+}
+
+function callGAS(payload, msg) {
+  const btn = document.querySelector('.m-btn.save');
+  const org = btn.innerText;
+  btn.innerText = "..."; btn.disabled = true;
+  fetch(GAS_URL + "?token=" + encodeURIComponent(ADMIN_TOKEN), {
+    method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: "payload=" + encodeURIComponent(JSON.stringify(payload))
+  }).then(r=>r.json()).then(res=>{
+    if(res.ok) { alert(msg); location.reload(); }
+    else alert("失敗: " + res.error);
+  }).catch(e=>alert("連線錯誤")).finally(()=>{ btn.innerText = org; btn.disabled = false; });
+}
+
+// Start
+init();
+</script>
+</body>
+</html>
