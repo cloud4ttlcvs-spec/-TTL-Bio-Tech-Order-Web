@@ -1,171 +1,106 @@
-<!doctype html>
-<html lang="zh-Hant">
-<head>
-<meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"/>
-<title>TTL BIO-TECH 戰情中心 V51</title>
-<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&family=Roboto:wght@500;700;900&display=swap" rel="stylesheet">
-<link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
-
-<style>
-/* --- Theme Variables --- */
-:root {
+<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"/><title>TTL BIO-TECH 戰情中心 V51.1</title><link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&family=Roboto:wght@500;700;900&display=swap" rel="stylesheet"><link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet"><script src="https://cdn.jsdelivr.net/npm/chart.js"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script><style>/* --- Theme Variables --- */:root {
   --primary: #00897b; --accent: #ff6f00;
   --bg-body: #f4f6f8; --text-main: #263238; --text-sub: #546e7a;
   --danger: #d32f2f; --warning: #f57c00; --success: #388e3c;
   --info: #0288d1; --stagnant: #7b1fa2;
-  --header-height: 50px; --sidebar-width: 220px;
+  --header-height: 54px; --sidebar-width: 230px; /* 寬度稍微加寬以適應大字體 */
 }
-* { box-sizing: border-box; }
-body { font-family: 'Noto Sans TC', sans-serif; background: var(--bg-body); color: var(--text-main); margin: 0; padding: 0; display: flex; height: 100vh; overflow: hidden; }
-
-/* Sidebar */
-#sidebar { width: var(--sidebar-width); background: #263238; color: #fff; flex-shrink: 0; display: flex; flex-direction: column; padding: 15px 0; }
-.brand { font-size: 18px; font-weight: 900; padding: 0 20px 20px; display: flex; align-items: center; gap: 10px; color: var(--primary); }
-.nav-item { padding: 10px 20px; cursor: pointer; display: flex; align-items: center; gap: 10px; color: #b0bec5; font-weight: 500; transition: 0.2s; border-left: 4px solid transparent; font-size: 14px; }
-.nav-item:hover { background: #37474f; color: #fff; }
-.nav-item.active { background: #37474f; color: #fff; border-left-color: var(--accent); }
-
-/* Main Area */
-#main { flex: 1; display: flex; flex-direction: column; overflow: hidden; position: relative; }
-header { height: var(--header-height); background: #fff; border-bottom: 1px solid #ddd; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; flex-shrink: 0; }
-.page-title { font-size: 16px; font-weight: 700; display:flex; align-items:center; gap:10px;}
-.update-time { font-size: 11px; color: #999; }
-
-/* Back Button */
-#backBtn { 
-  display: none; cursor: pointer; font-size: 13px; color: #fff; background: var(--text-sub); 
-  padding: 4px 12px; border-radius: 20px; align-items: center; gap: 4px; transition: 0.2s; 
-}
-#backBtn:hover { background: var(--primary); }
-
-/* Content Layout */
-.content-box { flex: 1; display: flex; flex-direction: column; padding: 15px; overflow: hidden; gap: 15px; }
-
-/* KPI Cards */
-.kpi-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; flex-shrink: 0; }
+* { box-sizing: border-box; }body { font-family: 'Noto Sans TC', sans-serif; background: var(--bg-body); color: var(--text-main); margin: 0; padding: 0; display: flex; height: 100vh; overflow: hidden; font-size: 16px; /* 基底字體加大 */ }
+/* Sidebar */#sidebar { width: var(--sidebar-width); background: #263238; color: #fff; flex-shrink: 0; display: flex; flex-direction: column; padding: 15px 0; }
+.brand { font-size: 20px; font-weight: 900; padding: 0 20px 20px; display: flex; align-items: center; gap: 10px; color: var(--primary); }
+.nav-item { padding: 12px 20px; cursor: pointer; display: flex; align-items: center; gap: 12px; color: #b0bec5; font-weight: 500; transition: 0.2s; border-left: 4px solid transparent; font-size: 16px; /* 加大 */ }
+.nav-item:hover { background: #37474f; color: #fff; }.nav-item.active { background: #37474f; color: #fff; border-left-color: var(--accent); }
+/* Main Area */#main { flex: 1; display: flex; flex-direction: column; overflow: hidden; position: relative; }
+header { height: var(--header-height); background: #fff; border-bottom: 1px solid #ddd; display: flex; align-items: center; justify-content: space-between; padding: 0 24px; flex-shrink: 0; }
+.page-title { font-size: 18px; font-weight: 700; display:flex; align-items:center; gap:12px;}
+.update-time { font-size: 13px; color: #999; }
+/* Back Button */#backBtn { 
+  display: none; cursor: pointer; font-size: 14px; color: #fff; background: var(--text-sub); 
+  padding: 6px 16px; border-radius: 20px; align-items: center; gap: 6px; transition: 0.2s; 
+}#backBtn:hover { background: var(--primary); }
+/* Content Layout */.content-box { flex: 1; display: flex; flex-direction: column; padding: 20px; overflow: hidden; gap: 20px; }
+/* KPI Cards */.kpi-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; flex-shrink: 0; }
 .kpi-card { 
-  background: #fff; padding: 12px 16px; border-radius: 8px; border: 1px solid #e0e0e0; 
+  background: #fff; padding: 16px 20px; border-radius: 10px; border: 1px solid #e0e0e0; 
   display: flex; align-items: center; justify-content: space-between; cursor: pointer; transition: 0.2s;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-}
-.kpi-card:hover { transform: translateY(-2px); border-color: var(--primary); }
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}.kpi-card:hover { transform: translateY(-3px); border-color: var(--primary); }
 .kpi-info { display: flex; flex-direction: column; }
-.kpi-label { font-size: 11px; color: var(--text-sub); font-weight: 700; text-transform: uppercase; }
-.kpi-val { font-size: 20px; font-weight: 900; margin-top: 2px; }
-.kpi-icon { font-size: 28px; opacity: 0.15; color: var(--text-main); }
-.kpi-dual { display: flex; gap: 10px; align-items: baseline; margin-top: 2px; }
-.kpi-dual span { font-weight: 900; font-size: 18px; }
-
-/* Charts */
-.chart-section { flex: 1; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; min-height: 0; }
-.chart-card { background: #fff; border-radius: 8px; border: 1px solid #e0e0e0; display: flex; flex-direction: column; overflow: hidden; }
-.c-head { padding: 10px 15px; font-size: 13px; font-weight: 700; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; background: #fafafa; flex-shrink: 0; }
-.c-body { flex: 1; padding: 10px; position: relative; min-height: 0; }
-
-/* Overstock Layout */
-.overstock-layout { display: flex; height: 100%; width: 100%; }
-.os-chart-area { flex: 1.5; padding-right: 10px; border-right: 1px dashed #eee; position: relative; min-width: 0; }
-.os-list-area { flex: 1; padding-left: 10px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; }
-
-.os-item { display: flex; justify-content: space-between; align-items: center; padding: 6px 8px; background: #fff; border: 1px solid #eee; border-radius: 4px; font-size: 11px; }
-.os-item:hover { background: #f5f5f5; }
-.os-item.excluded { background: #eeeeee; color: #999; }
-.os-btn { cursor: pointer; color: #90a4ae; font-size: 16px; padding: 0 4px; }
-.os-btn:hover { color: var(--danger); }
-.os-btn.add:hover { color: var(--success); }
-
-/* Table View */
-.data-panel { background: #fff; border-radius: 8px; border: 1px solid #e0e0e0; display: flex; flex-direction: column; flex: 1; overflow: hidden; }
-.panel-head { padding: 10px 15px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; background: #fafafa; }
-.search-wrap { position: relative; width: 250px; }
-.search-wrap input { width: 100%; padding: 6px 10px 6px 30px; border: 1px solid #ccc; border-radius: 20px; font-size: 13px; outline: none; }
-.search-wrap .icon { position: absolute; left: 8px; top: 50%; transform: translateY(-50%); font-size: 16px; color: #999; }
-
+.kpi-label { font-size: 13px; color: var(--text-sub); font-weight: 700; text-transform: uppercase; }
+.kpi-val { font-size: 24px; font-weight: 900; margin-top: 4px; /* 加大 */ }
+.kpi-icon { font-size: 32px; opacity: 0.15; color: var(--text-main); }
+.kpi-dual { display: flex; gap: 12px; align-items: baseline; margin-top: 4px; }
+.kpi-dual span { font-weight: 900; font-size: 20px; }
+/* Charts */.chart-section { flex: 1; display: grid; grid-template-columns: 1fr 1fr; gap: 16px; min-height: 0; }
+.chart-card { background: #fff; border-radius: 10px; border: 1px solid #e0e0e0; display: flex; flex-direction: column; overflow: hidden; }
+.c-head { padding: 12px 20px; font-size: 15px; font-weight: 700; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; background: #fafafa; flex-shrink: 0; }
+.c-body { flex: 1; padding: 12px; position: relative; min-height: 0; }
+/* Overstock Layout */.overstock-layout { display: flex; height: 100%; width: 100%; }
+.os-chart-area { flex: 1.5; padding-right: 12px; border-right: 1px dashed #eee; position: relative; min-width: 0; }
+.os-list-area { flex: 1; padding-left: 12px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; }
+.os-item { display: flex; justify-content: space-between; align-items: center; padding: 8px 10px; background: #fff; border: 1px solid #eee; border-radius: 4px; font-size: 13px; }
+.os-item:hover { background: #f5f5f5; }.os-item.excluded { background: #eeeeee; color: #999; }
+.os-btn { cursor: pointer; color: #90a4ae; font-size: 18px; padding: 0 4px; }.os-btn:hover { color: var(--danger); }.os-btn.add:hover { color: var(--success); }
+/* Table View */.data-panel { background: #fff; border-radius: 10px; border: 1px solid #e0e0e0; display: flex; flex-direction: column; flex: 1; overflow: hidden; }
+.panel-head { padding: 12px 20px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; background: #fafafa; }
+.search-wrap { position: relative; width: 280px; }
+.search-wrap input { width: 100%; padding: 8px 12px 8px 36px; border: 1px solid #ccc; border-radius: 24px; font-size: 14px; outline: none; }
+.search-wrap .icon { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); font-size: 18px; color: #999; }
 .table-container { flex: 1; overflow: auto; position: relative; }
-table { width: 100%; border-collapse: collapse; font-size: 13px; }
-th { position: sticky; top: 0; background: #f5f5f5; z-index: 5; text-align: left; padding: 10px; font-weight: 700; color: var(--text-sub); border-bottom: 2px solid #ddd; white-space: nowrap; cursor: pointer; }
+table { width: 100%; border-collapse: collapse; font-size: 15px; /* 表格字體加大 */ }
+th { position: sticky; top: 0; background: #f5f5f5; z-index: 5; text-align: left; padding: 12px 10px; font-weight: 700; color: var(--text-sub); border-bottom: 2px solid #ddd; white-space: nowrap; cursor: pointer; transition: background 0.2s; }
 th:hover { background: #e0e0e0; }
-td { padding: 10px; border-bottom: 1px solid #eee; vertical-align: middle; }
+/* 排序高亮樣式 */
+th.sorted-active { background: #e0f2f1; color: #00695c; border-bottom: 2px solid var(--primary); }
+td { padding: 12px 10px; border-bottom: 1px solid #eee; vertical-align: middle; }
 tr:hover { background: #f9f9f9; }
-
-.status-select { border: 1px solid #cfd8dc; border-radius: 4px; padding: 2px 4px; font-size: 12px; background: #fff; color: var(--text-main); font-weight: normal; cursor: pointer; }
-
-/* Expanded Rows */
-.region-row { background: #fcfcfc; display: none; }
+.status-select { border: 1px solid #cfd8dc; border-radius: 4px; padding: 4px 6px; font-size: 14px; background: #fff; color: var(--text-main); font-weight: normal; cursor: pointer; }
+/* Expanded Rows */.region-row { background: #fcfcfc; display: none; }
 .region-row.open { display: table-row; }
-.expand-container { padding: 15px; display: grid; grid-template-columns: 320px 320px 1fr; gap: 20px; align-items: start; }
-.detail-card { background: #fff; padding: 15px; border-radius: 6px; border: 1px solid #e0e0e0; height: 100%; display: flex; flex-direction: column; }
-.card-title { font-weight: 700; margin-bottom: 10px; color: #546e7a; font-size: 13px; border-bottom: 2px solid #eee; padding-bottom: 6px; }
-.info-line { display: flex; justify-content: space-between; border-bottom: 1px dashed #eee; padding: 8px 0; font-size: 13px; }
-.region-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 8px; align-content: start; }
+.expand-container { padding: 20px; display: grid; grid-template-columns: 340px 340px 1fr; gap: 20px; align-items: start; }
+.detail-card { background: #fff; padding: 16px; border-radius: 8px; border: 1px solid #e0e0e0; height: 100%; display: flex; flex-direction: column; }
+.card-title { font-weight: 700; margin-bottom: 12px; color: #546e7a; font-size: 14px; border-bottom: 2px solid #eee; padding-bottom: 8px; }
+.info-line { display: flex; justify-content: space-between; border-bottom: 1px dashed #eee; padding: 10px 0; font-size: 14px; }
+.region-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 10px; align-content: start; }
 .r-box { 
-  padding: 8px; border-radius: 6px; border: 1px solid rgba(0,0,0,0.05); 
+  padding: 10px; border-radius: 6px; border: 1px solid rgba(0,0,0,0.05); 
   display: flex; flex-direction: column; align-items: center; text-align: center;
   color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,0.1); white-space: normal;
 }
-.r-name { font-weight: 700; font-size: 11px; opacity: 0.95; line-height: 1.2; margin-bottom: 2px; }
-.r-qty { font-weight: 900; font-size: 14px; }
-
-/* Progress Bar Chart */
-.comp-container { margin-top: 15px; padding-top:10px; border-top:1px solid #eee; }
-.comp-row { display: flex; align-items: center; margin-bottom: 6px; font-size: 11px; }
-.comp-label { width: 30px; color: #999; font-weight: 700; }
-.comp-track { flex: 1; height: 8px; background: #eee; border-radius: 4px; margin: 0 8px; overflow: hidden; }
-.comp-bar { height: 100%; border-radius: 4px; transition: width 0.6s ease; }
-.comp-val { width: 40px; text-align: right; font-weight: 700; }
-
+.r-name { font-weight: 700; font-size: 12px; opacity: 0.95; line-height: 1.2; margin-bottom: 4px; }
+.r-qty { font-weight: 900; font-size: 16px; }
+/* Progress Bar Chart */.comp-container { margin-top: 15px; padding-top:10px; border-top:1px solid #eee; }
+.comp-row { display: flex; align-items: center; margin-bottom: 8px; font-size: 12px; }
+.comp-label { width: 35px; color: #999; font-weight: 700; }
+.comp-track { flex: 1; height: 10px; background: #eee; border-radius: 5px; margin: 0 10px; overflow: hidden; }
+.comp-bar { height: 100%; border-radius: 5px; transition: width 0.6s ease; }
+.comp-val { width: 45px; text-align: right; font-weight: 700; }
 /* Components */
-.st-badge { padding: 3px 8px; border-radius: 12px; font-size: 11px; font-weight: 700; display: inline-block; min-width: 50px; text-align: center; }
-.st-ok { background: #e8f5e9; color: #2e7d32; }
-.st-warn { background: #fff3e0; color: #ef6c00; }
-.st-err { background: #ffebee; color: #c62828; }
-.st-high { background: #e1f5fe; color: #0277bd; }
-.st-dead { background: #f3e5f5; color: #7b1fa2; }
-
-.act-btn { cursor: pointer; color: var(--text-sub); margin: 0 4px; font-size: 18px; }
-.act-btn:hover { color: var(--primary); }
-.expand-btn { cursor: pointer; color: #bbb; transition: 0.2s; font-size: 20px; }
-.expand-btn.open { transform: rotate(180deg); color: var(--primary); }
-.close-all-btn { cursor: pointer; color: #546e7a; font-size: 18px; transition: 0.2s; }
-.close-all-btn:hover { color: var(--danger); transform: scale(1.1); }
-
-.val-up { color: #d32f2f; font-weight: 700; }
-.val-down { color: #388e3c; font-weight: 700; }
-
-/* V51: Font Updates */
-.prod-name-cell { font-size: 14px; font-weight: 700; color: #263238; transition: 0.2s; } /* Default Bold Black */
-tr.active-row .prod-name-cell { color: #1b5e20; font-size: 15px; font-weight: 900; } /* Active Bold Green */
-
-/* Loading & Modal */
-#loading-mask { position: fixed; inset: 0; background: rgba(255,255,255,0.9); z-index: 3000; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 10px; }
-.spinner { width: 36px; height: 36px; border: 4px solid #e0f2f1; border-top-color: var(--primary); border-radius: 50%; animation: spin 0.8s linear infinite; }
+.st-badge { padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: 700; display: inline-block; min-width: 60px; text-align: center; }
+.st-ok { background: #e8f5e9; color: #2e7d32; }.st-warn { background: #fff3e0; color: #ef6c00; }.st-err { background: #ffebee; color: #c62828; }
+.st-high { background: #e1f5fe; color: #0277bd; }.st-dead { background: #f3e5f5; color: #7b1fa2; }
+.act-btn { cursor: pointer; color: var(--text-sub); margin: 0 6px; font-size: 20px; }.act-btn:hover { color: var(--primary); }
+.expand-btn { cursor: pointer; color: #bbb; transition: 0.2s; font-size: 24px; }.expand-btn.open { transform: rotate(180deg); color: var(--primary); }
+.close-all-btn { cursor: pointer; color: #546e7a; font-size: 20px; transition: 0.2s; }.close-all-btn:hover { color: var(--danger); transform: scale(1.1); }
+.val-up { color: #d32f2f; font-weight: 700; }.val-down { color: #388e3c; font-weight: 700; }
+.prod-name-cell { font-size: 16px; font-weight: 700; color: #263238; transition: 0.2s; }
+tr.active-row .prod-name-cell { color: #1b5e20; font-size: 17px; font-weight: 900; }
+/* Loading & Modal */#loading-mask { position: fixed; inset: 0; background: rgba(255,255,255,0.9); z-index: 3000; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 10px; }
+.spinner { width: 40px; height: 40px; border: 5px solid #e0f2f1; border-top-color: var(--primary); border-radius: 50%; animation: spin 0.8s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
-
-.modal { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 2500; display: none; align-items: center; justify-content: center; backdrop-filter: blur(2px); }
-.modal.open { display: flex; }
-.m-card { background: #fff; width: 450px; max-width: 90%; border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); display: flex; flex-direction: column; max-height: 90vh; }
-.m-head { padding: 12px 20px; background: var(--primary); color: #fff; font-weight: 700; display: flex; justify-content: space-between; align-items: center; }
-.m-body { padding: 20px; overflow-y: auto; }
-.m-foot { padding: 12px 20px; border-top: 1px solid #eee; display: flex; justify-content: flex-end; gap: 10px; background: #fafafa; }
-.m-btn { padding: 8px 16px; border-radius: 4px; border: none; font-weight: 700; cursor: pointer; font-size: 13px; }
+.modal { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 2500; display: none; align-items: center; justify-content: center; backdrop-filter: blur(2px); }.modal.open { display: flex; }
+.m-card { background: #fff; width: 500px; max-width: 90%; border-radius: 10px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); display: flex; flex-direction: column; max-height: 90vh; }
+.m-head { padding: 15px 24px; background: var(--primary); color: #fff; font-weight: 700; display: flex; justify-content: space-between; align-items: center; font-size: 16px; }
+.m-body { padding: 24px; overflow-y: auto; }
+.m-foot { padding: 15px 24px; border-top: 1px solid #eee; display: flex; justify-content: flex-end; gap: 12px; background: #fafafa; }
+.m-btn { padding: 10px 20px; border-radius: 6px; border: none; font-weight: 700; cursor: pointer; font-size: 14px; }
 .m-btn.save { background: var(--primary); color: #fff; }
-.m-form-row { margin-bottom: 12px; }
-.m-label { font-size: 12px; color: #666; margin-bottom: 4px; display: block; font-weight: 700; }
-.m-input { width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; }
-
-</style>
-</head>
-<body>
-
-<div id="loading-mask">
+.m-form-row { margin-bottom: 16px; }
+.m-label { font-size: 13px; color: #666; margin-bottom: 6px; display: block; font-weight: 700; }
+.m-input { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 15px; }
+</style></head><body><div id="loading-mask">
   <div class="spinner"></div>
-  <div id="loading-text" style="font-weight:700;color:#546e7a;font-size:14px">系統初始化 (V51)...</div>
-</div>
-
-<nav id="sidebar">
+  <div id="loading-text" style="font-weight:700;color:#546e7a;font-size:16px">系統初始化 (V51.1)...</div></div><nav id="sidebar">
   <div class="brand">
     <span class="material-icons-round" style="color:var(--primary);background:#fff;border-radius:50%;padding:4px;">spa</span>
     <span>TTL BIO-TECH</span>
@@ -181,21 +116,18 @@ tr.active-row .prod-name-cell { color: #1b5e20; font-size: 15px; font-weight: 90
   </div>
   <div class="nav-item" onclick="switchTab('orders')">
     <span class="material-icons-round">edit_note</span> 訂單管理
-  </div>
-</nav>
-
-<div id="main">
+  </div></nav><div id="main">
   <header>
     <div class="page-title">
         <span id="pageTitle">總覽儀表板</span>
-        <div id="backBtn" onclick="switchTab('dashboard')"><span class="material-icons-round" style="font-size:16px">arrow_back</span> 返回儀表板</div>
+        <div id="backBtn" onclick="switchTab('dashboard')"><span class="material-icons-round" style="font-size:18px">arrow_back</span> 返回儀表板</div>
     </div>
     <div class="update-time" id="lastUpdate">--</div>
   </header>
 
   <div class="content-box">
     
-    <div id="view-dashboard" class="view-section active" style="flex:1; display:flex; flex-direction:column; gap:15px; min-height:0;">
+    <div id="view-dashboard" class="view-section active" style="flex:1; display:flex; flex-direction:column; gap:20px; min-height:0;">
       <div class="kpi-row">
         <div class="kpi-card" onclick="navigateTo('orders', 'today')">
           <div class="kpi-info"><span class="kpi-label">今日營收</span><div class="kpi-val" id="kpi-revenue">$0</div></div>
@@ -225,8 +157,8 @@ tr.active-row .prod-name-cell { color: #1b5e20; font-size: 15px; font-weight: 90
         <div class="chart-card">
           <div class="c-head">
             <span>🔥 安全水位 (庫存 vs 月均銷)</span>
-            <div style="font-size:11px;color:#90a4ae;display:flex;gap:6px">
-              <span style="color:#388e3c">■足</span><span style="color:#f57c00">■低</span><span style="color:#d32f2f">■缺</span><span style="color:#455a64">■月均銷</span>
+            <div style="font-size:12px;color:#90a4ae;display:flex;gap:8px">
+              <span style="color:#388e3c">■庫存充足</span><span style="color:#f57c00">■庫存偏低</span><span style="color:#d32f2f">■缺貨</span><span style="color:#455a64">■月均銷量</span>
             </div>
           </div>
           <div class="c-body"><canvas id="stockChart"></canvas></div>
@@ -256,10 +188,7 @@ tr.active-row .prod-name-cell { color: #1b5e20; font-size: 15px; font-weight: 90
       </div>
     </div>
 
-  </div>
-</div>
-
-<div id="editModal" class="modal">
+  </div></div><div id="editModal" class="modal">
   <div class="m-card">
     <div class="m-head"><span>編輯訂單</span><span class="material-icons-round" style="cursor:pointer" onclick="closeModal()">close</span></div>
     <div class="m-body">
@@ -268,50 +197,24 @@ tr.active-row .prod-name-cell { color: #1b5e20; font-size: 15px; font-weight: 90
       <div class="m-form-row"><label class="m-label">部門</label><input class="m-input" id="e-dept"></div>
       <div class="m-form-row"><label class="m-label">備註</label><input class="m-input" id="e-note"></div>
       <div class="m-form-row"><label class="m-label">內容</label><div class="m-list" id="e-items"></div></div>
-      <div style="text-align:right;color:var(--danger);font-weight:900;">Total: $<span id="e-total">0</span></div>
+      <div style="text-align:right;color:var(--danger);font-weight:900;font-size:18px">Total: $<span id="e-total">0</span></div>
     </div>
     <div class="m-foot">
       <button class="m-btn" style="background:#ffebee;color:#c62828;margin-right:auto" onclick="deleteOrderAction()">刪除</button>
       <button class="m-btn save" onclick="saveOrderAction()">儲存</button>
     </div>
-  </div>
-</div>
-
-<script>
-const ADMIN_TOKEN = prompt("請輸入後台管理密碼：");
-if (!ADMIN_TOKEN) {
+  </div></div><script>const ADMIN_TOKEN = prompt("請輸入後台管理密碼：");if (!ADMIN_TOKEN) {
     document.body.innerHTML = "<div style='display:flex;height:100vh;align-items:center;justify-content:center;color:red;font-weight:900'>Access Denied</div>";
     throw new Error("Stop");
-}
-
-const GAS_URL = "https://script.google.com/macros/s/AKfycbxQ9Etloak3ZNv6yfyMCK9KbjoLyDqjRQHHVlASY5iMwwy_c4NCPxWpMK1YkzSXstHN/exec";
-const ORDERS_CSV = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRIGbs4rMOfytnlajoBKcTZ5a0HhozeDAb2HMmsHsfUzfzrE0_O_y0QhhXD_SQjiwjoDKV_BJWoJwyp/pub?output=csv";
-const INVENTORY_CSV = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ7k1DqiuXajsGDzeprSAwhj5NEW5DdZLXV3eSRYvAFUmpC16tygyD5bjwEtndESJFzjQ0NrTzxTZ2P/pub?gid=1142644042&single=true&output=csv";
-const SALES_CSV = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQj5QLrtaWikGcLNwMawbjiN8ZQDgFzW1RV7UECFgLzECWj16I2ugE_B6tzzLICCynsk1L6lAuJfccS/pub?gid=93142219&single=true&output=csv";
-
-let DATA = { orders: [], inventory: [], sales: [], soldMap: {} };
-let CURRENT_TAB = 'dashboard'; 
-let ACTIVE_FILTER = ''; 
-let STATUS_FILTER = 'all'; 
-let AUTO_EXPAND_CODE = null; 
-let SORT = { key: null, asc: true };
-let HIDDEN_STOCK = new Set(JSON.parse(localStorage.getItem('admin_hidden_stock') || '[]'));
-let CHARTS = {};
-
-// Helper: V51 Normalize String
-function normalizeStr(s) {
+}const GAS_URL = "https://script.google.com/macros/s/AKfycbxQ9Etloak3ZNv6yfyMCK9KbjoLyDqjRQHHVlASY5iMwwy_c4NCPxWpMK1YkzSXstHN/exec";const ORDERS_CSV = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRIGbs4rMOfytnlajoBKcTZ5a0HhozeDAb2HMmsHsfUzfzrE0_O_y0QhhXD_SQjiwjoDKV_BJWoJwyp/pub?output=csv";const INVENTORY_CSV = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ7k1DqiuXajsGDzeprSAwhj5NEW5DdZLXV3eSRYvAFUmpC16tygyD5bjwEtndESJFzjQ0NrTzxTZ2P/pub?gid=1142644042&single=true&output=csv";const SALES_CSV = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQj5QLrtaWikGcLNwMawbjiN8ZQDgFzW1RV7UECFgLzECWj16I2ugE_B6tzzLICCynsk1L6lAuJfccS/pub?gid=93142219&single=true&output=csv";let DATA = { orders: [], inventory: [], sales: [], soldMap: {} };let CURRENT_TAB = 'dashboard'; let ACTIVE_FILTER = ''; let STATUS_FILTER = 'all'; let AUTO_EXPAND_CODE = null; let SORT = { key: null, asc: true };let HIDDEN_STOCK = new Set(JSON.parse(localStorage.getItem('admin_hidden_stock') || '[]'));let CHARTS = {};// Helper: V51 Normalize Stringfunction normalizeStr(s) {
     return String(s || "").replace(/\s+/g, '').toLowerCase();
-}
-
-function getTodayDigits() {
+}function getTodayDigits() {
     const d = new Date();
     const y = d.getFullYear();
     const m = String(d.getMonth() + 1).padStart(2, '0');
     const day = String(d.getDate()).padStart(2, '0');
     return `${y}${m}${day}`;
-}
-
-async function init() {
+}async function init() {
   try {
     const [ord, inv, sales] = await Promise.all([
       fetchCSV(ORDERS_CSV), fetchCSV(INVENTORY_CSV), fetchCSV(SALES_CSV)
@@ -324,14 +227,10 @@ async function init() {
     document.getElementById('lastUpdate').innerText = "更新: " + new Date().toLocaleTimeString();
     showLoading(false);
   } catch(e) { alert("資料異常: " + e.message); }
-}
-
-async function fetchCSV(url) {
+}async function fetchCSV(url) {
   const res = await fetch(url);
   return Papa.parse(await res.text(), { header: false }).data; 
-}
-
-function showLoading(show, text) {
+}function showLoading(show, text) {
     const el = document.getElementById('loading-mask');
     if(show) {
         el.style.display = 'flex';
@@ -339,11 +238,7 @@ function showLoading(show, text) {
     } else {
         el.style.display = 'none';
     }
-}
-
-// --- LOGIC ---
-
-function processOrders(rows) {
+}// --- LOGIC ---function processOrders(rows) {
   DATA.soldMap = {};
   DATA.orders = rows.slice(1).map(r => {
     const safe = (i) => r[i] || "";
@@ -366,9 +261,7 @@ function processOrders(rows) {
       raw: rawJson
     };
   }).filter(o => o.id);
-}
-
-function processInventory(rows) {
+}function processInventory(rows) {
   if(rows.length < 2) return;
   const header = rows[0].map(h => h.replace(/[\r\n]+/g, '').trim());
   const idxCode = 0; 
@@ -383,7 +276,6 @@ function processInventory(rows) {
   const infoHeaders = [];
   for(let i=0; i<header.length; i++) {
       let label = header[i];
-      // V51: Label Renaming
       if(label.includes("到期日")) label = "到期日 (最近)";
       if(label.includes("效期天數")) label = "效期天數 (最小)";
 
@@ -416,11 +308,12 @@ function processInventory(rows) {
     else if (supplyMonths >= 24) { status = '滯銷'; statusClass = 'st-dead'; }
     else if (supplyMonths >= 12) { status = '積壓'; statusClass = 'st-high'; }
 
-    return { code, name, cat, stock, avg, supplyMonths, monthAccum, monthDiff, reserved, available, status, statusClass, regions, info };
+    return { 
+        code, name, cat, stock, avg, supplyMonths, monthAccum, monthDiff,
+        reserved, available, status, statusClass, regions, info 
+    };
   }).filter(x => x);
-}
-
-function processSales(rows) {
+}function processSales(rows) {
   let hIdx = -1;
   for(let i=0; i<Math.min(rows.length, 10); i++) {
       const s = JSON.stringify(rows[i]);
@@ -428,7 +321,6 @@ function processSales(rows) {
   }
   if(hIdx === -1) hIdx = 3; 
 
-  // V51: Build Code Lookup Map from Inventory (Normalize names)
   const nameToCodeMap = new Map();
   DATA.inventory.forEach(i => nameToCodeMap.set(normalizeStr(i.name), i.code));
 
@@ -436,7 +328,6 @@ function processSales(rows) {
     const name = (r[1] || r[0] || "").trim();
     if(!name) return null;
     
-    // V51: Lookup Code, fallback to Col 0 if mapped code missing
     const matchedCode = nameToCodeMap.get(normalizeStr(name));
     const code = matchedCode || (r[0] || "-");
 
@@ -447,11 +338,7 @@ function processSales(rows) {
     const yoy = lastRev > 0 ? ((thisRev - lastRev)/lastRev*100).toFixed(1) : (thisRev>0?100:0);
     return { code, name, lastRev, thisRev, lastQty, thisQty, yoy: Number(yoy) };
   }).filter(x => x);
-}
-
-// --- UI ---
-
-function switchTab(tab) {
+}// --- UI ---function switchTab(tab) {
     CURRENT_TAB = tab;
     ACTIVE_FILTER = ''; 
     STATUS_FILTER = 'all';
@@ -482,9 +369,7 @@ function switchTab(tab) {
         backBtn.style.display = 'none';
         renderCurrentTable();
     }
-}
-
-function navigateTo(tab, filter) {
+}function navigateTo(tab, filter) {
     const navs = document.querySelectorAll('.nav-item');
     navs.forEach(n => n.classList.remove('active'));
     if(tab==='orders') navs[3].classList.add('active');
@@ -508,9 +393,7 @@ function navigateTo(tab, filter) {
     }
     
     renderCurrentTable();
-}
-
-function navigateToProduct(code, name) {
+}function navigateToProduct(code, name) {
     navigateTo('inventory', '');
     STATUS_FILTER = 'all'; 
     document.querySelector('.status-select').value = 'all';
@@ -518,9 +401,7 @@ function navigateToProduct(code, name) {
     document.getElementById('tableSearch').value = name; 
     AUTO_EXPAND_CODE = code; 
     renderCurrentTable();
-}
-
-function updateDashboard() {
+}function updateDashboard() {
     const todayDigits = getTodayDigits();
     const todayOrders = DATA.orders.filter(o => o.id.includes(todayDigits) || o.time.replace(/\D/g, '').startsWith(todayDigits));
     
@@ -586,53 +467,47 @@ function updateDashboard() {
     });
 
     renderOverstockControl(overstockItems);
-}
-
-function splitLabel(str) {
+}function splitLabel(str) {
     if(str.length > 10) return [str.substring(0, 10), str.substring(10, 20) + (str.length>20?'...':'')];
     return str;
-}
-
-window.toggleHidden = function(code) {
+}window.toggleHidden = function(code) {
     if(HIDDEN_STOCK.has(code)) HIDDEN_STOCK.delete(code); else HIDDEN_STOCK.add(code);
     localStorage.setItem('admin_hidden_stock', JSON.stringify([...HIDDEN_STOCK]));
     updateDashboard();
-}
-
-function renderOverstockControl(activeItems) {
+}function renderOverstockControl(activeItems) {
     const div = document.getElementById('osListControl');
-    let html = `<div style="font-size:11px;color:#999;margin-bottom:4px">顯示中 (Top 15)</div>`;
+    let html = `<div style="font-size:12px;color:#999;margin-bottom:4px">顯示中 (Top 15)</div>`;
     activeItems.forEach(i => {
         html += `<div class="os-item"><span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${i.name}</span>
         <span class="os-btn material-icons-round" onclick="toggleHidden('${i.code}')">remove_circle_outline</span></div>`;
     });
     if(HIDDEN_STOCK.size > 0) {
-        html += `<div style="font-size:11px;color:#999;margin:8px 0 4px">已排除</div>`;
+        html += `<div style="font-size:12px;color:#999;margin:8px 0 4px">已排除</div>`;
         DATA.inventory.filter(i => HIDDEN_STOCK.has(i.code)).forEach(i => {
             html += `<div class="os-item excluded"><span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${i.name}</span>
             <span class="os-btn add material-icons-round" onclick="toggleHidden('${i.code}')">add_circle_outline</span></div>`;
         });
     }
     div.innerHTML = html;
-}
-
-function sortData(key) {
+}function sortData(key) {
     if (SORT.key === key) SORT.asc = !SORT.asc;
     else { SORT.key = key; SORT.asc = true; }
     renderCurrentTable();
-}
-
-function setStatusFilter(val) {
+}function setStatusFilter(val) {
     STATUS_FILTER = val;
     renderCurrentTable();
-}
-
-function closeAllRegions() {
+}function closeAllRegions() {
     document.querySelectorAll('.region-row').forEach(el => el.classList.remove('open'));
     document.querySelectorAll('.expand-btn').forEach(el => el.classList.remove('open'));
     document.querySelectorAll('tr.active-row').forEach(el => el.classList.remove('active-row'));
 }
-
+// V51.1 Helper for Sort Header
+function genTh(key, label) {
+    const active = SORT.key === key;
+    const cls = active ? 'sorted-active' : '';
+    const arrow = active ? (SORT.asc ? '▲' : '▼') : '';
+    return `<th class="${cls}" onclick="sortData('${key}')">${label} ${arrow}</th>`;
+}
 function renderCurrentTable() {
     const q = document.getElementById('tableSearch').value.toLowerCase().trim();
     const table = document.getElementById('mainTable');
@@ -651,13 +526,13 @@ function renderCurrentTable() {
 
         html = `<thead><tr>
             <th style="width:40px"><span class="material-icons-round close-all-btn" onclick="closeAllRegions()">indeterminate_check_box</span></th>
-            <th onclick="sortData('code')">物料</th>
-            <th onclick="sortData('name')">產品</th>
-            <th onclick="sortData('monthAccum')">本月</th>
-            <th onclick="sortData('monthDiff')">月銷波動</th>
-            <th onclick="sortData('avg')">月銷</th>
-            <th onclick="sortData('stock')">總庫存(M)</th>
-            <th onclick="sortData('supplyMonths')">預估供銷月</th>
+            ${genTh('code','物料')}
+            ${genTh('name','產品')}
+            ${genTh('monthAccum','本月')}
+            ${genTh('monthDiff','月銷波動')}
+            ${genTh('avg','月銷')}
+            ${genTh('stock','總庫存(M)')}
+            ${genTh('supplyMonths','預估供銷月')}
             <th><select class="status-select" onchange="setStatusFilter(this.value)"><option value="all">狀態 (全部)</option><option value="alert_dual">⚠️ 缺貨+告急</option><option value="缺貨">🔴 缺貨</option><option value="告急">🟠 告急</option><option value="充足">🟢 充足</option><option value="積壓">🔵 積壓</option><option value="滯銷">🟣 滯銷</option></select></th>
         </tr></thead><tbody>`;
         
@@ -667,8 +542,9 @@ function renderCurrentTable() {
             const detailsClass = isOpen ? 'open' : '';
             const btnClass = isOpen ? 'open' : '';
 
-            // V51: Fuzzy Match for Sales Data (Fixes Black Malt Juice)
-            const salesRec = DATA.sales.find(s => normalizeStr(s.name) === normalizeStr(i.name)) || { lastQty:0, thisQty:0, yoy:0, lastRev:0, thisRev:0 };
+            // V51.1 Fix: Use Code instead of Name for accurate lookup
+            const salesRec = DATA.sales.find(s => String(s.code) === String(i.code)) || { lastQty:0, thisQty:0, yoy:0, lastRev:0, thisRev:0 };
+            
             const maxVal = Math.max(salesRec.lastQty, salesRec.thisQty, 1);
             const wLast = (salesRec.lastQty / maxVal) * 100;
             const wThis = (salesRec.thisQty / maxVal) * 100;
@@ -700,7 +576,7 @@ function renderCurrentTable() {
             html += `
             <tr id="row-${i.code}" onclick="toggleRegion(this)" class="${rowClass}" style="cursor:pointer;border-left:4px solid ${i.status==='缺貨'?'var(--danger)':'transparent'}">
                 <td style="text-align:center"><span class="material-icons-round expand-btn ${btnClass}">expand_more</span></td>
-                <td style="font-size:12px;color:#888">${i.code}</td>
+                <td style="font-size:14px;color:#888">${i.code}</td>
                 <td class="prod-name-cell">${i.name}</td>
                 <td>${i.monthAccum}</td>
                 <td>${diffHtml}</td>
@@ -729,10 +605,18 @@ function renderCurrentTable() {
     else if (CURRENT_TAB === 'sales') {
         list = DATA.sales.filter(s => (s.name && s.name.includes(q)) || (s.code && s.code.toString().toLowerCase().includes(q)));
         if(SORT.key) list.sort((a,b) => (a[SORT.key]>b[SORT.key]?1:-1)*(SORT.asc?1:-1));
-        html = `<thead><tr><th onclick="sortData('code')">物料</th><th onclick="sortData('name')">品名</th><th onclick="sortData('yoy')">YoY</th><th onclick="sortData('lastRev')">去年金額</th><th onclick="sortData('thisRev')">今年金額</th><th onclick="sortData('lastQty')">去年銷量</th><th onclick="sortData('thisQty')">今年銷量</th></tr></thead><tbody>`;
+        html = `<thead><tr>
+            ${genTh('code','物料')}
+            ${genTh('name','品名')}
+            ${genTh('yoy','YoY')}
+            ${genTh('lastRev','去年金額')}
+            ${genTh('thisRev','今年金額')}
+            ${genTh('lastQty','去年銷量')}
+            ${genTh('thisQty','今年銷量')}
+        </tr></thead><tbody>`;
         list.forEach(s => {
             const cls = s.yoy >= 0 ? 'val-up' : 'val-down';
-            html += `<tr><td style="font-size:12px;color:#888">${s.code}</td><td style="font-weight:700">${s.name}</td><td class="${cls}">${s.yoy}%</td><td>$${s.lastRev.toLocaleString()}</td><td>$${s.thisRev.toLocaleString()}</td><td>${s.lastQty}</td><td>${s.thisQty}</td></tr>`;
+            html += `<tr><td style="font-size:14px;color:#888">${s.code}</td><td style="font-weight:700">${s.name}</td><td class="${cls}">${s.yoy}%</td><td>$${s.lastRev.toLocaleString()}</td><td>$${s.thisRev.toLocaleString()}</td><td>${s.lastQty}</td><td>${s.thisQty}</td></tr>`;
         });
     }
     else if (CURRENT_TAB === 'orders') {
@@ -743,10 +627,10 @@ function renderCurrentTable() {
         if(SORT.key) list.sort((a,b) => (a[SORT.key]>b[SORT.key]?1:-1)*(SORT.asc?1:-1));
 
         html = `<thead><tr>
-            <th onclick="sortData('id')">單號</th>
-            <th onclick="sortData('time')">時間</th>
-            <th onclick="sortData('name')">姓名/部門</th>
-            <th onclick="sortData('total')">總金額</th>
+            ${genTh('id','單號')}
+            ${genTh('time','時間')}
+            ${genTh('name','姓名/部門')}
+            ${genTh('total','總金額')}
             <th>操作</th>
         </tr></thead><tbody>`;
         
@@ -754,7 +638,7 @@ function renderCurrentTable() {
             html += `<tr>
                 <td>${o.id}</td>
                 <td>${o.time.split(' ')[0]}</td>
-                <td><b>${o.name}</b> <span style="font-size:12px;color:#999">${o.dept}</span></td>
+                <td><b>${o.name}</b> <span style="font-size:14px;color:#999">${o.dept}</span></td>
                 <td style="font-weight:700">$${o.total.toLocaleString()}</td>
                 <td>
                     <span class="material-icons-round act-btn" onclick="openEditModal('${o.id}')">edit</span>
@@ -765,20 +649,14 @@ function renderCurrentTable() {
     }
     
     table.innerHTML = html;
-}
-
-function toggleRegion(row) {
+}function toggleRegion(row) {
     const next = row.nextElementSibling;
     if(next && next.classList.contains('region-row')) {
         next.classList.toggle('open');
         row.querySelector('.expand-btn').classList.toggle('open');
         row.classList.toggle('active-row');
     }
-}
-
-let currentEditOrder = null;
-
-function openEditModal(oid) {
+}let currentEditOrder = null;function openEditModal(oid) {
   const order = DATA.orders.find(o => o.id === oid);
   if(!order || !order.raw) { alert("此為舊版資料，無法編輯。"); return; }
   currentEditOrder = order;
@@ -793,11 +671,7 @@ function openEditModal(oid) {
   if(order.raw.gifts) order.raw.gifts.forEach(g => html += `<div class="m-item" style="color:var(--accent)"><span>🎁 ${g.product_name}</span><span>x${g.qty}</span></div>`);
   document.getElementById('e-items').innerHTML = html;
   document.getElementById('editModal').classList.add('open');
-}
-
-function closeModal() { document.getElementById('editModal').classList.remove('open'); currentEditOrder = null; }
-
-function saveOrderAction() {
+}function closeModal() { document.getElementById('editModal').classList.remove('open'); currentEditOrder = null; }function saveOrderAction() {
   if(!currentEditOrder) return;
   currentEditOrder.raw.employee_name = document.getElementById('e-name').value;
   currentEditOrder.raw.department = document.getElementById('e-dept').value;
@@ -805,19 +679,13 @@ function saveOrderAction() {
   currentEditOrder.raw.action = "update_order";
   currentEditOrder.raw.order_id = currentEditOrder.id;
   callGAS(currentEditOrder.raw, "修改成功", false);
-}
-
-function deleteOrderPrompt(oid) {
+}function deleteOrderPrompt(oid) {
     currentEditOrder = DATA.orders.find(o => o.id === oid);
     deleteOrderAction();
-}
-
-function deleteOrderAction() {
+}function deleteOrderAction() {
   if(!confirm("確定要刪除此訂單嗎？")) return;
   callGAS({ action: "delete_order", order_id: currentEditOrder.id }, "刪除成功", true);
-}
-
-function callGAS(payload, msg, isDelete) {
+}function callGAS(payload, msg, isDelete) {
   const btn = document.querySelector('.m-btn.save');
   const org = btn.innerText;
   
@@ -846,7 +714,4 @@ function callGAS(payload, msg, isDelete) {
   }).catch(e=>{ showLoading(false); alert("連線錯誤"); });
 }
 
-init();
-</script>
-</body>
-</html>
+init();</script></body></html>
