@@ -1,0 +1,1603 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"/>
+<title>TTL BIO-TECH 戰情中心 V96</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&family=Roboto:wght@500;700;900&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+
+<style>
+/* --- Theme Variables --- */
+:root {
+  --primary: #00897b; --accent: #ff6f00;
+  --bg-body: #f4f6f8; --text-main: #263238; --text-sub: #546e7a;
+  --danger: #d32f2f; --warning: #f57c00; --success: #388e3c;
+  --info: #0288d1; --stagnant: #7b1fa2;
+  --header-height: 55px; --sidebar-width: 230px;
+  --bottom-nav-height: 60px;
+}
+* { box-sizing: border-box; }
+body { font-family: 'Noto Sans TC', sans-serif; background: var(--bg-body); color: var(--text-main); margin: 0; padding: 0; display: flex; height: 100vh; overflow: hidden; font-size: 15px; }
+
+/* --- Desktop Layout --- */
+#sidebar { width: var(--sidebar-width); background: #263238; color: #fff; flex-shrink: 0; display: flex; flex-direction: column; padding: 15px 0; transition: transform 0.3s; }
+.brand { font-size: 20px; font-weight: 900; padding: 0 20px 20px; display: flex; align-items: center; gap: 10px; color: var(--primary); }
+.nav-item { padding: 12px 20px; cursor: pointer; display: flex; align-items: center; gap: 10px; color: #b0bec5; font-weight: 500; transition: 0.2s; border-left: 4px solid transparent; font-size: 15px; }
+.nav-item:hover { background: #37474f; color: #fff; }
+.nav-item.active { background: #37474f; color: #fff; border-left-color: var(--accent); }
+
+#main { flex: 1; display: flex; flex-direction: column; overflow: hidden; position: relative; }
+header { height: var(--header-height); background: #fff; border-bottom: 1px solid #ddd; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; flex-shrink: 0; z-index: 10; transition: margin-top 0.3s; }
+.page-title { font-size: 18px; font-weight: 700; display:flex; align-items:center; gap:10px;}
+.update-time { font-size: 12px; color: #999; }
+
+#backBtn { display: none; cursor: pointer; font-size: 14px; color: #fff; background: var(--text-sub); padding: 5px 14px; border-radius: 20px; align-items: center; gap: 4px; transition: 0.2s; }
+#backBtn:hover { background: var(--primary); }
+
+.content-box { flex: 1; display: flex; flex-direction: column; padding: 15px; overflow: hidden; gap: 15px; position: relative; }
+
+/* KPI Cards */
+.kpi-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; flex-shrink: 0; }
+.kpi-card { background: #fff; padding: 14px 18px; border-radius: 8px; border: 1px solid #e0e0e0; display: flex; align-items: center; justify-content: space-between; cursor: pointer; transition: 0.2s; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+.kpi-card:hover { transform: translateY(-2px); border-color: var(--primary); }
+.kpi-info { display: flex; flex-direction: column; }
+.kpi-label { font-size: 12px; color: var(--text-sub); font-weight: 700; text-transform: uppercase; }
+.kpi-val { font-size: 24px; font-weight: 900; margin-top: 4px; }
+.kpi-icon { font-size: 32px; opacity: 0.15; color: var(--text-main); }
+.kpi-dual { display: flex; gap: 10px; align-items: baseline; margin-top: 4px; }
+.kpi-dual span { font-weight: 900; font-size: 20px; }
+
+/* Charts */
+.chart-section { flex: 1; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; min-height: 0; }
+.chart-card { background: #fff; border-radius: 8px; border: 1px solid #e0e0e0; display: flex; flex-direction: column; overflow: hidden; }
+.c-head { padding: 10px 15px; font-size: 14px; font-weight: 700; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; background: #fafafa; flex-shrink: 0; align-items: center; flex-wrap: wrap; gap: 8px; }
+.c-body { flex: 1; padding: 10px; position: relative; min-height: 0; }
+
+.chart-toggles { display: flex; gap: 5px; background: #eceff1; padding: 2px; border-radius: 6px; }
+.c-toggle-btn { padding: 4px 8px; font-size: 11px; cursor: pointer; border-radius: 4px; color: #546e7a; font-weight: 700; }
+.c-toggle-btn.active { background: #fff; color: var(--primary); box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
+
+.legend-box { display:flex; gap:8px; flex-wrap:wrap; font-size:11px; color:#546e7a; justify-content:flex-end; font-weight: 500; }
+.l-item { display:flex; align-items:center; gap:3px; white-space: nowrap; }
+.l-dot { width:8px; height:8px; border-radius:2px; }
+
+.overstock-layout { display: flex; height: 100%; width: 100%; }
+.os-chart-area { flex: 1.5; padding-right: 10px; border-right: 1px dashed #eee; position: relative; min-width: 0; }
+.os-list-area { flex: 1; padding-left: 10px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; }
+.os-item { display: flex; justify-content: space-between; align-items: center; padding: 8px 10px; background: #fff; border: 1px solid #eee; border-radius: 4px; font-size: 12px; }
+.os-item:hover { background: #f5f5f5; }
+.os-btn { cursor: pointer; color: #90a4ae; font-size: 18px; padding: 0 4px; }
+.see-more-btn { font-size: 12px; color: var(--primary); cursor: pointer; display: flex; align-items: center; gap: 2px; margin-left: auto; }
+.see-more-btn:hover { text-decoration: underline; }
+
+/* Full Chart View */
+#view-full-chart { background: #fff; position: absolute; inset: 0; z-index: 50; display: none; flex-direction: column; overflow: hidden; }
+.full-chart-header { padding: 10px 15px; border-bottom: 1px solid #ddd; display: flex; justify-content: space-between; align-items: center; background: #fff; flex-shrink: 0; }
+.fc-controls { display: flex; gap: 10px; }
+.fc-toggle-btn { padding: 6px 12px; border: 1px solid var(--primary); color: var(--primary); border-radius: 20px; font-size: 13px; font-weight: 700; cursor: pointer; }
+.fc-toggle-btn.active { background: var(--primary); color: #fff; }
+.full-chart-legend { padding: 8px 15px; background: #fafafa; border-bottom: 1px solid #eee; display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; font-size: 12px; font-weight: 700; color: #546e7a; flex-shrink: 0; }
+.full-chart-body { flex: 1; overflow-y: auto; padding: 20px; }
+.full-chart-container { position: relative; width: 100%; }
+
+/* Restore Widget - Fixed to Left */
+#restoreWidget {
+    position: fixed; bottom: 80px; left: 20px; 
+    background: #263238; color: #fff; border-radius: 25px; 
+    padding: 10px 20px; box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+    z-index: 2000; cursor: pointer; display: none; align-items: center; gap: 8px; font-size: 13px; font-weight: 700;
+}
+#restoreList {
+    position: absolute; bottom: 50px; left: 0; 
+    width: 250px; background: #fff; color: #333;
+    border-radius: 8px; box-shadow: 0 5px 20px rgba(0,0,0,0.2); display: none; flex-direction: column;
+    max-height: 300px; overflow-y: auto; border: 1px solid #eee;
+}
+#restoreList.open { display: flex; }
+.restore-item { padding: 10px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; font-size: 12px; }
+.restore-item:hover { background: #f5f5f5; }
+.restore-btn { color: var(--primary); cursor: pointer; font-weight: 700; }
+
+/* Table View */
+.data-panel { background: #fff; border-radius: 8px; border: 1px solid #e0e0e0; display: flex; flex-direction: column; flex: 1; overflow: hidden; }
+.panel-head { padding: 12px 15px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; background: #fafafa; }
+.search-wrap { position: relative; width: 280px; }
+.search-wrap input { width: 100%; padding: 8px 34px 8px 34px; border: 1px solid #ccc; border-radius: 20px; font-size: 14px; outline: none; }
+.search-wrap .icon { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); font-size: 18px; color: #999; }
+.search-clear { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); font-size: 16px; color: #999; cursor: pointer; display: none; }
+
+.table-container { flex: 1; overflow: auto; position: relative; }
+table { width: 100%; border-collapse: collapse; font-size: 15px; }
+th { position: sticky; top: 0; background: #f5f5f5; z-index: 5; text-align: left; padding: 12px; font-weight: 700; color: var(--text-sub); border-bottom: 2px solid #ddd; white-space: nowrap; cursor: pointer; transition: background 0.2s; user-select: none; }
+th:hover { background: #e0e0e0; }
+td { padding: 12px; border-bottom: 1px solid #eee; vertical-align: middle; }
+tr:hover { background: #f9f9f9; }
+.sort-icon { font-size: 18px; vertical-align: middle; margin-left: 4px; color: var(--primary); }
+
+.filter-btn { display: flex; align-items: center; justify-content: center; width: 36px; height: 36px; background: #e0f2f1; border-radius: 50%; color: var(--primary); cursor: pointer; transition:0.2s; margin-left:8px; border:1px solid rgba(0,0,0,0.05); }
+.filter-btn:hover { background: var(--primary); color:#fff; }
+.filter-btn.active { background: var(--primary); color: #fff; box-shadow: 0 2px 5px rgba(0,137,123,0.4); }
+
+/* Compact Desktop Expanded Rows */
+.region-row { background: #fcfcfc; display: none; }
+.region-row.open { display: table-row; }
+.expand-container { padding: 15px 20px; display: grid; grid-template-columns: 350px 350px 1fr; gap: 15px; align-items: start; }
+.detail-card { 
+    background: #fff; padding: 10px 15px; 
+    border-radius: 6px; border: 1px solid #e0e0e0; height: 100%; display: flex; flex-direction: column; 
+    gap: 4px; 
+}
+.card-title { 
+    font-weight: 700; margin-bottom: 6px; color: #546e7a; font-size: 13px; 
+    border-bottom: 2px solid #eee; padding-bottom: 6px; 
+}
+.info-line { 
+    display: flex; justify-content: space-between; border-bottom: 1px dashed #f0f0f0; 
+    padding: 5px 0; font-size: 13px; 
+}
+.region-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); gap: 6px; align-content: start; }
+.r-box { 
+    padding: 6px 4px; border-radius: 4px; border: 1px solid rgba(0,0,0,0.05); 
+    display: flex; flex-direction: column; align-items: center; text-align: center;
+    color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,0.1); white-space: normal;
+}
+.r-name { 
+    font-weight: 700; font-size: 11px; margin-bottom: 2px; line-height: 1.2; 
+    height: 28px; display: flex; align-items: center; justify-content: center;
+    overflow: hidden;
+}
+.r-qty { font-weight: 900; font-size: 15px; }
+
+.comp-container { margin-top: 8px; padding-top: 8px; border-top:1px solid #eee; }
+.comp-row { display: flex; align-items: center; margin-bottom: 6px; font-size: 12px; }
+.comp-label { width: 35px; color: #999; font-weight: 700; }
+.comp-track { flex: 1; height: 8px; background: #eee; border-radius: 4px; margin: 0 10px; overflow: hidden; }
+.comp-bar { height: 100%; border-radius: 4px; transition: width 0.6s ease; }
+.comp-val { width: 45px; text-align: right; font-weight: 700; }
+
+.st-badge { padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: 700; display: inline-block; min-width: 55px; text-align: center; }
+.st-ok { background: #e8f5e9; color: #2e7d32; }
+.st-warn { background: #fff3e0; color: #ef6c00; }
+.st-err { background: #ffebee; color: #c62828; }
+.st-high { background: #e1f5fe; color: #0277bd; }
+.st-dead { background: #f3e5f5; color: #7b1fa2; }
+.val-up { color: #d32f2f; font-weight: 700; }
+.val-down { color: #388e3c; font-weight: 700; }
+.prod-name-cell { font-size: 16px; font-weight: 700; color: #263238; transition: 0.2s; } 
+tr.active-row .prod-name-cell { color: #1b5e20; font-size: 17px; font-weight: 900; } 
+
+/* Scroll to Top Button - Optimized Circular */
+#scrollTopBtn {
+    position: fixed; bottom: 80px; right: 20px; 
+    width: 45px; height: 45px; background: var(--primary); color: #fff;
+    border-radius: 50%; box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+    display: none; align-items: center; justify-content: center;
+    cursor: pointer; z-index: 2000; transition: transform 0.2s;
+    -webkit-tap-highlight-color: transparent; /* Remove square tap highlight */
+    outline: none;
+}
+#scrollTopBtn:active { transform: scale(0.9); }
+
+/* UI Elements */
+#loading-mask { position: fixed; inset: 0; background: rgba(255,255,255,0.9); z-index: 3000; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 10px; }
+.spinner { width: 40px; height: 40px; border: 4px solid #e0f2f1; border-top-color: var(--primary); border-radius: 50%; animation: spin 0.8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.modal { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 2500; display: none; align-items: center; justify-content: center; backdrop-filter: blur(2px); }
+.modal.open { display: flex; }
+.m-card { background: #fff; width: 500px; max-width: 90%; border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); display: flex; flex-direction: column; max-height: 90vh; }
+.m-head { padding: 15px 25px; background: var(--primary); color: #fff; font-weight: 700; display: flex; justify-content: space-between; align-items: center; font-size: 16px; }
+.m-body { padding: 25px; overflow-y: auto; }
+.m-foot { padding: 15px 25px; border-top: 1px solid #eee; display: flex; justify-content: flex-end; gap: 10px; background: #fafafa; }
+.m-btn { padding: 10px 20px; border-radius: 4px; border: none; font-weight: 700; cursor: pointer; font-size: 14px; }
+.m-btn.save { background: var(--primary); color: #fff; }
+.m-btn.warn { background: #ffebee; color: #c62828; }
+.m-btn.normal { background: #e0e0e0; color: #333; }
+.m-form-row { margin-bottom: 15px; }
+.m-label { font-size: 13px; color: #666; margin-bottom: 5px; display: block; font-weight: 700; }
+.m-input { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 15px; }
+.m-input:disabled { background: #f5f5f5; cursor: not-allowed; color: #555; }
+
+/* Sort & Filter Sheets */
+#sortSheet, #filterSheet { position: fixed; bottom: 0; left: 0; right: 0; background: #fff; border-top-left-radius: 16px; border-top-right-radius: 16px; box-shadow: 0 -2px 10px rgba(0,0,0,0.1); z-index: 2600; padding: 20px; transform: translateY(100%); transition: transform 0.3s; display: none; max-height:80vh; overflow-y:auto; }
+#sortSheet.open, #filterSheet.open { transform: translateY(0); display: block; }
+.sort-opt { padding: 12px; border-bottom: 1px solid #eee; font-size: 15px; font-weight: 700; color: #546e7a; cursor: pointer; display: flex; justify-content: space-between; }
+.sort-opt.selected { color: var(--primary); background: #e0f2f1; border-radius: 8px; border-bottom: none; }
+
+.filter-row { display: flex; align-items: center; padding: 12px 0; border-bottom: 1px solid #f5f5f5; cursor: pointer; }
+.filter-chk { width: 20px; height: 20px; margin-right: 12px; accent-color: var(--primary); transform: scale(1.2); }
+.filter-label { font-size: 15px; font-weight: 700; color: #37474f; flex: 1; }
+
+#infoModal .m-card { background: #fff; }
+.info-section-title { font-size: 15px; font-weight: 900; color: #263238; border-left: 4px solid var(--primary); padding-left: 10px; margin-bottom: 15px; }
+
+/* Region Grid Styles */
+.region-grid-mobile { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; } 
+.region-box-mobile { padding: 6px 8px; border-radius: 4px; display: flex; flex-direction: column; align-items: center; text-align: center; border: 1px solid rgba(0,0,0,0.05); }
+.region-name-m { font-weight: 700; font-size: 12px; margin-bottom: 2px; opacity: 0.95; }
+.region-qty-m { font-weight: 900; font-size: 15px; }
+
+/* --- Mobile / Adaptive Styles --- */
+#bottom-nav { display: none; }
+.mobile-card-container { display: flex; flex-direction: column; gap: 8px; padding-bottom: 80px; }
+#mobile-sort-btn { display: none; }
+
+.m-compact-card { background: #fff; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); padding: 10px 12px; position: relative; border: 1px solid #f0f0f0; overflow: hidden; transition: all 0.2s; scroll-margin-top: 70px; }
+.m-compact-card.highlight-flash { animation: flashYellow 1.5s; border: 2px solid var(--accent); }
+@keyframes flashYellow { 0% { background: #fffde7; } 100% { background: #fff; } }
+.m-compact-card:active { transform: scale(0.99); background: #fafafa; }
+.m-status-strip { position: absolute; left: 0; top: 0; bottom: 0; width: 4px; }
+
+.stock-ticker-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 4px; }
+.ticker-name { font-size: 15px; font-weight: 900; color: #263238; width: 65%; line-height: 1.2; word-break: break-all; }
+.ticker-val-box { text-align: right; }
+.ticker-stock { font-size: 18px; font-weight: 900; color: var(--primary); }
+.ticker-sub { display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: #78909c; margin-top: 4px; border-top: 1px solid #f5f5f5; padding-top: 6px; }
+.ticker-code { background: #eceff1; padding: 1px 5px; border-radius: 3px; font-size: 11px; font-weight: 700; color: #546e7a; }
+
+.mc-expand-content { margin-top: 12px; padding-top: 10px; border-top: 1px dashed #e0e0e0; display: none; font-size: 13px; }
+.mc-expand-content.open { display: block; animation: fadeIn 0.3s; }
+
+.mc-actions-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px; padding-top: 10px; border-top: 1px solid #f0f0f0; }
+.mc-action-btn { padding: 10px; text-align: center; background: #f5f5f5; border-radius: 6px; color: var(--text-sub); font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 13px; }
+.mc-action-btn:hover { background: #e0f2f1; color: var(--primary); }
+
+.mc-sales-mini { display: flex; justify-content: space-between; align-items: center; }
+.mc-sales-detail { display: none; margin-top: 10px; padding-top: 10px; border-top: 1px dashed #eee; animation: fadeIn 0.2s; }
+.mc-sales-detail.open { display: block; }
+.mc-row { display: flex; justify-content: space-between; padding: 4px 0; font-size: 13px; color: #546e7a; }
+.mc-row-val { font-weight: 700; color: #263238; }
+
+.mc-order-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; border-top: 1px dashed #eee; padding-top: 8px; }
+.mc-order-total { font-size: 17px; font-weight: 900; color: var(--text-main); }
+/* Improved Circular Icon Buttons */
+.mc-icon-btn { 
+    padding: 6px; color: #b0bec5; font-size: 20px; 
+    border-radius: 50%; 
+    -webkit-tap-highlight-color: transparent; 
+    outline: none;
+    transition: background 0.2s;
+}
+.mc-icon-btn:active { background: #eceff1; }
+.mc-icon-btn.edit:hover { color: var(--primary); }
+.mc-icon-btn.del:hover { color: var(--danger); }
+.mc-icon-btn.hide { color: #bdbdbd; }
+.mc-icon-btn.hide.active { color: var(--danger) !important; opacity: 1; }
+
+@keyframes fadeIn { from { opacity:0; transform: translateY(-5px); } to { opacity:1; transform: translateY(0); } }
+
+@media (max-width: 768px) {
+    #sidebar { display: none; }
+    #bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; height: var(--bottom-nav-height); background: #fff; border-top: 1px solid #ddd; display: flex; justify-content: space-around; align-items: center; z-index: 1000; padding-bottom: env(safe-area-inset-bottom); }
+    .b-nav-item { display: flex; flex-direction: column; align-items: center; gap: 2px; color: #90a4ae; font-size: 11px; font-weight: 500; cursor: pointer; flex: 1; height: 100%; justify-content: center; }
+    .b-nav-item.active { color: var(--primary); }
+    .b-nav-item span { font-size: 24px; }
+
+    #main { margin-bottom: var(--bottom-nav-height); }
+    body.mobile-list-view header { display: none; }
+    header { padding: 0 10px; position: sticky; top: 0; height: 45px; } 
+    .page-title { font-size: 15px; }
+    
+    #view-dashboard { overflow-y: auto !important; -webkit-overflow-scrolling: touch; padding-bottom: 20px; }
+    .kpi-row { grid-template-columns: 1fr 1fr; gap: 8px; }
+    .kpi-card { padding: 10px; flex-direction: column; align-items: flex-start; gap: 6px; }
+    .kpi-icon { align-self: flex-end; position: absolute; bottom: 8px; right: 8px; font-size: 24px; }
+    .kpi-val { font-size: 18px; }
+    
+    .chart-section { grid-template-columns: 1fr; gap: 15px; display: block; } 
+    .chart-card { min-height: auto; margin-bottom: 15px; } 
+    .overstock-layout { flex-direction: column; }
+    .os-chart-area { border-right: none; border-bottom: 1px dashed #eee; padding-right: 0; padding-bottom: 10px; flex: 1; min-height: 250px; }
+    .os-list-area { padding-left: 0; padding-top: 10px; max-height: 200px; }
+
+    .data-panel { border: none; background: transparent; display: flex; flex-direction: column; }
+    
+    .panel-head { position: fixed; top: 0; left: 0; right: 0; height: 50px; z-index: 100; padding: 8px 10px; border-bottom: 1px solid #ddd; background: #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.05); display: flex; gap: 8px; align-items: center; }
+    .search-wrap { flex: 1; width: auto; }
+    .search-wrap input { padding: 8px 30px 8px 34px; font-size: 14px; height: 34px; }
+    .search-wrap .icon { font-size: 18px; left: 8px; }
+    
+    #mobile-sort-btn { display: flex; align-items: center; justify-content: center; width: 34px; height: 34px; background: #f5f5f5; border-radius: 50%; color: #546e7a; cursor: pointer; flex-shrink: 0; }
+    
+    .table-container { background: transparent; padding-top: 10px; margin-top: 55px; } 
+    table { display: none; }
+    .m-card { width: 100%; height: 100%; max-height: 100%; border-radius: 0; }
+    .m-body { padding: 15px; }
+    
+    #view-full-chart { padding-bottom: 80px; } 
+}
+</style>
+</head>
+<body>
+
+<div id="loading-mask">
+  <div class="spinner"></div>
+  <div id="loading-text" style="font-weight:700;color:#546e7a;font-size:15px">系統初始化 (V96)...</div>
+</div>
+
+<div id="restoreWidget" onclick="toggleRestoreList(event)">
+    <span class="material-icons-round">visibility_off</span>
+    <span id="hiddenCount">0</span>
+    <div id="restoreList" onclick="event.stopPropagation()"></div>
+</div>
+
+<div id="scrollTopBtn" onclick="scrollToTop()">
+    <span class="material-icons-round">arrow_upward</span>
+</div>
+
+<nav id="sidebar">
+  <div class="brand">
+    <span class="material-icons-round" style="color:var(--primary);background:#fff;border-radius:50%;padding:4px;">spa</span>
+    <span>TTL Bio-Tech</span>
+  </div>
+  <div class="nav-item active" onclick="switchTab('dashboard')">
+    <span class="material-icons-round">dashboard</span> 總覽儀表板
+  </div>
+  <div class="nav-item" onclick="switchTab('inventory')">
+    <span class="material-icons-round">inventory_2</span> 庫存總表
+  </div>
+  <div class="nav-item" onclick="switchTab('sales')">
+    <span class="material-icons-round">trending_up</span> 銷售總表
+  </div>
+  <div class="nav-item" onclick="switchTab('orders')">
+    <span class="material-icons-round">edit_note</span> 訂單管理
+  </div>
+</nav>
+
+<nav id="bottom-nav">
+  <div class="b-nav-item active" onclick="switchTab('dashboard')">
+    <span class="material-icons-round">dashboard</span> 總覽
+  </div>
+  <div class="b-nav-item" onclick="switchTab('inventory')">
+    <span class="material-icons-round">inventory_2</span> 庫存
+  </div>
+  <div class="b-nav-item" onclick="switchTab('sales')">
+    <span class="material-icons-round">trending_up</span> 銷售
+  </div>
+  <div class="b-nav-item" onclick="switchTab('orders')">
+    <span class="material-icons-round">edit_note</span> 訂單
+  </div>
+</nav>
+
+<div id="main">
+  <header>
+    <div class="page-title">
+        <div id="backBtn" onclick="goBack()"><span class="material-icons-round" style="font-size:16px">arrow_back</span> 返回</div>
+        <span id="pageTitle" style="margin-left:8px">TTL Bio-Tech</span>
+    </div>
+    <div class="update-time" id="lastUpdate">--</div>
+  </header>
+
+  <div class="content-box">
+    
+    <div id="view-dashboard" class="view-section active" style="flex:1; display:flex; flex-direction:column; gap:15px; min-height:0;">
+      <div class="kpi-row">
+        <div class="kpi-card" onclick="navigateTo('orders', 'today')">
+          <div class="kpi-info"><span class="kpi-label">今日營收</span><div class="kpi-val" id="kpi-revenue">$0</div></div>
+          <span class="material-icons-round kpi-icon">payments</span>
+        </div>
+        <div class="kpi-card" onclick="navigateTo('sales', '')">
+          <div class="kpi-info"><span class="kpi-label">今年銷量</span><div class="kpi-val" id="kpi-year-sales">0</div></div>
+          <span class="material-icons-round kpi-icon">leaderboard</span>
+        </div>
+        <div class="kpi-card alert" onclick="navigateTo('inventory', 'alert')">
+          <div class="kpi-info">
+            <span class="kpi-label">庫存警示 (缺/低)</span>
+            <div class="kpi-dual">
+                <span style="color:var(--danger)">🔴 <span id="kpi-danger">0</span></span>
+                <span style="color:var(--warning);margin-left:8px">🟠 <span id="kpi-warn">0</span></span>
+            </div>
+          </div>
+          <span class="material-icons-round kpi-icon" style="color:var(--danger)">warning</span>
+        </div>
+        <div class="kpi-card" onclick="navigateTo('orders', 'all')">
+          <div class="kpi-info"><span class="kpi-label">待處理訂單</span><div class="kpi-val" id="kpi-orders">0</div></div>
+          <span class="material-icons-round kpi-icon">shopping_cart</span>
+        </div>
+      </div>
+
+      <div class="chart-section">
+        <div class="chart-card">
+          <div class="c-head">
+            <span>🔥 安全水位：月均銷量TOP15</span>
+            <div class="chart-toggles">
+                <div id="ss-sort-qty" class="c-toggle-btn active" onclick="updateStockChartSort('qty')">依銷量</div>
+                <div id="ss-sort-rev" class="c-toggle-btn" onclick="updateStockChartSort('rev')">依銷額</div>
+            </div>
+            <div class="legend-box" style="width:100%;margin-top:6px;justify-content:center">
+                <span class="l-item"><div class="l-dot" style="background:#7b1fa2"></div>滯銷(≥13)</span>
+                <span class="l-item"><div class="l-dot" style="background:#4527a0"></div>積壓(11-13)</span>
+                <span class="l-item"><div class="l-dot" style="background:#388e3c"></div>充足(4-11)</span>
+                <span class="l-item"><div class="l-dot" style="background:#0288d1"></div>留意(3-4)</span>
+                <span class="l-item"><div class="l-dot" style="background:#f57c00"></div>低位(2-3)</span>
+                <span class="l-item"><div class="l-dot" style="background:#d32f2f"></div>缺貨(<2)</span>
+            </div>
+            <div class="see-more-btn" onclick="openFullChart('stock')">看更多 <span class="material-icons-round" style="font-size:14px">arrow_forward</span></div>
+          </div>
+          <div class="c-body" style="overflow-x:hidden;overflow-y:auto">
+            <div id="stockChartContainer" style="position:relative;height:100%;width:100%">
+                <canvas id="stockChart"></canvas>
+            </div>
+          </div>
+        </div>
+        <div class="chart-card">
+          <div class="c-head">
+             <span>⚠️ 滯銷/積壓品項 (Top 15)</span>
+             <div class="chart-toggles">
+                <div id="os-sort-m" class="c-toggle-btn active" onclick="updateOverstockChartSort('months')">依月數</div>
+                <div id="os-sort-rev" class="c-toggle-btn" onclick="updateOverstockChartSort('rev')">依銷額</div>
+            </div>
+             <div class="see-more-btn" onclick="openFullChart('overstock')">看更多 <span class="material-icons-round" style="font-size:14px">arrow_forward</span></div>
+          </div>
+          <div class="c-body overstock-layout">
+             <div class="os-chart-area">
+                <div id="overstockChartContainer" style="position:relative;height:100%;width:100%">
+                    <canvas id="overstockChart"></canvas>
+                </div>
+             </div>
+             <div class="os-list-area" id="osListControl"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="view-full-chart" class="view-section">
+        <div class="full-chart-header">
+            <div style="display:flex;align-items:center;gap:10px">
+                <span class="material-icons-round" style="cursor:pointer;color:#546e7a" onclick="closeFullChart()">arrow_back</span>
+                <span style="font-weight:900;font-size:16px;color:#263238">完整庫存分析</span>
+            </div>
+            <div class="fc-controls">
+                <div id="fc-btn-stock" class="fc-toggle-btn active" onclick="switchFullChartMode('stock')">依庫存月數</div>
+                <div id="fc-btn-rev" class="fc-toggle-btn" onclick="switchFullChartMode('revenue')">依銷售貢獻</div>
+            </div>
+        </div>
+        <div class="full-chart-legend">
+            <span class="l-item"><div class="l-dot" style="background:#7b1fa2"></div>滯銷(≥13)</span>
+            <span class="l-item"><div class="l-dot" style="background:#4527a0"></div>積壓(11-13)</span>
+            <span class="l-item"><div class="l-dot" style="background:#388e3c"></div>充足(4-11)</span>
+            <span class="l-item"><div class="l-dot" style="background:#0288d1"></div>留意(3-4)</span>
+            <span class="l-item"><div class="l-dot" style="background:#f57c00"></div>低位(2-3)</span>
+            <span class="l-item"><div class="l-dot" style="background:#d32f2f"></div>缺貨(<2)</span>
+        </div>
+        <div class="full-chart-body">
+            <div class="full-chart-container" id="fcContainer">
+                <canvas id="fullChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <div id="view-table-container" class="view-section" style="display:none; flex:1; flex-direction:column; min-height:0;">
+      <div class="data-panel">
+        <div class="panel-head">
+          <div style="font-weight:700;color:var(--text-sub);display:none;" id="table-subtitle">列表</div>
+          <div class="search-wrap">
+            <span class="material-icons-round icon">search</span>
+            <input id="tableSearch" type="text" placeholder="搜尋..." oninput="handleSearchInput()">
+            <span id="searchClear" class="material-icons-round search-clear" onclick="clearSearch()">close</span>
+          </div>
+          <div id="filter-btn" class="filter-btn" onclick="openFilterSheet()"><span class="material-icons-round" style="font-size:20px">filter_alt</span></div>
+          <div id="mobile-sort-btn" onclick="openSortSheet()"><span class="material-icons-round" style="font-size:20px">sort</span></div>
+          <span id="mobile-del-all" class="material-icons-round" style="display:none; color:#d32f2f; margin-left:10px; cursor:pointer;" onclick="deleteAllOrders()">delete_sweep</span>
+        </div>
+        <div class="table-container" id="tableContainer">
+          <table id="mainTable"></table>
+          <div id="mobileCardContainer" class="mobile-card-container"></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div id="sortSheet">
+    <div style="font-weight:900;margin-bottom:15px;color:#263238;font-size:16px">排序方式</div>
+    <div id="sortOptions"></div>
+    <div style="margin-top:20px;text-align:center;padding:12px;background:#f5f5f5;border-radius:8px;color:#546e7a;font-weight:700" onclick="closeSortSheet()">取消</div>
+</div>
+
+<div id="filterSheet">
+    <div style="font-weight:900;margin-bottom:15px;color:#263238;font-size:16px;display:flex;justify-content:space-between">
+        <span>狀態篩選 (可複選)</span>
+        <span style="color:var(--primary);font-size:14px;cursor:pointer" onclick="toggleAllFilters(true)">全選</span>
+    </div>
+    <div id="filterOptions"></div>
+    <div style="display:flex;gap:10px;margin-top:20px;">
+        <div style="flex:1;text-align:center;padding:12px;background:#f5f5f5;border-radius:8px;color:#546e7a;font-weight:700" onclick="closeFilterSheet()">取消</div>
+        <div style="flex:1;text-align:center;padding:12px;background:var(--primary);border-radius:8px;color:#fff;font-weight:700" onclick="applyFilter()">確定</div>
+    </div>
+</div>
+
+<div id="sortOverlay" style="position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:2500;display:none" onclick="closeAllSheets()"></div>
+
+<div id="editModal" class="modal">
+  <div class="m-card">
+    <div class="m-head"><span id="m-title">訂單詳情</span><span class="material-icons-round" style="cursor:pointer" onclick="history.back()">close</span></div>
+    <div class="m-body">
+      <input type="hidden" id="e-oid">
+      <div class="m-form-row"><label class="m-label">姓名</label><input class="m-input" id="e-name" disabled></div>
+      <div class="m-form-row"><label class="m-label">部門</label><input class="m-input" id="e-dept" disabled></div>
+      <div class="m-form-row"><label class="m-label">備註</label><input class="m-input" id="e-note" disabled></div>
+      <div class="m-form-row"><label class="m-label">內容</label><div class="m-list" id="e-items"></div></div>
+      <div style="text-align:right;color:var(--danger);font-weight:900;font-size:16px;">Total: $<span id="e-total">0</span></div>
+    </div>
+    <div class="m-foot" id="m-foot-view">
+      <button class="m-btn normal" onclick="switchEditMode(true)">切換編輯</button>
+    </div>
+    <div class="m-foot" id="m-foot-edit" style="display:none">
+      <button class="m-btn warn" style="margin-right:auto" onclick="deleteOrderAction()">刪除</button>
+      <button class="m-btn save" onclick="saveOrderAction()">儲存變更</button>
+    </div>
+  </div>
+</div>
+
+<div id="infoModal" class="modal">
+  <div class="m-card">
+    <div class="m-head"><span id="info-title">詳細資訊</span><span class="material-icons-round" style="cursor:pointer" onclick="history.back()">close</span></div>
+    <div class="m-body" id="info-body"></div>
+  </div>
+</div>
+
+<script>
+const ADMIN_TOKEN = prompt("請輸入後台管理密碼：");
+if (!ADMIN_TOKEN) {
+    document.body.innerHTML = "<div style='display:flex;height:100vh;align-items:center;justify-content:center;color:red;font-weight:900;font-size:20px'>Access Denied</div>";
+    throw new Error("Stop");
+}
+
+const GAS_URL = "https://script.google.com/macros/s/AKfycbxQ9Etloak3ZNv6yfyMCK9KbjoLyDqjRQHHVlASY5iMwwy_c4NCPxWpMK1YkzSXstHN/exec";
+const ORDERS_CSV = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRIGbs4rMOfytnlajoBKcTZ5a0HhozeDAb2HMmsHsfUzfzrE0_O_y0QhhXD_SQjiwjoDKV_BJWoJwyp/pub?output=csv";
+const INVENTORY_CSV = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ7k1DqiuXajsGDzeprSAwhj5NEW5DdZLXV3eSRYvAFUmpC16tygyD5bjwEtndESJFzjQ0NrTzxTZ2P/pub?gid=1142644042&single=true&output=csv";
+const SALES_CSV = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQj5QLrtaWikGcLNwMawbjiN8ZQDgFzW1RV7UECFgLzECWj16I2ugE_B6tzzLICCynsk1L6lAuJfccS/pub?gid=93142219&single=true&output=csv";
+
+let DATA = { orders: [], inventory: [], sales: [], soldMap: {} };
+let CURRENT_TAB = 'dashboard'; 
+let ACTIVE_FILTER = ''; 
+let AUTO_EXPAND_CODE = null; 
+let SORT = { key: null, asc: true };
+let HIDDEN_STOCK = new Set(JSON.parse(localStorage.getItem('admin_hidden_stock') || '[]'));
+let CHARTS = {};
+let PENDING_SEARCH = null; 
+
+let SS_SORT_MODE = 'qty';
+let OS_SORT_MODE = 'months';
+
+const ALL_STATUSES = ['缺貨', '低位', '留意', '充足', '積壓', '滯銷'];
+let SELECTED_STATUSES = new Set(ALL_STATUSES);
+let FULL_CHART_MODE = 'stock';
+let FULL_CHART_SOURCE = 'stock'; 
+
+function normalizeStr(s) { return String(s || "").replace(/\s+/g, '').toLowerCase(); }
+function getTodayDigits() {
+    const d = new Date();
+    return `${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}`;
+}
+
+async function init() {
+  try {
+    const [ord, inv, sales] = await Promise.all([
+      fetchCSV(ORDERS_CSV), fetchCSV(INVENTORY_CSV), fetchCSV(SALES_CSV)
+    ]);
+    processOrders(ord);
+    processInventory(inv);
+    processSales(sales);
+    updateDashboard();
+    
+    // V69: Force Title Update
+    switchTab('dashboard', false); 
+    
+    // V80: Force Filter Init to prevent empty table
+    SELECTED_STATUSES = new Set(ALL_STATUSES);
+    
+    document.getElementById('lastUpdate').innerText = "更新: " + new Date().toLocaleTimeString();
+    showLoading(false);
+    updateRestoreWidget();
+    
+    const viewDash = document.getElementById('view-dashboard');
+    const onScroll = (e) => {
+        const top = e.target.scrollTop || window.scrollY;
+        document.getElementById('scrollTopBtn').style.display = top > 300 ? 'flex' : 'none';
+    };
+    window.addEventListener('scroll', onScroll); 
+    viewDash.addEventListener('scroll', onScroll); 
+    
+    // V86: Add scroll listener to table container
+    const tableContainer = document.querySelector('.table-container');
+    if(tableContainer) {
+        tableContainer.addEventListener('scroll', onScroll);
+    }
+
+    window.addEventListener('popstate', (e) => {
+        const state = e.state || {};
+        if(document.getElementById('infoModal').classList.contains('open') && !state.modal) { closeInfoModal(false); return; }
+        if (document.getElementById('editModal').classList.contains('open') && !state.modal) { closeModal(false); return; }
+        if(document.getElementById('view-full-chart').style.display === 'flex' && !state.fullchart) { closeFullChart(false); return; }
+
+        const expandedCard = document.querySelector('.mc-expand-content.open');
+        if (expandedCard) {
+            const expandedId = expandedCard.id.replace('mc-ex-', '');
+            if (!state.expand || state.expand !== expandedId) {
+                expandedCard.classList.remove('open');
+                const card = document.getElementById('card-' + expandedId);
+                if(card) card.classList.remove('highlight-flash');
+            }
+        }
+        
+        if (state.expand) {
+            const targetDetail = document.getElementById('mc-ex-' + state.expand);
+            if (targetDetail && !targetDetail.classList.contains('open')) {
+                targetDetail.classList.add('open');
+                const card = document.getElementById('card-' + state.expand);
+                if(card) {
+                    card.scrollIntoView({behavior: "smooth", block: "center"});
+                    card.classList.add('highlight-flash');
+                }
+            }
+        }
+
+        if (state.tab) {
+            switchTab(state.tab, false); 
+        } else {
+            switchTab('dashboard', false);
+        }
+    });
+    history.replaceState({tab: 'dashboard'}, '', '');
+
+  } catch(e) { alert("資料異常: " + e.message); }
+}
+
+function scrollToTop() {
+    if(window.innerWidth<=768 && CURRENT_TAB==='dashboard') document.getElementById('view-dashboard').scrollTo({top:0, behavior:'smooth'});
+    else if(document.getElementById('view-full-chart').style.display==='flex') document.querySelector('.full-chart-body').scrollTo({top:0, behavior:'smooth'});
+    else if(document.querySelector('.table-container') && document.querySelector('.table-container').scrollTop > 0) document.querySelector('.table-container').scrollTo({top:0, behavior:'smooth'});
+    else window.scrollTo({top:0, behavior:'smooth'});
+}
+
+async function fetchCSV(url) {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error("Network response was not ok");
+  return Papa.parse(await res.text(), { header: false }).data; 
+}
+
+function showLoading(show, text) {
+    const el = document.getElementById('loading-mask');
+    if(show) { el.style.display = 'flex'; if(text) document.getElementById('loading-text').innerText = text; } 
+    else { el.style.display = 'none'; }
+}
+
+function processOrders(rows) {
+  DATA.soldMap = {};
+  DATA.orders = rows.slice(1).map(r => {
+    const safe = (i) => r[i] || "";
+    let rawJson = null;
+    try { rawJson = JSON.parse(safe(10)); } catch(e) {} 
+    if (rawJson) {
+        if(rawJson.items) rawJson.items.forEach(it => { const code = it.product_code || it.product_name; if(code) DATA.soldMap[code] = (DATA.soldMap[code] || 0) + (it.qty || 0); });
+        if(rawJson.gifts) rawJson.gifts.forEach(g => { const code = g.product_code || g.product_name.replace('[贈] ',''); if(code) DATA.soldMap[code] = (DATA.soldMap[code] || 0) + (g.qty || 0); });
+    }
+    return { id: safe(0), time: safe(1), name: safe(2), dept: safe(3), note: safe(5), total: Number(safe(8).toString().replace(/,/g, '')) || 0, raw: rawJson };
+  }).filter(o => o.id);
+}
+
+// V82: Strict V69 Core Logic
+function processInventory(rows) {
+  if(rows.length < 2) return;
+  const header = (rows[0]||[]).map(h => String(h || "").replace(/[\r\n]+/g, '').trim());
+  const idxCode = 0; const idxName = 1; const idxCat = 3; const idxStock = 12; const idxSupply = 13; 
+  let idxAvg = header.findIndex(h => h.includes("均銷") || h.includes("月均"));
+  if(idxAvg === -1 && rows[0].length > 14) idxAvg = 14; 
+
+  const idxMonthAccum = header.findIndex(h => h.includes("本月累積"));
+  
+  const regionHeaders = []; const infoHeaders = [];
+  for(let i=0; i<header.length; i++) {
+      let label = header[i] || "";
+      if(label.includes("到期日")) label = "到期日 (最近)";
+      if(label.includes("效期天數")) label = "效期天數 (最小)";
+      if(i >= 15 && header[i]) regionHeaders.push({ name: header[i], idx: i }); 
+      else if(i < 15 && i !== idxCode && i !== idxName && i !== idxCat && i !== idxStock && i !== idxSupply && header[i]) infoHeaders.push({ name: label, idx: i });
+  }
+  DATA.inventory = rows.slice(1).map(r => {
+    const code = (r[idxCode]||"").trim(); const name = (r[idxName]||"").trim();
+    if(!code && !name) return null;
+    const cat = r[idxCat] || "";
+    const stock = Number((r[idxStock] || "0").replace(/,/g, '')) || 0;
+    const avg = idxAvg > -1 ? Number((r[idxAvg] || "0").replace(/,/g, '')) : 0;
+    const supplyMonths = Number((r[idxSupply] || "0").replace(/,/g, '')) || 0;
+    const monthAccum = idxMonthAccum > -1 ? Number((r[idxMonthAccum] || "0").replace(/,/g, '')) : 0;
+    const reserved = DATA.soldMap[code] || DATA.soldMap[name] || 0;
+    const available = stock - reserved;
+    
+    // V83: Precise Status Assignment
+    let status = '充足', statusClass = 'st-ok', statusColor = '#388e3c', statusVal = 0;
+    if (available <= 0) { status = '缺貨'; statusClass = 'st-err'; statusColor = '#d32f2f'; statusVal=5; }
+    else if (supplyMonths < 2) { status = '缺貨'; statusClass = 'st-err'; statusColor = '#d32f2f'; statusVal=4; }
+    else if (supplyMonths < 3) { status = '低位'; statusClass = 'st-warn'; statusColor = '#f57c00'; statusVal=3; }
+    else if (supplyMonths < 4) { status = '留意'; statusClass = 'st-high'; statusColor = '#0288d1'; statusVal=2; } 
+    else if (supplyMonths >= 13) { status = '滯銷'; statusClass = 'st-dead'; statusColor = '#7b1fa2'; statusVal=0; }
+    else if (supplyMonths >= 11) { status = '積壓'; statusClass = 'st-dead'; statusColor = '#4527a0'; statusVal=1; }
+    else { status = '充足'; statusClass = 'st-ok'; statusColor = '#388e3c'; statusVal=1; }
+    
+    return { code, name, cat, stock, avg, supplyMonths, monthAccum, monthDiff: monthAccum - avg, reserved, available, status, statusClass, statusColor, statusVal, regions: regionHeaders.map(rh => ({ name: rh.name, qty: Number((r[rh.idx] || "0").replace(/,/g, '')) || 0 })).filter(re => re.qty !== 0), info: infoHeaders.map(ih => ({ name: ih.name, val: r[ih.idx] })) };
+  }).filter(x => x);
+}
+
+// V79: Revert to V69's Robust Logic
+function processSales(rows) {
+  let hIdx = -1;
+  for(let i=0; i<Math.min(rows.length, 10); i++) { if(JSON.stringify(rows[i]).includes("今年") && JSON.stringify(rows[i]).includes("金額")) { hIdx = i; break; } }
+  if(hIdx === -1) hIdx = 3; 
+  
+  const nameToCodeMap = new Map();
+  DATA.inventory.forEach(i => nameToCodeMap.set(normalizeStr(i.name), i.code));
+  DATA.sales = rows.slice(hIdx + 1).map(r => {
+    const name = (r[1] || r[0] || "").trim();
+    if(!name) return null;
+    const matchedCode = nameToCodeMap.get(normalizeStr(name));
+    const code = matchedCode || (r[0] || "-");
+    const lastRev = Number((r[2]||"0").replace(/,/g,''));
+    const thisRev = Number((r[3]||"0").replace(/,/g,''));
+    const lastQty = Number((r[4]||"0").replace(/,/g,''));
+    const thisQty = Number((r[5]||"0").replace(/,/g,''));
+    const yoy = lastRev > 0 ? ((thisRev - lastRev)/lastRev*100).toFixed(1) : (thisRev>0?100:0);
+    return { code, name, lastRev, thisRev, lastQty, thisQty, yoy: Number(yoy) };
+  }).filter(x => x);
+}
+
+function switchTab(tab, pushToHistory = true, preserveState = false) {
+    if(pushToHistory && tab !== CURRENT_TAB) history.pushState({tab: tab}, '', '');
+    
+    CURRENT_TAB = tab; ACTIVE_FILTER = ''; 
+    if(!preserveState) { AUTO_EXPAND_CODE = null; }
+
+    // V96: Set Default Sort per Tab (Auto Sort) - Logic Added
+    if (tab === 'sales') SORT = { key: 'yoy', asc: false }; // YoY descending
+    else if (tab === 'inventory') SORT = { key: 'stock', asc: false }; // Stock descending
+    else if (tab === 'orders') SORT = { key: 'time', asc: false }; // Time descending (newest first)
+    else SORT = { key: null, asc: true };
+
+    document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+    document.querySelectorAll('.b-nav-item').forEach(el => el.classList.remove('active'));
+    const map = {'dashboard':0, 'inventory':1, 'sales':2, 'orders':3};
+    if(document.querySelectorAll('.nav-item')[map[tab]]) document.querySelectorAll('.nav-item')[map[tab]].classList.add('active');
+    if(document.querySelectorAll('.b-nav-item')[map[tab]]) document.querySelectorAll('.b-nav-item')[map[tab]].classList.add('active');
+    
+    if(window.innerWidth <= 768) {
+        document.body.classList.add('mobile-list-view');
+        document.getElementById('pageTitle').innerText = (tab === 'dashboard') ? 'TTL Bio-Tech' : {'orders':'訂單管理', 'inventory':'庫存總表', 'sales':'銷售總表'}[tab];
+    } else {
+        document.body.classList.remove('mobile-list-view');
+        document.getElementById('pageTitle').innerText = (tab === 'dashboard') ? '總覽儀表板' : {'orders':'訂單管理', 'inventory':'庫存總表', 'sales':'銷售總表'}[tab];
+    }
+    
+    document.getElementById('filter-btn').style.display = (tab === 'inventory') ? 'flex' : 'none';
+
+    const backBtn = document.getElementById('backBtn');
+    if (tab === 'dashboard') {
+        document.getElementById('view-dashboard').style.display = 'flex';
+        document.getElementById('view-table-container').style.display = 'none';
+        backBtn.style.display = 'none';
+        updateDashboard();
+    } else {
+        document.getElementById('view-dashboard').style.display = 'none';
+        document.getElementById('view-table-container').style.display = 'flex';
+        if (!PENDING_SEARCH && !preserveState) { 
+            document.getElementById('tableSearch').value = "";
+            handleSearchInput();
+        }
+        backBtn.style.display = 'flex';
+        renderCurrentTable();
+    }
+}
+
+function goBack() {
+    if (history.state && history.state.tab !== 'dashboard') { history.back(); } else { switchTab('dashboard'); }
+}
+
+function navigateTo(tab, filter) {
+    switchTab(tab); ACTIVE_FILTER = filter; 
+    if (filter === 'alert') {
+        SELECTED_STATUSES = new Set(['缺貨', '低位']);
+    } else {
+        SELECTED_STATUSES = new Set(ALL_STATUSES);
+    }
+    
+    if (filter === 'today') {
+        PENDING_SEARCH = getTodayDigits(); 
+    }
+    renderCurrentTable();
+}
+
+function navigateToProduct(code, name) {
+    PENDING_SEARCH = code; 
+    AUTO_EXPAND_CODE = code;
+    // V82 Fix: Reset Filter to allow navigation
+    SELECTED_STATUSES = new Set(ALL_STATUSES);
+    document.querySelectorAll('.filter-chk').forEach(c => c.checked = true);
+    document.getElementById('filter-btn').classList.remove('active');
+    
+    switchTab('inventory', true, true); 
+    
+    setTimeout(() => {
+        renderCurrentTable();
+        
+        setTimeout(() => {
+            if(window.innerWidth <= 768) {
+                const card = document.getElementById('card-' + code);
+                if(card) {
+                    card.scrollIntoView({behavior: "smooth", block: "center"});
+                    card.classList.add('highlight-flash');
+                    const detail = document.getElementById('mc-ex-' + code);
+                    if(detail) detail.classList.add('open');
+                }
+            } else {
+                const row = document.querySelector('tr.active-row');
+                if(row) row.scrollIntoView({behavior: "smooth", block: "center"});
+            }
+        }, 300);
+    }, 100);
+}
+
+function handleSearchInput() {
+    const val = document.getElementById('tableSearch').value;
+    document.getElementById('searchClear').style.display = val.length > 0 ? 'block' : 'none';
+    renderCurrentTable();
+}
+function clearSearch() {
+    document.getElementById('tableSearch').value = '';
+    handleSearchInput();
+}
+
+/* Full Chart Logic */
+function openFullChart(source) {
+    FULL_CHART_SOURCE = source; 
+    if(source === 'stock') FULL_CHART_MODE = 'stock';
+    else FULL_CHART_MODE = 'months';
+    
+    document.getElementById('view-full-chart').style.display = 'flex';
+    document.getElementById('view-dashboard').style.display = 'none';
+    history.pushState({fullchart: true}, '', '');
+    
+    if (source === 'stock') {
+        document.getElementById('fc-btn-stock').innerText = "依庫存月數";
+        document.getElementById('fc-btn-rev').innerText = "依銷售貢獻";
+    } else {
+        document.getElementById('fc-btn-stock').innerText = "依預估月數";
+        document.getElementById('fc-btn-rev').innerText = "依銷售貢獻";
+    }
+    switchFullChartMode(FULL_CHART_MODE);
+}
+
+function closeFullChart(goBackHist = true) {
+    document.getElementById('view-full-chart').style.display = 'none';
+    document.getElementById('view-dashboard').style.display = 'flex';
+    if(goBackHist && history.state && history.state.fullchart) history.back();
+}
+
+function switchFullChartMode(mode) {
+    FULL_CHART_MODE = mode;
+    document.querySelectorAll('.fc-toggle-btn').forEach(b => b.classList.remove('active'));
+    if(mode === 'stock' || mode === 'months') document.getElementById('fc-btn-stock').classList.add('active');
+    else document.getElementById('fc-btn-rev').classList.add('active');
+    renderFullChart();
+}
+
+function renderFullChart() {
+    let items = [];
+    DATA.inventory.forEach(i => {
+        const s = DATA.sales.find(x => x.code === i.code) || { thisRev: 0 };
+        i.tempRev = s.thisRev;
+    });
+
+    if (FULL_CHART_SOURCE === 'stock') {
+        items = DATA.inventory.filter(i => !String(i.name).includes("0.33") && !String(i.name).includes("麥汁") && !String(i.cat).includes("贈品") && !HIDDEN_STOCK.has(i.code));
+    } else {
+        items = DATA.inventory.filter(i => i.supplyMonths >= 11 && !String(i.cat).includes("贈品") && !HIDDEN_STOCK.has(i.code));
+    }
+
+    if (FULL_CHART_MODE === 'revenue') {
+        items.sort((a,b) => b.tempRev - a.tempRev);
+    } else {
+        if (FULL_CHART_SOURCE === 'stock') {
+            items.sort((a,b) => b.avg - a.avg);
+        } else {
+            items.sort((a,b) => b.supplyMonths - a.supplyMonths);
+        }
+    }
+
+    const container = document.getElementById('fcContainer');
+    const height = Math.max(items.length * 40, 400); 
+    container.style.height = height + 'px';
+    
+    if(CHARTS.full) CHARTS.full.destroy();
+    
+    const ctx = document.getElementById('fullChart').getContext('2d');
+    
+    // V96: Smart Label Wrapping (14 chars)
+    const formatLabel = (label) => {
+        if(window.innerWidth > 768) return label; // Desktop: No wrap
+        const chunk = 14; 
+        const res = [];
+        for(let i=0; i<label.length; i+=chunk) {
+            res.push(label.substring(i, i+chunk));
+        }
+        return res;
+    };
+    
+    let chartConfig = {};
+    
+    if (FULL_CHART_SOURCE === 'stock') {
+        chartConfig = {
+            type: 'bar',
+            data: {
+                labels: items.map(i => formatLabel(i.name)),
+                datasets: [
+                    { label: '現有庫存 (M)', data: items.map(i => i.stock), backgroundColor: items.map(i => i.statusColor), order: 2, barPercentage: 0.6 },
+                    { label: '月均銷量', data: items.map(i => i.avg), backgroundColor: '#455a64', barPercentage: 0.4, order: 1 }
+                ]
+            },
+            options: {
+                indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+                layout: { padding: { left: 0, right: 30 } },
+                scales: { x: { beginAtZero: true, position: 'top' }, y: { ticks: { autoSkip: false, font: { size: 14, weight:'bold' } } } },
+                plugins: { 
+                    tooltip: { callbacks: { title: (c) => items[c[0].dataIndex].name } } 
+                },
+                onClick: (e, els) => handleChartClick(e, els, items)
+            }
+        };
+    } else {
+        const isRev = FULL_CHART_MODE === 'revenue';
+        chartConfig = {
+            type: 'bar',
+            data: {
+                labels: items.map(i => formatLabel(i.name)),
+                datasets: [{
+                    label: isRev ? '今年營收 ($)' : '預估可供銷月數',
+                    data: items.map(i => isRev ? i.tempRev : i.supplyMonths),
+                    backgroundColor: items.map(i => i.statusColor),
+                    barPercentage: 0.7
+                }]
+            },
+            options: {
+                indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+                layout: { padding: { left: 10, right: 20 } },
+                scales: { x: { beginAtZero: true, position: 'top' }, y: { ticks: { autoSkip: false, font: { size: 14, weight:'bold' } } } },
+                plugins: {
+                    tooltip: {
+                        callbacks: {
+                            title: (c) => items[c[0].dataIndex].name,
+                            label: (c) => isRev ? `營收: $${c.raw.toLocaleString()}` : `可供: ${c.raw} 月`,
+                            afterLabel: (c) => isRev ? `可供: ${items[c.dataIndex].supplyMonths} 月` : `營收: $${items[c.dataIndex].tempRev.toLocaleString()}`
+                        }
+                    }
+                },
+                onClick: (e, els) => handleChartClick(e, els, items)
+            }
+        };
+    }
+    
+    CHARTS.full = new Chart(ctx, chartConfig);
+}
+
+function handleChartClick(e, els, items) {
+    if(els.length > 0) {
+        const item = items[els[0].index];
+        if(confirm(`導航至 "${item.name}"？\n(取消則隱藏此項目)`)) {
+            closeFullChart(false);
+            navigateToProduct(item.code, item.name);
+        } else {
+            toggleHidden(item.code);
+        }
+    }
+}
+
+function updateStockChartSort(mode) {
+    SS_SORT_MODE = mode;
+    document.getElementById('ss-sort-qty').classList.toggle('active', mode==='qty');
+    document.getElementById('ss-sort-rev').classList.toggle('active', mode==='rev');
+    updateDashboard();
+}
+
+function updateOverstockChartSort(mode) {
+    OS_SORT_MODE = mode;
+    document.getElementById('os-sort-m').classList.toggle('active', mode==='months');
+    document.getElementById('os-sort-rev').classList.toggle('active', mode==='rev');
+    updateDashboard();
+}
+
+function updateDashboard() {
+    const todayDigits = getTodayDigits();
+    const isMobile = window.innerWidth <= 768;
+    const todayOrders = DATA.orders.filter(o => o.id.includes(todayDigits) || o.time.replace(/\D/g, '').startsWith(todayDigits));
+    
+    document.getElementById('kpi-revenue').innerText = "$" + todayOrders.reduce((a,b) => a + b.total, 0).toLocaleString();
+    document.getElementById('kpi-orders').innerText = DATA.orders.length;
+    const dangerCount = DATA.inventory.filter(i => i.status === '缺貨').length;
+    const warnCount = DATA.inventory.filter(i => i.status === '低位').length;
+    document.getElementById('kpi-danger').innerText = dangerCount;
+    document.getElementById('kpi-warn').innerText = warnCount;
+    if(dangerCount+warnCount > 0) document.querySelector('.kpi-card.alert').style.border = "2px solid var(--danger)";
+    document.getElementById('kpi-year-sales').innerText = DATA.sales.reduce((a,b) => a + b.thisQty, 0).toLocaleString();
+
+    if(CHARTS.stock) CHARTS.stock.destroy();
+    if(CHARTS.overstock) CHARTS.overstock.destroy();
+
+    // V96: Smart Label Wrapping for Dashboard (14 chars)
+    const formatLabel = (label) => {
+        if(!isMobile) return label.length > 12 ? label.substring(0,12)+'...' : label;
+        const chunk = 14; // Reduced to 14
+        const res = [];
+        for(let i=0; i<label.length; i+=chunk) {
+            res.push(label.substring(i, i+chunk));
+        }
+        return res;
+    };
+
+    DATA.inventory.forEach(i => {
+        const s = DATA.sales.find(x => x.code === i.code) || { thisRev: 0 };
+        i.tempRev = s.thisRev;
+    });
+
+    let safetyItems = DATA.inventory.filter(i => !String(i.name).includes("0.33") && !String(i.name).includes("麥汁") && !String(i.cat).includes("贈品") && !HIDDEN_STOCK.has(i.code));
+    
+    if (SS_SORT_MODE === 'qty') {
+        safetyItems.sort((a,b) => b.avg - a.avg);
+    } else {
+        // V72: Fix 0 Revenue Sort
+        safetyItems = safetyItems.filter(i => i.tempRev > 0).sort((a,b) => b.tempRev - a.tempRev);
+    }
+    safetyItems = safetyItems.slice(0, 15);
+    
+    // V88: Compact Height (-25%) -> 600px from 800px
+    const chartHeight = isMobile ? '600px' : '100%'; 
+    document.getElementById('stockChartContainer').style.height = chartHeight;
+
+    CHARTS.stock = new Chart(document.getElementById('stockChart'), {
+        type: 'bar',
+        data: {
+            labels: safetyItems.map(i => formatLabel(i.name)),
+            datasets: [
+                { label: '現有庫存 (M)', data: safetyItems.map(i => i.stock), backgroundColor: safetyItems.map(i => i.statusColor), order: 2, barPercentage: 0.6 },
+                { label: '月均銷量', data: safetyItems.map(i => i.avg), backgroundColor: '#455a64', barPercentage: 0.4, order: 1 }
+            ]
+        },
+        options: { 
+            indexAxis: 'y', responsive:true, maintainAspectRatio:false,
+            layout: { padding: { left: 5, right: 25 } }, 
+            scales: { x: { beginAtZero: true }, y: { ticks: { color: '#1b5e20', font: { weight: 'bold', size: isMobile?11:14, lineHeight: 1.2 }, autoSkip: false } } },
+            plugins: { 
+                tooltip: { 
+                    callbacks: { 
+                        title: (items) => safetyItems[items[0].dataIndex].name,
+                        afterBody: (items) => SS_SORT_MODE === 'rev' ? `💰 今年營收: $${(safetyItems[items[0].dataIndex].tempRev || 0).toLocaleString()}` : ''
+                    } 
+                } 
+            },
+            onClick: (e, els) => { if(els.length > 0) navigateToProduct(safetyItems[els[0].index].code, safetyItems[els[0].index].name); }
+        }
+    });
+
+    let overstockItems = DATA.inventory.filter(i => (i.supplyMonths >= 11) && !String(i.cat).includes("贈品") && !HIDDEN_STOCK.has(i.code));
+    
+    if (OS_SORT_MODE === 'months') {
+        overstockItems.sort((a,b) => b.supplyMonths - a.supplyMonths);
+    } else {
+        overstockItems = overstockItems.filter(i => i.tempRev > 0).sort((a,b) => b.tempRev - a.tempRev);
+    }
+    overstockItems = overstockItems.slice(0, 15);
+    
+    document.getElementById('overstockChartContainer').style.height = chartHeight;
+
+    const isRev = OS_SORT_MODE === 'rev';
+    CHARTS.overstock = new Chart(document.getElementById('overstockChart'), {
+        type: 'bar',
+        data: {
+            labels: overstockItems.map(i => formatLabel(i.name)),
+            datasets: [{
+                label: isRev ? '今年營收 ($)' : '預估可供銷月數',
+                data: overstockItems.map(i => isRev ? i.tempRev : i.supplyMonths),
+                backgroundColor: overstockItems.map(i => i.statusColor) 
+            }]
+        },
+        options: { 
+            responsive:true, maintainAspectRatio:false, indexAxis: 'y',
+            layout: { padding: { left: 5, right: 25 } },
+            scales: { y: { ticks: { color: '#4a148c', font: { weight: 'bold', size: isMobile?11:14, lineHeight: 1.2 }, autoSkip: false } } },
+            plugins: { 
+                tooltip: { 
+                    callbacks: { 
+                        title: (c) => overstockItems[c[0].dataIndex].name,
+                        label: (c) => isRev ? `營收: $${c.raw.toLocaleString()}` : `可供: ${c.raw} 月`,
+                        afterLabel: (c) => isRev ? `可供: ${overstockItems[c.dataIndex].supplyMonths} 月` : `營收: $${overstockItems[c.dataIndex].tempRev.toLocaleString()}`
+                    } 
+                } 
+            },
+            onClick: (e, els) => { if(els.length > 0) navigateToProduct(overstockItems[els[0].index].code, overstockItems[els[0].index].name); }
+        }
+    });
+    renderOverstockControl(overstockItems);
+}
+
+function splitLabel(str) { return str.length > 18 ? [str.substring(0, 18), str.substring(18, 36) + (str.length>36?'...':'')] : str; }
+
+// V83: Fixed Toggle logic to update specific button without full re-render
+window.toggleHidden = function(code) { 
+    if(HIDDEN_STOCK.has(code)) HIDDEN_STOCK.delete(code); else HIDDEN_STOCK.add(code); 
+    localStorage.setItem('admin_hidden_stock', JSON.stringify([...HIDDEN_STOCK])); 
+    
+    updateDashboard(); 
+    updateRestoreWidget();
+    
+    // Immediate Visual Update
+    const btnM = document.querySelector(`#card-${code} .mc-icon-btn.hide`);
+    if(btnM) btnM.classList.toggle('active', HIDDEN_STOCK.has(code));
+    
+    const btnD = document.querySelector(`#row-${code} .mc-icon-btn.hide`);
+    if(btnD) btnD.classList.toggle('active', HIDDEN_STOCK.has(code));
+
+    if(document.getElementById('view-full-chart').style.display === 'flex') renderFullChart();
+}
+
+function updateRestoreWidget() {
+    const widget = document.getElementById('restoreWidget');
+    const list = document.getElementById('restoreList');
+    const count = HIDDEN_STOCK.size;
+    document.getElementById('hiddenCount').innerText = count;
+    
+    if (count > 0) {
+        widget.style.display = 'flex';
+        let html = '';
+        HIDDEN_STOCK.forEach(code => {
+            const item = DATA.inventory.find(i => i.code === code) || { name: code };
+            html += `<div class="restore-item"><span>${item.name}</span><span class="restore-btn" onclick="event.stopPropagation(); toggleHidden('${code}')">還原</span></div>`;
+        });
+        list.innerHTML = html;
+    } else {
+        widget.style.display = 'none';
+        list.classList.remove('open');
+    }
+}
+function toggleRestoreList(e) {
+    document.getElementById('restoreList').classList.toggle('open');
+    e.stopPropagation();
+}
+
+function renderOverstockControl(activeItems) {
+    let html = `<div style="font-size:12px;color:#999;margin-bottom:4px">顯示中 (Top 15)</div>`;
+    activeItems.forEach(i => { html += `<div class="os-item"><span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${i.name}</span><span class="os-btn material-icons-round" onclick="toggleHidden('${i.code}')">remove_circle_outline</span></div>`; });
+    if(HIDDEN_STOCK.size > 0) {
+        html += `<div style="font-size:11px;color:#999;margin:8px 0 2px">已隱藏 (${HIDDEN_STOCK.size})</div>`;
+    }
+    document.getElementById('osListControl').innerHTML = html;
+}
+
+function sortData(key) { 
+    if (SORT.key === key) SORT.asc = !SORT.asc; 
+    else { SORT.key = key; SORT.asc = false; } 
+    renderCurrentTable(); 
+}
+function closeAllRegions() { document.querySelectorAll('.region-row').forEach(el => el.classList.remove('open')); document.querySelectorAll('.expand-btn').forEach(el => el.classList.remove('open')); document.querySelectorAll('tr.active-row').forEach(el => el.classList.remove('active-row')); }
+function getSortHeader(key, label) {
+    let icon = SORT.key === key ? (SORT.asc ? '<span class="material-icons-round sort-icon">arrow_drop_up</span>' : '<span class="material-icons-round sort-icon">arrow_drop_down</span>') : '<span class="material-icons-round sort-icon" style="color:#ddd">arrow_drop_down</span>';
+    return `<th onclick="sortData('${key}')">${label} ${icon}</th>`;
+}
+
+function openFilterSheet() {
+    const optsDiv = document.getElementById('filterOptions');
+    optsDiv.innerHTML = "";
+    ALL_STATUSES.forEach(st => {
+        const isChecked = SELECTED_STATUSES.has(st);
+        const div = document.createElement('div');
+        div.className = "filter-row";
+        div.onclick = function() { 
+            const chk = this.querySelector('input'); 
+            chk.checked = !chk.checked; 
+        };
+        div.innerHTML = `
+            <input type="checkbox" class="filter-chk" value="${st}" ${isChecked ? 'checked' : ''} onclick="event.stopPropagation()">
+            <span class="filter-label">${st}</span>
+        `;
+        optsDiv.appendChild(div);
+    });
+    document.getElementById('filterSheet').classList.add('open');
+    document.getElementById('sortOverlay').style.display = 'block';
+}
+function closeFilterSheet() { document.getElementById('filterSheet').classList.remove('open'); document.getElementById('sortOverlay').style.display = 'none'; }
+function toggleAllFilters(enable) {
+    const chks = document.querySelectorAll('.filter-chk');
+    chks.forEach(c => c.checked = enable);
+}
+function applyFilter() {
+    const chks = document.querySelectorAll('.filter-chk');
+    SELECTED_STATUSES.clear();
+    chks.forEach(c => { if(c.checked) SELECTED_STATUSES.add(c.value); });
+    
+    const btn = document.getElementById('filter-btn');
+    if(SELECTED_STATUSES.size < ALL_STATUSES.length) btn.classList.add('active'); else btn.classList.remove('active');
+    
+    closeFilterSheet();
+    renderCurrentTable();
+}
+
+function openSortSheet() {
+    const optsDiv = document.getElementById('sortOptions');
+    optsDiv.innerHTML = "";
+    let opts = [];
+    if(CURRENT_TAB === 'inventory') { opts = [ {k:'code',l:'料號'}, {k:'name',l:'品名'}, {k:'stock',l:'庫存'}, {k:'avg',l:'月均銷'}, {k:'supplyMonths',l:'供銷月數'}, {k:'statusVal',l:'狀態(健康度)'} ]; }
+    else if (CURRENT_TAB === 'sales') { opts = [ {k:'code',l:'料號'}, {k:'name',l:'品名'}, {k:'yoy',l:'YoY'}, {k:'thisQty',l:'今年銷量'} ]; }
+    else if (CURRENT_TAB === 'orders') { opts = [ {k:'id',l:'單號'}, {k:'time',l:'時間'}, {k:'total',l:'金額'} ]; }
+    opts.forEach(o => {
+        const div = document.createElement('div');
+        div.className = `sort-opt ${SORT.key===o.k?'selected':''}`;
+        div.innerHTML = `<span>${o.l}</span>${SORT.key===o.k ? (SORT.asc?'<span class="material-icons-round">arrow_upward</span>':'<span class="material-icons-round">arrow_downward</span>') : ''}`;
+        div.onclick = () => { sortData(o.k); closeSortSheet(); };
+        optsDiv.appendChild(div);
+    });
+    document.getElementById('sortSheet').classList.add('open');
+    document.getElementById('sortOverlay').style.display = 'block';
+}
+function closeSortSheet() { document.getElementById('sortSheet').classList.remove('open'); document.getElementById('sortOverlay').style.display = 'none'; }
+function closeAllSheets() { closeSortSheet(); closeFilterSheet(); }
+
+function renderCurrentTable() {
+    const isMobile = window.innerWidth <= 768;
+    
+    if (PENDING_SEARCH !== null) {
+        document.getElementById('tableSearch').value = PENDING_SEARCH;
+        PENDING_SEARCH = null; 
+    }
+
+    const q = document.getElementById('tableSearch').value.toLowerCase().trim();
+    document.getElementById('searchClear').style.display = q.length > 0 ? 'block' : 'none';
+    
+    const table = document.getElementById('mainTable');
+    const cardContainer = document.getElementById('mobileCardContainer');
+    if(document.getElementById('mobile-del-all')) document.getElementById('mobile-del-all').style.display = (CURRENT_TAB === 'orders' && isMobile) ? 'inline-block' : 'none';
+
+    let list = [];
+    if (CURRENT_TAB === 'inventory') {
+        list = DATA.inventory.filter(i => (String(i.code||"").toLowerCase().includes(q)) || (String(i.name||"").includes(q)));
+        // V83: Trim status to match filter
+        list = list.filter(i => SELECTED_STATUSES.has(i.status.trim()));
+    } else if (CURRENT_TAB === 'sales') {
+        list = DATA.sales.filter(s => ((s.name||"").includes(q)) || ((s.code||"").toString().toLowerCase().includes(q)));
+    } else if (CURRENT_TAB === 'orders') {
+        list = DATA.orders.filter(o => o.id.toLowerCase().includes(q) || o.name.includes(q));
+        if (q.length === 8 && !isNaN(q)) list = DATA.orders.filter(o => o.id.includes(q) || o.time.replace(/\D/g,'').startsWith(q));
+    }
+    if(SORT.key) list.sort((a,b) => (a[SORT.key]>b[SORT.key]?1:-1)*(SORT.asc?1:-1));
+
+    if (isMobile) {
+        table.style.display = 'none';
+        cardContainer.innerHTML = "";
+        
+        if (list.length === 0) {
+            cardContainer.innerHTML = `<div style="text-align:center;padding:20px;color:#999">沒有符合條件的資料</div>`;
+        }
+
+        if (CURRENT_TAB === 'inventory') {
+             list.forEach(i => {
+                let infoHtml = i.info.map(inf => `<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #f5f5f5"><span>${inf.name}</span><span style="font-weight:700">${inf.val}</span></div>`).join("");
+                
+                const isExpand = (String(i.code) === String(AUTO_EXPAND_CODE));
+                
+                const card = document.createElement('div');
+                card.id = 'card-' + i.code; 
+                card.className = `m-compact-card ${isExpand ? 'highlight-flash' : ''}`;
+                card.innerHTML = `
+                    <div class="m-status-strip" style="background:${i.statusColor}"></div>
+                    <div style="padding-left:8px;">
+                        <div class="stock-ticker-top">
+                            <div class="ticker-name">${i.name}</div>
+                            <div class="ticker-val-box">
+                                <div class="ticker-stock">${i.stock} <span style="font-size:50%;font-weight:normal">(M)</span></div>
+                            </div>
+                        </div>
+                        <div class="ticker-sub">
+                             <div style="display:flex;align-items:center;gap:6px">
+                                <span class="ticker-code">${i.code}</span>
+                                <span class="st-badge ${i.statusClass}" style="transform:scale(0.8)">${i.status}</span>
+                             </div>
+                             <div style="font-size:11px;color:#90a4ae">
+                                月均 <span style="font-size:120%;color:#455a64;font-weight:700;margin:0 2px">${i.avg}</span> | 
+                                可供 <span style="font-size:120%;color:${i.statusColor};font-weight:700;margin:0 2px">${i.supplyMonths}</span> 月 
+                             </div>
+                        </div>
+                        
+                        <div class="mc-expand-content ${isExpand ? 'open' : ''}" id="mc-ex-${i.code}">
+                            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+                                <div style="font-weight:700;color:#78909c">基本資料</div>
+                                <div class="mc-icon-btn hide ${HIDDEN_STOCK.has(i.code) ? 'active' : ''}" onclick="toggleHidden('${i.code}')" title="隱藏此產品"><span class="material-icons-round" style="font-size:18px">visibility_off</span></div>
+                            </div>
+                            ${infoHtml}
+                            <div class="mc-actions-row">
+                                <div class="mc-action-btn" onclick="event.stopPropagation(); openInfoModal('sales', '${String(i.code).replace(/'/g, "\\'")}')">
+                                    <span class="material-icons-round">analytics</span> 銷售分析
+                                </div>
+                                <div class="mc-action-btn" onclick="event.stopPropagation(); openInfoModal('regions', '${String(i.code).replace(/'/g, "\\'")}')">
+                                    <span class="material-icons-round">map</span> 各地庫存
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                card.onclick = (e) => { 
+                    if(e.target.closest('.mc-action-btn') || e.target.closest('.mc-icon-btn')) return;
+                    toggleMobileExpandWithHistory(i.code);
+                }
+                cardContainer.appendChild(card);
+             });
+        }
+        else if (CURRENT_TAB === 'sales') {
+            list.forEach(s => {
+                const yoyColor = s.yoy >= 0 ? '#d32f2f' : '#388e3c';
+                const card = document.createElement('div');
+                card.className = 'm-compact-card';
+                card.onclick = function() { this.querySelector('.mc-sales-detail').classList.toggle('open'); };
+                card.innerHTML = `
+                    <div class="m-status-strip" style="background:${yoyColor}"></div>
+                    <div style="padding-left:8px;">
+                        <div class="mc-sales-mini">
+                            <div class="mc-main-text" style="margin-right:0">${s.name}</div>
+                            <div style="text-align:right">
+                                <div style="font-size:16px;font-weight:900;color:${yoyColor}">${s.yoy}%</div>
+                                <div style="font-size:10px;color:#999">YoY</div>
+                            </div>
+                        </div>
+                        <div class="mc-sales-detail">
+                            <div class="mc-row"><span>料號</span><span class="mc-row-val">${s.code}</span></div>
+                            <div class="mc-row"><span>今年銷量</span><span class="mc-row-val">${s.thisQty}</span></div>
+                            <div class="mc-row"><span>去年銷量</span><span class="mc-row-val">${s.lastQty}</span></div>
+                            <div class="mc-row" style="margin-top:4px;border-top:1px dotted #eee;padding-top:4px">
+                                <span>今年營收</span><span class="mc-row-val" style="color:var(--primary)">$${s.thisRev.toLocaleString()}</span>
+                            </div>
+                            <div class="mc-row">
+                                <span>去年營收</span><span class="mc-row-val" style="color:#78909c">$${s.lastRev.toLocaleString()}</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                cardContainer.appendChild(card);
+            });
+        }
+        else if (CURRENT_TAB === 'orders') {
+            list.forEach(o => {
+                const card = document.createElement('div');
+                card.className = 'm-compact-card';
+                card.onclick = () => openOrderModal(o.id, 'view');
+                card.innerHTML = `
+                    <div class="m-status-strip" style="background:#00897b"></div>
+                    <div style="padding-left:8px;">
+                        <div style="display:flex;justify-content:space-between;font-size:12px;color:#90a4ae;margin-bottom:4px;">
+                            <span>${o.id}</span>
+                            <span>${o.time.split(' ')[0]}</span>
+                        </div>
+                        <div class="mc-main-text" style="font-size:16px;">${o.name} <span style="font-size:13px;font-weight:400;color:#666">(${o.dept})</span></div>
+                        <div class="mc-order-footer">
+                             <div class="mc-order-total">$${o.total.toLocaleString()}</div>
+                             <div>
+                                <span class="material-icons-round mc-icon-btn edit" onclick="openOrderModal('${o.id}','edit');event.stopPropagation()">edit</span>
+                                <span class="material-icons-round mc-icon-btn del" onclick="deleteOrderPrompt('${o.id}');event.stopPropagation()">delete</span>
+                             </div>
+                        </div>
+                    </div>
+                `;
+                cardContainer.appendChild(card);
+            });
+        }
+    } else {
+        // Desktop View
+        table.style.display = 'table';
+        cardContainer.innerHTML = "";
+        let html = "";
+        if (CURRENT_TAB === 'inventory') {
+            html = `<thead><tr><th style="width:50px"><span class="material-icons-round close-all-btn" onclick="closeAllRegions()">indeterminate_check_box</span></th>${getSortHeader('code','物料')}${getSortHeader('name','產品')}${getSortHeader('monthAccum','本月')}${getSortHeader('monthDiff','月銷波動')}${getSortHeader('avg','月銷')}${getSortHeader('stock','總庫存(M)')}${getSortHeader('supplyMonths','預估供銷月')}${getSortHeader('statusVal','狀態')}</tr></thead><tbody>`;
+            list.forEach((i) => {
+                const isOpen = (String(i.code) === String(AUTO_EXPAND_CODE));
+                const salesRec = DATA.sales.find(s => (i.code && s.code === i.code) || (normalizeStr(s.name) === normalizeStr(i.name))) || { lastQty:0, thisQty:0, yoy:0, lastRev:0, thisRev:0 };
+                const maxVal = Math.max(salesRec.lastQty, salesRec.thisQty, 1);
+                
+                let salesHtml = `<div class="card-title">銷售分析 (YoY)</div><div class="info-line"><span>去年營收</span><b>$${salesRec.lastRev.toLocaleString()}</b></div><div class="info-line"><span>今年營收</span><b>$${salesRec.thisRev.toLocaleString()}</b></div><div class="info-line"><span>去年銷量</span><b>${salesRec.lastQty}</b></div><div class="info-line"><span>今年銷量</span><b>${salesRec.thisQty}</b></div><div class="info-line"><span>YoY 成長率</span><b class="${salesRec.yoy>=0?'val-up':'val-down'}">${salesRec.yoy}%</b></div><div class="comp-container"><div class="comp-row"><span class="comp-label">去年</span><div class="comp-track"><div class="comp-bar" style="width:${(salesRec.lastQty/maxVal)*100}%;background:#9e9e9e"></div></div><span class="comp-val">${salesRec.lastQty}</span></div><div class="comp-row"><span class="comp-label">今年</span><div class="comp-track"><div class="comp-bar" style="width:${(salesRec.thisQty/maxVal)*100}%;background:${salesRec.thisQty>=salesRec.lastQty?'#d32f2f':'#0288d1'}"></div></div><span class="comp-val">${salesRec.thisQty}</span></div></div>`;
+                let infoHtml = i.info.map(inf => `<div class="info-line"><span>${inf.name}</span><b>${inf.val}</b></div>`).join("");
+                
+                // V96: Adaptive Logic for Desktop (Based on V91 structure + V95 logic fix)
+                let regionHtml = i.regions.map(r => {
+                    const maxR = Math.max(...i.regions.map(x=>x.qty), 1);
+                    const ratio = r.qty / maxR;
+                    const bg = r.qty > 0 ? `rgba(0, 137, 123, ${0.1 + ratio * 0.9})` : '#eee';
+                    const col = ratio > 0.5 ? '#fff' : '#333';
+                    return `<div class="r-box" style="background:${bg};color:${col}"><span class="r-name">${getShortRegionName(r.name)}</span><span class="r-qty">${r.qty}</span></div>`;
+                }).join("");
+                
+                html += `<tr id="row-${i.code}" onclick="toggleRegion(this)" class="${isOpen?'active-row':''}" style="cursor:pointer;border-left:4px solid ${i.status==='缺貨'?'var(--danger)':'transparent'}"><td style="text-align:center"><span class="material-icons-round expand-btn ${isOpen?'open':''}">expand_more</span></td><td style="font-size:14px;color:#888">${i.code} <span class="material-icons-round mc-icon-btn hide ${HIDDEN_STOCK.has(i.code) ? 'active' : ''}" onclick="event.stopPropagation(); toggleHidden('${i.code}')" style="font-size:16px;vertical-align:middle;margin-left:4px" title="隱藏">visibility_off</span></td><td class="prod-name-cell">${i.name}</td><td>${i.monthAccum}</td><td>${i.monthDiff>0?`<span class="val-up">+${Math.round(i.monthDiff)}</span>`:`<span class="val-down">${Math.round(i.monthDiff)}</span>`}</td><td>${i.avg}</td><td style="font-weight:900;color:var(--primary)">${i.stock}</td><td>${i.supplyMonths}</td><td><span class="st-badge ${i.statusClass}">${i.status}</span></td></tr><tr class="region-row ${isOpen?'open':''}"><td colspan="9"><div class="expand-container"><div class="detail-card"><div class="card-title">基本資料</div>${infoHtml}</div><div class="detail-card">${salesHtml}</div><div><div class="card-title">各地庫存</div><div class="region-grid">${regionHtml}</div></div></div></td></tr>`;
+            });
+        }
+        else if (CURRENT_TAB === 'sales') {
+            html = `<thead><tr>${getSortHeader('code','物料')}${getSortHeader('name','品名')}${getSortHeader('yoy','YoY')}${getSortHeader('lastRev','去年金額')}${getSortHeader('thisRev','今年金額')}${getSortHeader('lastQty','去年銷量')}${getSortHeader('thisQty','今年銷量')}</tr></thead><tbody>`;
+            list.forEach(s => { html += `<tr><td style="font-size:14px;color:#888">${s.code}</td><td class="prod-name-cell">${s.name}</td><td class="${s.yoy>=0?'val-up':'val-down'}">${s.yoy}%</td><td>$${s.lastRev.toLocaleString()}</td><td>$${s.thisRev.toLocaleString()}</td><td>${s.lastQty}</td><td>${s.thisQty}</td></tr>`; });
+        }
+        else if (CURRENT_TAB === 'orders') {
+            html = `<thead><tr>${getSortHeader('id','單號')}${getSortHeader('time','時間')}${getSortHeader('name','姓名/部門')}${getSortHeader('total','總金額')}<th>操作 <span class="material-icons-round" style="color:#d32f2f;cursor:pointer;font-size:20px;vertical-align:middle;margin-left:8px;" onclick="deleteAllOrders()" title="刪除全部">delete_sweep</span></th></tr></thead><tbody>`;
+            list.forEach(o => { html += `<tr style="cursor:pointer" onclick="openOrderModal('${o.id}','view')"><td style="font-size:14px">${o.id}</td><td>${o.time.split(' ')[0]}</td><td><b>${o.name}</b> <span style="font-size:13px;color:#999">${o.dept}</span></td><td style="font-weight:700">$${o.total.toLocaleString()}</td><td><span class="material-icons-round act-btn" onclick="openOrderModal('${o.id}','edit');event.stopPropagation()">edit</span><span class="material-icons-round act-btn" style="color:#ef5350" onclick="deleteOrderPrompt('${o.id}');event.stopPropagation()">delete</span></td></tr>`; });
+        }
+        table.innerHTML = html;
+    }
+}
+
+function getShortRegionName(name) {
+    if(name.includes('台北啤酒工場')) return '北啤推廣';
+    return name.replace(/啤酒廠產品推廣中心/g, '啤推廣').replace(/酒廠產品推廣中心/g, '酒廠推廣').replace(/營業處/g, '處').replace(/展售中心/g, '展售');
+}
+
+// --- V91: 完整修復訂單管理邏輯 (源自 V69, 版面維持 V90) ---
+
+let currentEditOrder = null; // 修正: 全域變數
+
+// 開啟訂單視窗 (View/Edit)
+function openOrderModal(oid, mode) {
+  const order = DATA.orders.find(o => o.id === oid);
+  if(!order || !order.raw) { alert("此為舊版資料或格式不符，無法檢視/編輯。"); return; }
+  
+  currentEditOrder = order;
+
+  // 1. 填入表單資料
+  document.getElementById('e-oid').value = order.id;
+  document.getElementById('e-name').value = order.raw.employee_name || "";
+  document.getElementById('e-dept').value = order.raw.department || "";
+  document.getElementById('e-note').value = order.raw.remarks || "";
+  document.getElementById('e-total').innerText = (order.raw.totals && order.raw.totals.pay) ? order.raw.totals.pay.toLocaleString() : "0";
+
+  // 2. 渲染商品列表
+  let html = ''; 
+  if(order.raw.items) {
+      order.raw.items.forEach(it => { 
+          html += `<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #f5f5f5;font-size:14px;">
+              <span>${it.product_name}</span>
+              <span style="font-weight:700">x${it.qty}</span>
+          </div>`;
+      });
+  }
+  if(order.raw.gifts) {
+      order.raw.gifts.forEach(g => { 
+          html += `<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #f5f5f5;color:var(--accent);font-size:14px;">
+              <span>🎁 ${g.product_name}</span>
+              <span style="font-weight:700">x${g.qty}</span>
+          </div>`;
+      });
+  }
+  document.getElementById('e-items').innerHTML = html;
+
+  // 3. 設定模式並開啟
+  switchEditMode(mode === 'edit'); 
+  document.getElementById('editModal').classList.add('open');
+  
+  // 加入歷史紀錄以便按上一頁關閉
+  history.pushState({modal: 'order'}, null, "");
+}
+
+// 切換 檢視/編輯 模式
+function switchEditMode(isEdit) { 
+    const inputs = document.querySelectorAll('.m-input'); 
+    inputs.forEach(el => el.disabled = !isEdit); 
+    
+    document.getElementById('m-title').innerText = isEdit ? "編輯訂單" : "訂單詳情 (唯讀)"; 
+    document.getElementById('m-foot-view').style.display = isEdit ? 'none' : 'flex'; 
+    document.getElementById('m-foot-edit').style.display = isEdit ? 'flex' : 'none'; 
+}
+
+// 關閉視窗
+function closeModal(goBackHist = true) { 
+    document.getElementById('editModal').classList.remove('open'); 
+    currentEditOrder = null; 
+    // 如果是透過程式關閉(如儲存後)，且歷史紀錄還在 Modal 狀態，則手動退回
+    if(goBackHist && history.state && history.state.modal) history.back();
+}
+
+// 儲存變更
+function saveOrderAction() { 
+    if(!currentEditOrder) return; 
+    
+    // 更新本地暫存物件
+    currentEditOrder.raw.employee_name = document.getElementById('e-name').value; 
+    currentEditOrder.raw.department = document.getElementById('e-dept').value; 
+    currentEditOrder.raw.remarks = document.getElementById('e-note').value; 
+    
+    // 準備傳送給 GAS 的 Payload
+    const payload = JSON.parse(JSON.stringify(currentEditOrder.raw)); // Deep copy
+    payload.action = "update_order"; 
+    payload.order_id = currentEditOrder.id; 
+    
+    callGAS(payload, "修改成功", false); 
+}
+
+// 刪除確認 (單筆)
+function deleteOrderPrompt(oid) { 
+    currentEditOrder = DATA.orders.find(o => o.id === oid); 
+    if(confirm("確定要刪除此訂單嗎？\n(單號: " + oid + ")")) { 
+        callGAS({ action: "delete_order", order_id: currentEditOrder.id }, "刪除成功", true); 
+    } 
+}
+
+// 刪除動作 (從編輯視窗觸發)
+function deleteOrderAction() { 
+    if(!confirm("確定要刪除此訂單嗎？")) return; 
+    callGAS({ action: "delete_order", order_id: currentEditOrder.id }, "刪除成功", true); 
+}
+
+// 批量刪除
+async function deleteAllOrders() {
+    const q = document.getElementById('tableSearch').value.trim();
+    let targetOrders = q ? DATA.orders.filter(o => o.id.includes(q) || o.name.includes(q)) : DATA.orders;
+    
+    if(targetOrders.length === 0) { alert("目前列表無訂單可刪除"); return; }
+    
+    if(!confirm(`⚠️ 危險操作：您即將刪除目前列表中的 ${targetOrders.length} 筆訂單！\n\n此動作無法復原。`)) return; 
+    if(!confirm(`再次確認：真的要刪除這 ${targetOrders.length} 筆訂單嗎？`)) return;
+    
+    showLoading(true, "正在批量刪除訂單，請勿關閉視窗...");
+    
+    let successCount = 0;
+    for(const order of targetOrders) { 
+        try { 
+            await fetch(GAS_URL + "?token=" + encodeURIComponent(ADMIN_TOKEN), { 
+                method: "POST", 
+                headers: { "Content-Type": "application/x-www-form-urlencoded" }, 
+                body: "payload=" + encodeURIComponent(JSON.stringify({ action: "delete_order", order_id: order.id })) 
+            }); 
+            successCount++; 
+        } catch(e) { console.error(e); } 
+    }
+    
+    showLoading(false); 
+    alert(`批量刪除完成！共刪除 ${successCount} 筆訂單。`); 
+    init(); // 重新整理
+}
+
+// GAS API 呼叫核心
+function callGAS(payload, msg, isDelete) {
+  showLoading(true, isDelete ? "正在刪除訂單..." : "正在儲存..."); 
+  if(isDelete) closeModal(true); // 刪除時先關閉視窗
+  
+  fetch(GAS_URL + "?token=" + encodeURIComponent(ADMIN_TOKEN), { 
+      method: "POST", 
+      headers: { "Content-Type": "application/x-www-form-urlencoded" }, 
+      body: "payload=" + encodeURIComponent(JSON.stringify(payload)) 
+  })
+  .then(r=>r.json())
+  .then(res=>{ 
+      if(res.ok) { 
+          if(isDelete) { 
+              DATA.orders = DATA.orders.filter(o => o.id !== payload.order_id); 
+          } else { 
+              // 更新本地顯示資料，避免需重新整理
+              if(currentEditOrder) { 
+                  currentEditOrder.name = document.getElementById('e-name').value; 
+                  currentEditOrder.dept = document.getElementById('e-dept').value; 
+              } 
+              closeModal(true); 
+          } 
+          updateDashboard(); 
+          renderCurrentTable(); 
+          showLoading(false); 
+          // alert(msg); // 選擇性開啟提示
+      } else { 
+          showLoading(false); 
+          alert("失敗: " + res.error); 
+      } 
+  })
+  .catch(e=>{ 
+      showLoading(false); 
+      alert("連線錯誤"); 
+      console.error(e);
+  });
+}
+
+window.addEventListener('resize', () => { renderCurrentTable(); updateDashboard(); });
+init();
+</script>
+</body>
+</html>
