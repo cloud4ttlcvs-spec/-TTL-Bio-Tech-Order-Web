@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"/>
-<title>生技展訂購系統 V28-Optimization</title>
+<title>生技展訂購系統 V28-Stable-Fix</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&family=Roboto:wght@500;700;900&display=swap" rel="stylesheet">
 <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
@@ -16,895 +16,228 @@
   --bg-body: #f8f9fa; --bg-card: #ffffff; --text-main: #263238; --text-sub: #546e7a;
   --border: #eceff1; --header-height: 115px;
   --shadow-card: 0 4px 20px rgba(0,0,0,0.04);
-  --safe-bottom: env(safe-area-inset-bottom);
+  --safe-bottom: env(safe-area-inset-bottom, 20px);
+}
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; user-select: none; }
+body {
+  font-family: 'Noto Sans TC', sans-serif; background: var(--bg-body); color: var(--text-main);
+  margin: 0; padding: 0; 
+  padding-bottom: calc(120px + var(--safe-bottom)); 
+  overscroll-behavior-y: none;
+}
+body.modal-open { overflow: hidden; height: 100vh; position: fixed; width: 100%; }
+
+/* --- 核心優化：彈性佈局防止擠壓 --- */
+#drawer-panel {
+  position: absolute; top: 0; right: 0; bottom: 0; width: 100%; max-width: 480px; 
+  background: #fff; transform: translateX(100%); transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1); 
+  display: flex; flex-direction: column; /* 啟用 Flex 佈局 */
+  pointer-events: auto; box-shadow: -5px 0 30px rgba(0,0,0,0.15);
 }
 
-/* --- RESET & BASIC --- */
-* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-body { 
-  margin: 0; padding-top: var(--header-height); background: var(--bg-body); 
-  font-family: 'Noto Sans TC', sans-serif; color: var(--text-main); line-height: 1.5;
-}
-body.modal-open { overflow: hidden; }
+.dr-head { flex-shrink: 0; padding: 16px 20px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; background: #fff; }
 
-/* --- HEADER & NAV --- */
-header {
-  position: fixed; top: 0; left: 0; right: 0; z-index: 100;
-  background: #fff; box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-}
-.brand-row {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 12px 16px;
-}
-.brand-title { font-weight: 900; font-size: 20px; color: var(--primary); letter-spacing: -0.5px; }
-.brand-title span { color: var(--accent); }
-
-.nav-scroll {
-  display: flex; gap: 8px; padding: 0 16px 10px; overflow-x: auto;
-}
-.nav-scroll::-webkit-scrollbar { display: none; }
-.cat-pill {
-  white-space: nowrap; padding: 6px 16px; border-radius: 20px;
-  background: var(--bg-body); color: var(--text-sub); font-size: 14px; font-weight: 500;
-  transition: all 0.2s; border: 1px solid transparent;
-}
-.cat-pill.active { background: var(--primary); color: #fff; box-shadow: 0 4px 10px rgba(0,137,123,0.3); }
-
-/* --- LIST --- */
-.container { padding: 12px; }
-.p-card {
-  background: #fff; border-radius: 16px; margin-bottom: 12px;
-  display: flex; padding: 12px; gap: 12px; box-shadow: var(--shadow-card);
-  border: 1px solid var(--border);
-}
-.p-img-box { width: 90px; height: 90px; border-radius: 12px; overflow: hidden; background: #f0f0f0; flex-shrink: 0; }
-.p-img-box img { width: 100%; height: 100%; object-fit: cover; }
-.p-info { flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: space-between; }
-.p-name { font-size: 15px; font-weight: 700; color: #37474f; margin-bottom: 4px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-.p-price-row { display: flex; align-items: baseline; gap: 4px; }
-.p-price { font-family: 'Roboto', sans-serif; font-weight: 900; font-size: 18px; color: var(--primary); }
-.p-price::before { content: "$"; font-size: 13px; margin-right: 1px; }
-.p-orig { text-decoration: line-through; color: #b0bec5; font-size: 12px; }
-.p-tag { display: inline-block; font-size: 10px; background: #fff3e0; color: #ef6c00; padding: 1px 6px; border-radius: 4px; margin-bottom: 4px; font-weight: 700; }
-.beauty-tag { background: #fce4ec; color: #d81b60; }
-
-.qty-ctrl { display: flex; align-items: center; gap: 12px; }
-.q-btn { 
-  width: 28px; height: 28px; border-radius: 50%; border: 1.5px solid var(--primary);
-  display: flex; align-items: center; justify-content: center; color: var(--primary);
-  background: #fff; cursor: pointer; transition: 0.1s;
-}
-.q-btn:active { background: var(--primary-light); transform: scale(0.9); }
-.q-btn.minus { color: #b0bec5; border-color: #cfd8dc; }
-.q-btn.minus.active { color: var(--primary); border-color: var(--primary); }
-.q-val { font-family: 'Roboto', sans-serif; font-weight: 700; font-size: 15px; width: 16px; text-align: center; }
-
-/* --- FLOAT BAR --- */
-#float-bar {
-  position: fixed; bottom: 20px; left: 16px; right: 16px;
-  background: #263238; border-radius: 30px; height: 56px;
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 0 8px 0 20px; z-index: 1000; color: #fff;
-  box-shadow: 0 8px 25px rgba(0,0,0,0.25);
-  transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-#float-bar.hidden { transform: translateY(100px); opacity: 0; }
-.fb-info { display: flex; flex-direction: column; }
-.fb-total { font-family: 'Roboto', sans-serif; font-weight: 900; font-size: 20px; line-height: 1; }
-.fb-total::before { content: "$"; font-size: 14px; margin-right: 2px; font-weight: 400; opacity: 0.8; }
-.fb-count { font-size: 11px; opacity: 0.7; font-weight: 500; }
-.fb-btn {
-  background: var(--primary); color: #fff; height: 42px; padding: 0 24px;
-  border-radius: 21px; display: flex; align-items: center; font-weight: 700; font-size: 15px;
-  box-shadow: 0 4px 10px rgba(0,0,0,0.2);
-}
-
-/* --- CART DRAWER --- */
-#drawer {
-  position: fixed; inset: 0; z-index: 2000;
-  visibility: hidden; transition: visibility 0.4s;
-}
-#drawer.open { visibility: visible; }
-.dr-overlay { 
-  position: absolute; inset: 0; background: rgba(0,0,0,0.5); 
-  backdrop-filter: blur(4px); opacity: 0; transition: 0.4s;
-}
-#drawer.open .dr-overlay { opacity: 1; }
-
-/* 核心優化點：使用 Flexbox 並固定高度 */
-.dr-panel {
-  position: absolute; bottom: 0; left: 0; right: 0;
-  background: #fff; border-radius: 24px 24px 0 0;
-  height: 90vh; /* 鎖定全高 90% */
-  display: flex; /* 改為彈性佈局 */
-  flex-direction: column;
-  transform: translateY(100%); transition: transform 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
-}
-#drawer.open .dr-panel { transform: translateY(0); }
-
-.dr-head { 
-  flex-shrink: 0; /* 禁止壓縮標題區 */
-  padding: 20px 20px 10px; display: flex; align-items: center; justify-content: space-between; 
-}
-.dr-title { font-size: 18px; font-weight: 900; }
-.dr-close { color: var(--text-sub); }
-
-/* 核心優化點：中間滾動區自動伸縮 */
 .dr-body { 
   flex: 1; /* 重要：自動填充剩餘空間 */
   overflow-y: auto; /* 內容過長時出現捲軸 */
-  -webkit-overflow-scrolling: touch;
-  padding: 12px; background: #f4f6f8; 
-  display: flex; flex-direction: column; gap: 12px; 
+  padding: 12px; background: #f4f6f8; overscroll-behavior: contain; 
 }
 
-/* 核心優化點：底部固定不壓縮 */
 .dr-foot { 
   flex-shrink: 0; /* 重要：禁止底部被壓縮 */
-  padding: 16px; padding-bottom: calc(16px + var(--safe-bottom));
-  background: #fff; border-top: 1px solid var(--border);
-  box-shadow: 0 -4px 20px rgba(0,0,0,0.05);
+  padding: 20px; padding-bottom: calc(20px + var(--safe-bottom)); 
+  background: #fff; border-top: 1px solid var(--border); box-shadow: 0 -4px 20px rgba(0,0,0,0.05); 
 }
 
-/* --- CART ITEMS --- */
-.ci-card {
-  background: #fff; border-radius: 12px; padding: 12px;
-  display: flex; gap: 12px; position: relative;
+/* --- 原本的其他 CSS 樣式 --- */
+.flying-img { position: fixed; z-index: 9999; pointer-events: none; border-radius: 50%; box-shadow: 0 5px 25px rgba(0,0,0,0.25); width: 60px; height: 60px; object-fit: cover; background: #fff; border: 2px solid #fff; transition: top 1s cubic-bezier(0.19, 1, 0.22, 1), left 1s cubic-bezier(0.19, 1, 0.22, 1), transform 1s ease-in, opacity 1s ease-in; }
+.p-img-box { width: 100%; aspect-ratio: 1/1; background: #fcfcfc; position: relative; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+.p-img-box img { width: 100%; height: 100%; object-fit: contain; transition: opacity 0.4s ease; opacity: 0; mix-blend-mode: multiply; }
+.p-img-box img.loaded { opacity: 1; }
+#welcome-overlay, #loader { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; display: flex; align-items: center; justify-content: center; }
+#welcome-overlay { z-index: 9999; background: rgba(236, 239, 241, 0.85); backdrop-filter: blur(8px); transition: opacity 0.5s ease; }
+#loader { z-index: 9990; background: #f4f6f8; align-items: flex-start; padding-top: 120px; transition: opacity 0.3s ease; }
+#welcome-overlay.fade-out { opacity: 0; pointer-events: none; }
+main { padding: 12px; max-width: 900px; margin: 0 auto; margin-top: 10px; }
+.grid-layout { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; align-content: start; width: 100%; }
+@media (max-width: 480px) { .grid-layout { grid-template-columns: repeat(2, 1fr) !important; gap: 10px; } }
+.cat-pill { white-space: nowrap; padding: 7px 18px; border-radius: 24px; font-size: 14px; font-weight: 500; color: var(--text-sub); background: #fff; border: 1px solid #e0e0e0; cursor: pointer; transition: 0.25s; }
+.cat-pill.active { background: var(--primary); color: #fff; border-color: var(--primary); box-shadow: 0 4px 10px rgba(0,137,123,0.25); font-weight: 700; }
+.p-card { background: #fff; border-radius: 16px; overflow: hidden; position: relative; box-shadow: var(--shadow-card); border: 1px solid #f0f0f0; display: flex; flex-direction: column; transition: transform 0.15s; scroll-margin-top: 200px; }
+.p-card:active { transform: scale(0.97); }
+.p-body { padding: 12px; flex: 1; display: flex; flex-direction: column; justify-content: space-between; }
+.p-title { font-size: 14px; font-weight: 700; line-height: 1.4; color: #37474f; margin-bottom: 4px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; height: 40px; }
+.p-price { font-size: 17px; font-weight: 800; color: #263238; }
+.stepper { display: flex; align-items: center; justify-content: flex-end; gap: 8px; margin-top: 10px; }
+.s-btn { width: 32px; height: 32px; border-radius: 50%; border: 1px solid #eceff1; background: #fff; color: var(--primary); display: flex; align-items: center; justify-content: center; cursor: pointer; }
+.s-btn.add { background: var(--primary); color: #fff; }
+.s-val { width: 24px; text-align: center; font-size: 15px; font-weight: 600; }
+.s-btn.hidden, .s-val.hidden { display: none; }
+
+#float-bar { position: fixed; bottom: calc(20px + var(--safe-bottom)); left: 16px; right: 16px; background: #263238; color: #fff; border-radius: 60px; padding: 10px 10px 10px 24px; box-shadow: 0 15px 35px rgba(0,0,0,0.25); display: flex; align-items: center; justify-content: space-between; z-index: 2000; cursor: pointer; backdrop-filter: blur(10px); transition: transform 0.3s; }
+#float-bar.hidden { transform: translateY(200%); }
+.fb-total { font-size: 18px; font-weight: 700; }
+.fb-btn { background: var(--accent); color: #fff; padding: 10px 24px; border-radius: 40px; font-weight: 700; font-size: 15px; display: flex; align-items: center; gap: 6px; }
+
+#drawer { position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 1200; pointer-events: none; }
+#drawer-bg { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.6); opacity: 0; transition: 0.3s; backdrop-filter: blur(4px); }
+#drawer.open #drawer-bg { opacity: 1; pointer-events: auto; }
+#drawer.open #drawer-panel { transform: translateX(0); }
+
+.c-item { display: flex; gap: 10px; margin-bottom: 8px; padding: 8px 12px; background: #fff; border-radius: 10px; border: 1px solid #e0e0e0; align-items: center; }
+.c-info { flex: 1; }
+.c-title { font-size: 14px; font-weight: 700; color:#37474f; }
+.c-price-box { font-weight:700; font-size:15px; color:#263238; }
+
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 15px; }
+input, select { width: 100%; padding: 14px; border: 1px solid #cfd8dc; border-radius: 12px; font-size: 14px; background: #fafafa; }
+.btn-submit { width: 100%; padding: 16px; background: var(--text-main); color: #fff; border: none; border-radius: 14px; font-size: 16px; font-weight: 700; cursor: pointer; margin-top: 20px; }
+
+/* 針對小螢幕字體放大優化 */
+@media (max-height: 700px) {
+  .dr-head { padding: 12px 16px; }
+  .dr-foot { padding: 12px; }
+  .final-amt { font-size: 22px; }
 }
-.ci-img { width: 60px; height: 60px; border-radius: 8px; object-fit: cover; background: #f0f0f0; }
-.ci-info { flex: 1; min-width: 0; }
-.ci-name { font-size: 14px; font-weight: 700; margin-bottom: 2px; }
-.ci-price { font-family: 'Roboto', sans-serif; font-weight: 700; color: var(--primary); font-size: 14px; }
-.ci-ctrl { display: flex; align-items: center; gap: 10px; margin-top: 4px; }
-
-/* --- GAMIFICATION --- */
-.gamification-box { background: #fff; border-radius: 12px; padding: 16px; }
-.milestone-title { font-size: 13px; font-weight: 700; color: #546e7a; margin-bottom: 8px; display: flex; align-items: center; gap: 4px; }
-.milestone-track { height: 8px; background: #eceff1; border-radius: 4px; overflow: hidden; margin-bottom: 6px; }
-.milestone-bar { height: 100%; width: 0; transition: width 0.6s cubic-bezier(0.34, 1.56, 0.64, 1); }
-.milestone-bar.p-bar { background: linear-gradient(90deg, #4db6ac, var(--primary)); }
-.milestone-bar.b-bar { background: linear-gradient(90deg, #f06292, var(--beauty)); }
-.milestone-msg { font-size: 11px; font-weight: 500; color: #78909c; }
-.milestone-msg b { color: var(--accent); }
-
-.freebie-card { 
-  background: var(--primary-light); border-radius: 10px; padding: 10px; 
-  display: flex; align-items: center; gap: 10px; border: 1px dashed var(--primary);
-  animation: fadeIn 0.4s both; margin-top: 8px;
-}
-.freebie-card.is-beauty { background: #fce4ec; border-color: var(--beauty); color: var(--beauty); }
-.f-icon { width: 32px; height: 32px; background: #fff; border-radius: 6px; display: flex; align-items: center; justify-content: center; }
-
-/* --- FOOTER TOTALS --- */
-.sum-line { display: flex; justify-content: space-between; margin-bottom: 4px; font-size: 13px; color: var(--text-sub); flex-wrap: wrap; }
-.sum-line b { color: var(--text-main); font-family: 'Roboto', sans-serif; font-size: 14px; }
-.final-row { display: flex; justify-content: space-between; align-items: center; margin: 12px 0 16px; flex-wrap: wrap; gap: 4px; }
-.final-label { font-size: 16px; font-weight: 900; }
-.final-amt { font-family: 'Roboto', sans-serif; font-size: 26px; font-weight: 900; color: var(--primary); }
-.final-amt::before { content: "$"; font-size: 16px; margin-right: 2px; }
-
-.btn-checkout {
-  width: 100%; height: 54px; background: var(--primary); color: #fff;
-  border-radius: 12px; display: flex; align-items: center; justify-content: center;
-  font-size: 17px; font-weight: 700; box-shadow: 0 4px 12px rgba(0,137,123,0.3);
-}
-
-/* --- BUNDLE MODAL --- */
-#bundle-modal { position: fixed; inset: 0; z-index: 3000; visibility: hidden; }
-#bundle-modal.open { visibility: visible; }
-.bm-panel {
-  position: absolute; inset: 0; background: #fff; 
-  display: flex; flex-direction: column;
-  transform: translateX(100%); transition: transform 0.3s;
-}
-#bundle-modal.open .bm-panel { transform: translateX(0); }
-.bm-body { flex: 1; overflow-y: auto; padding: 16px; }
-.opt-card {
-  border: 1.5px solid var(--border); border-radius: 12px; padding: 12px; margin-bottom: 12px;
-  display: flex; align-items: center; gap: 12px; transition: 0.2s;
-}
-.opt-card.selected { border-color: var(--primary); background: var(--primary-light); }
-.opt-check { width: 22px; height: 22px; border: 2px solid var(--border); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #fff; }
-.opt-card.selected .opt-check { background: var(--primary); border-color: var(--primary); }
-
-/* --- FORM MODAL --- */
-#form-modal { position: fixed; inset: 0; z-index: 4000; visibility: hidden; }
-#form-modal.open { visibility: visible; }
-.fm-panel {
-  position: absolute; bottom: 0; left: 0; right: 0; background: #fff;
-  height: 95vh; border-radius: 20px 20px 0 0; display: flex; flex-direction: column;
-  transform: translateY(100%); transition: transform 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
-}
-#form-modal.open .fm-panel { transform: translateY(0); }
-.fm-body { flex: 1; overflow-y: auto; padding: 20px; }
-.form-group { margin-bottom: 16px; }
-.form-label { display: block; font-size: 14px; font-weight: 700; margin-bottom: 6px; color: var(--text-main); }
-.form-input {
-  width: 100%; height: 48px; border: 1.5px solid var(--border); border-radius: 8px;
-  padding: 0 12px; font-size: 15px; transition: 0.2s; -webkit-appearance: none;
-}
-.form-input:focus { border-color: var(--primary); outline: none; background: #fff; }
-
-.toggle-delivery {
-  background: #f1f8e9; border: 1px solid #c5e1a5; border-radius: 10px; padding: 12px;
-  margin: 12px 0; display: flex; align-items: center; justify-content: space-between;
-}
-
-#delivery-fields { overflow: hidden; transition: max-height 0.4s ease-out; max-height: 0; }
-#delivery-fields.show { max-height: 800px; }
-
-/* --- RECEIPT MODAL --- */
-#receiptModal { position: fixed; inset: 0; z-index: 5000; display: none; align-items: center; justify-content: center; padding: 16px; }
-#receiptModal.open { display: flex; }
-.rm-overlay { position: absolute; inset: 0; background: rgba(0,0,0,0.8); backdrop-filter: blur(8px); }
-.rm-content {
-  position: relative; background: #fff; width: 100%; max-width: 400px; border-radius: 24px;
-  max-height: 85vh; display: flex; flex-direction: column; overflow: hidden;
-  animation: modalScale 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-.rm-body { flex: 1; overflow-y: auto; padding: 24px; text-align: center; }
-.success-icon { width: 64px; height: 64px; background: #e8f5e9; color: #4caf50; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 16px; font-size: 40px; }
-.rm-table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 13px; text-align: left; }
-.rm-table td { padding: 8px 0; border-bottom: 1px solid #f0f0f0; }
-
-#emailBox { height: 0; overflow: hidden; transition: 0.3s; }
-#emailBox.show { height: 110px; margin-top: 10px; }
-
-/* --- ANIMATIONS --- */
-@keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-@keyframes modalScale { from { transform: scale(0.9) translateY(20px); opacity: 0; } to { transform: scale(1) translateY(0); opacity: 1; } }
-@keyframes flash { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
-.flash-anim { animation: flash 0.3s 2; }
-.input-error { border-color: #f44336 !important; background: #ffebee !important; }
-
-/* --- BACK TO TOP --- */
-#back-to-top {
-  position: fixed; bottom: 90px; right: 20px; width: 44px; height: 44px;
-  background: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center;
-  box-shadow: 0 4px 15px rgba(0,0,0,0.1); opacity: 0; visibility: hidden; transition: 0.3s; z-index: 900;
-}
-#back-to-top.show { opacity: 1; visibility: visible; }
-
-/* --- TOAST --- */
-#toast {
-  position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
-  background: rgba(38, 50, 56, 0.9); color: #fff; padding: 12px 24px; border-radius: 30px;
-  font-size: 14px; font-weight: 500; z-index: 10000; opacity: 0; visibility: hidden; transition: 0.3s;
-}
-#toast.show { opacity: 1; visibility: visible; }
 </style>
 </head>
 <body>
 
-<header>
-  <div class="brand-row">
-    <div class="brand-title">台酒生技 <span>展售訂購</span></div>
-    <div style="font-size: 12px; color: var(--text-sub); font-weight: 700;">V28-OP</div>
+<div id="welcome-overlay">
+  <div style="background:#fff; padding:40px; border-radius:30px; text-align:center;">
+    <h2 style="color:var(--primary)">台酒生技訂購網</h2>
+    <p>健康美麗與您同行</p>
+    <button onclick="closeWelcome()" style="background:var(--primary); color:#fff; border:none; padding:12px 40px; border-radius:30px; cursor:pointer;">開始訂購</button>
   </div>
-  <div class="nav-scroll" id="nav-cats">
-    <div class="cat-pill active">熱銷排行</div>
-  </div>
-</header>
-
-<div class="container" id="product-list">
-  <div style="text-align:center; padding: 50px; color: #999;">資料讀取中...</div>
 </div>
 
+<header style="position:sticky; top:0; z-index:1000; background:#fff; border-bottom:1px solid #eee;">
+  <div style="padding:16px; font-weight:900; color:var(--primary); font-size:20px;">台酒生技 展售系統</div>
+  <nav id="catNav" style="display:flex; gap:8px; padding:8px 16px; overflow-x:auto;"></nav>
+</header>
+
+<main id="list"></main>
+
 <div id="float-bar" class="hidden" onclick="openCart()">
-  <div class="fb-info">
-    <div class="fb-total" id="fb-total">0</div>
-    <div class="fb-count" id="fb-count">購物車是空的</div>
-  </div>
-  <div class="fb-btn">
-    <span class="material-icons-round" style="margin-right:6px">shopping_basket</span>
-    結帳
-  </div>
+  <div class="fb-info"><span class="fb-total">$0</span></div>
+  <div class="fb-btn">查看購物車</div>
 </div>
 
 <div id="drawer">
-  <div class="dr-overlay" onclick="closeCart()"></div>
-  <div class="dr-panel">
+  <div id="drawer-bg" onclick="closeCart()"></div>
+  <div id="drawer-panel">
     <div class="dr-head">
-      <div class="dr-title">購物清單</div>
-      <div class="material-icons-round dr-close" onclick="closeCart()">close</div>
+      <h2 style="margin:0">購物車</h2>
+      <span class="material-icons-round" onclick="closeCart()" style="cursor:pointer">close</span>
     </div>
-    
-    <div class="dr-body" id="cart-items">
-      </div>
-    
-    <div class="dr-foot" id="cart-summary">
-      </div>
-  </div>
-</div>
-
-<div id="bundle-modal">
-  <div class="dr-overlay" onclick="closeBundle()"></div>
-  <div class="bm-panel">
-    <div class="dr-head">
-      <div class="dr-title" id="bm-name">自選組合內容</div>
-      <div class="material-icons-round dr-close" onclick="closeBundle()">close</div>
-    </div>
-    <div id="bm-limit-msg" style="padding:0 20px 10px; font-size:13px; color:var(--accent); font-weight:700;"></div>
-    <div class="bm-body" id="bm-options"></div>
+    <div class="dr-body" id="cartList"></div>
     <div class="dr-foot">
-      <div class="btn-checkout" onclick="closeBundle()">確認選擇</div>
+      <div style="display:flex; justify-content:space-between; font-size:20px; font-weight:800; margin-bottom:15px;">
+        <span>應付金額</span><span id="sumPay">$0</span>
+      </div>
+      <div class="form-grid">
+        <input id="fName" placeholder="訂購人姓名">
+        <select id="fDept"><option value="">選擇部門</option></select>
+      </div>
+      <button class="btn-submit" onclick="submitOrder()">確認訂購</button>
     </div>
   </div>
 </div>
 
-<div id="form-modal">
-  <div class="dr-overlay" onclick="closeForm()"></div>
-  <div class="fm-panel">
-    <div class="dr-head" style="border-bottom:1px solid #f0f0f0">
-      <div class="dr-title">填寫訂購資料</div>
-      <div class="material-icons-round dr-close" onclick="closeForm()">close</div>
-    </div>
-    <div class="fm-body">
-      <div class="form-group">
-        <label class="form-label">訂購人姓名 *</label>
-        <input type="text" id="f-name" class="form-input" placeholder="請輸入姓名">
-      </div>
-      <div class="form-group">
-        <label class="form-label">手機號碼 *</label>
-        <input type="tel" id="f-phone" class="form-input" placeholder="0912345678">
-      </div>
-      
-      <div class="toggle-delivery">
-        <div style="display:flex; align-items:center; gap:8px">
-          <span class="material-icons-round" style="color:var(--primary)">local_shipping</span>
-          <span style="font-weight:700; font-size:14px">需要宅配到府</span>
-        </div>
-        <input type="checkbox" id="f-is-delivery" style="width:20px; height:20px" onchange="toggleDelivery()">
-      </div>
-      
-      <div id="delivery-fields">
-        <div class="form-group">
-          <label class="form-label">宅配地址</label>
-          <input type="text" id="f-address" class="form-input" placeholder="縣市 行政區 街道門牌">
-        </div>
-      </div>
-      
-      <div class="form-group">
-        <label class="form-label">備註事項</label>
-        <textarea id="f-note" class="form-input" style="height:80px; padding:12px; resize:none;" placeholder="如有特殊需求請註明"></textarea>
-      </div>
-      
-      <div style="background:#fff9c4; border-radius:8px; padding:12px; font-size:12px; color:#f57f17; line-height:1.6; margin-bottom:20px">
-        ⚠️ 提醒您：本頁面為展售現場訂購紀錄，現場服務人員將與您確認最終金額。
-      </div>
-    </div>
-    <div class="dr-foot">
-      <div class="btn-checkout" id="submit-btn" onclick="submitOrder()">確認送出訂單</div>
-    </div>
-  </div>
-</div>
-
-<div id="receiptModal">
-  <div class="rm-overlay"></div>
-  <div class="rm-content">
-    <div class="rm-body">
-      <div class="success-icon">check</div>
-      <h2 style="margin:0 0 8px; font-size:20px">訂購成功！</h2>
-      <p style="margin:0; font-size:14px; color:var(--text-sub)">您的訂單編號</p>
-      <div id="rcOrderId" style="font-size:24px; font-weight:900; color:var(--primary); margin:4px 0 20px; font-family:'Roboto'">---</div>
-      
-      <div style="background:#f8f9fa; border-radius:12px; padding:12px; text-align:left;">
-         <div id="rcDetail" style="font-size:13px; color:#455a64; line-height:1.6"></div>
-      </div>
-      
-      <div style="margin-top:20px; display:flex; gap:10px">
-        <div class="btn-checkout" style="flex:1; height:44px; font-size:14px; background:#455a64" onclick="toggleEmailInput()">寄送至信箱</div>
-        <div class="btn-checkout" style="flex:1; height:44px; font-size:14px" onclick="closeReceipt()">關閉視窗</div>
-      </div>
-      
-      <div id="emailBox">
-        <div style="margin-top:15px; border-top:1px dashed #ccc; padding-top:15px">
-           <input type="email" id="rcEmail" class="form-input" placeholder="example@mail.com" style="margin-bottom:10px">
-           <div class="btn-checkout" style="height:40px; font-size:14px" onclick="sendReceipt()">送出電子序號</div>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
-
-<div id="back-to-top" onclick="window.scrollTo({top:0, behavior:'smooth'})">
-  <span class="material-icons-round">north</span>
-</div>
-
-<div id="toast"></div>
+<div id="loader">載入中...</div>
 
 <script>
-/* --- CONFIG & STATE --- */
-const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTo3xV7fWwzN4YvWsh6V98M0NfN82k-QAn48A0N2Yl_rW7WpM-N9j02L0kI2X8I1p4W7vV6eS6T/pub?gid=0&output=csv";
-const RULES_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTo3xV7fWwzN4YvWsh6V98M0NfN82k-QAn48A0N2Yl_rW7WpM-N9j02L0kI2X8I1p4W7vV6eS6T/pub?gid=1980327797&output=csv";
-const RANK_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTo3xV7fWwzN4YvWsh6V98M0NfN82k-QAn48A0N2Yl_rW7WpM-N9j02L0kI2X8I1p4W7vV6eS6T/pub?gid=105553123&output=csv";
-const GAS_URL = "https://script.google.com/macros/s/AKfycbyfD0i88w2Yh5p78-pY73D0_Wp-B2-M4D_D8v-k-r-P-K-p-D-R-Y/exec";
+const SHEET_P = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQBtV8q3Ank7Bnhs83IbOb97U46juV-RKeL3NpdFiNcSu-ifI21fQYo1-io62S3JIrXEO5MiDArc1Lr/pub?gid=1623055155&single=true&output=csv";
+const GAS_URL = "https://script.google.com/macros/s/AKfycbxQ9Etloak3ZNv6yfyMCK9KbjoLyDqjRQHHVlASY5iMwwy_c4NCPxWpMK1YkzSXstHN/exec";
 
-let PRODUCTS = [], CATEGORIES = [], RULES = [], RANKS = [];
-let CART = [], SELECTED_BUNDLE = new Map();
-let currentBundleTarget = null;
-let isCartOpen = false;
-let lastOrderData = null;
+const PROXY = (url) => "https://api.allorigins.win/raw?url=" + encodeURIComponent(url);
 
-/* --- CORE DATA ENGINE --- */
 async function fetchData(url) {
-  try {
-    const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`;
-    const res = await fetch(proxyUrl);
-    const json = await res.json();
-    return new Promise(resolve => {
-      Papa.parse(json.contents, { header: true, complete: r => resolve(r.data) });
-    });
-  } catch(e) { console.error(e); return []; }
+    try {
+        const response = await fetch(url);
+        if (response.ok) return await response.text();
+        throw new Error();
+    } catch (e) {
+        return await fetch(PROXY(url)).then(r => r.text());
+    }
 }
+
+let PRODUCTS = [], CART = [], PRODUCT_MAP = new Map();
 
 async function initApp() {
-  const [pData, rData, rkData] = await Promise.all([
-    fetchData(CSV_URL), fetchData(RULES_URL), fetchData(RANK_URL)
-  ]);
-  
-  PRODUCTS = pData.filter(p => p.ID).map(p => ({
-    ...p,
-    Price: parseInt(p.Price)||0, 
-    Orig: parseInt(p.Orig)||0,
-    Stock: parseInt(p.Stock)||999,
-    isBeauty: p.Type === "美容"
-  }));
-  
-  RULES = rData;
-  RANKS = rkData.map(r => r.ID);
-  
-  CATEGORIES = ["熱銷排行", ...new Set(PRODUCTS.map(p => p.Category))];
-  renderNav();
-  renderList();
-  loadState();
-  refreshCart();
+    try {
+        const pText = await fetchData(SHEET_P);
+        const pData = Papa.parse(pText, { header: true }).data;
+        PRODUCTS = pData.map((row, i) => {
+            const code = row.product_code?.trim();
+            if(!code) return null;
+            const item = { _id: i, code, name: row.product_name, category: row.category, price: Number(row.list_price?.replace(/,/g,'')||0), photo: row['photos url'] };
+            PRODUCT_MAP.set(code, item);
+            return item;
+        }).filter(x => x);
+
+        renderUI();
+        document.getElementById("loader").style.display = "none";
+        
+        // 載入部門
+        fetch(GAS_URL, { method: "POST", body: "payload=" + encodeURIComponent(JSON.stringify({action:"get_config"})) })
+        .then(r => r.json()).then(res => {
+            const dept = document.getElementById("fDept");
+            res.departments.forEach(d => { if(d.active!==false) dept.innerHTML += `<option value="${d.value}">${d.label}</option>`; });
+        });
+    } catch(e) { alert("讀取失敗"); }
 }
 
-/* --- RENDER FUNCTIONS --- */
-function renderNav() {
-  const nav = document.getElementById("nav-cats");
-  nav.innerHTML = CATEGORIES.map(c => `
-    <div class="cat-pill ${c==='熱銷排行'?'active':''}" onclick="filterCat('${c}', this)">${c}</div>
-  `).join('');
-}
-
-function filterCat(cat, el) {
-  document.querySelectorAll(".cat-pill").forEach(p => p.classList.remove("active"));
-  el.classList.add("active");
-  const headerH = document.querySelector("header").offsetHeight;
-  if(cat === "熱銷排行") {
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  } else {
-    const target = PRODUCTS.find(p => p.Category === cat);
-    if(target) {
-      const targetEl = document.getElementById(`p-${target.ID}`);
-      if(targetEl) window.scrollTo({ top: targetEl.offsetTop - headerH - 10, behavior: 'smooth' });
-    }
-  }
-}
-
-function renderList() {
-  const list = document.getElementById("product-list");
-  let html = "";
-  
-  // 1. 排行榜
-  html += `<div style="font-weight:900; margin:8px 4px 12px; display:flex; align-items:center; gap:6px; color:var(--accent)">
-    <span class="material-icons-round">workspace_premium</span>熱銷推薦排行</div>`;
-  RANKS.forEach((id, idx) => {
-    const p = PRODUCTS.find(x => x.ID === id);
-    if(p) html += buildCard(p, true, idx + 1);
-  });
-  
-  // 2. 分類
-  CATEGORIES.filter(c => c !== "熱銷排行").forEach(cat => {
-    html += `<div id="cat-${cat}" style="font-weight:900; margin:24px 4px 12px; font-size:18px">${cat}</div>`;
-    PRODUCTS.filter(p => p.Category === cat).forEach(p => {
-      html += buildCard(p);
+function renderUI() {
+    const nav = document.getElementById("catNav"), list = document.getElementById("list");
+    const cats = [...new Set(PRODUCTS.map(p => p.category))].filter(Boolean);
+    cats.forEach(cat => {
+        nav.innerHTML += `<div class="cat-pill" onclick="scrollToCat('cat-${cat}')">${cat}</div>`;
+        const sec = document.createElement("div"); sec.id = `cat-${cat}`;
+        sec.innerHTML = `<h3 style="padding:16px 0 8px 16px;">${cat}</h3>`;
+        const grid = document.createElement("div"); grid.className = "grid-layout";
+        PRODUCTS.filter(p => p.category === cat).forEach(p => {
+            const card = document.createElement("div"); card.className = "p-card";
+            card.innerHTML = `<div class="p-img-box"><img src="${p.photo}" onload="this.style.opacity=1"></div><div class="p-body"><div class="p-title">${p.name}</div><div class="p-price">$${p.price.toLocaleString()}</div><div class="stepper"><div class="s-btn add" onclick="updateQty(${p._id}, 1)">＋</div></div></div>`;
+            grid.appendChild(card);
+        });
+        sec.appendChild(grid); list.appendChild(sec);
     });
-  });
-  
-  list.innerHTML = html;
 }
 
-function buildCard(p, isRank = false, rankNum = 0) {
-  const inCart = CART.find(i => i.ID === p.ID);
-  const qty = inCart ? inCart.qty : 0;
-  return `
-    <div class="p-card" id="p-${p.ID}">
-      <div class="p-img-box">
-        <img src="${p.Img || 'https://via.placeholder.com/150'}" loading="lazy">
-        ${isRank ? `<div style="position:absolute; top:0; left:0; background:var(--accent); color:#fff; font-size:10px; font-weight:900; padding:2px 6px; border-bottom-right-radius:8px">TOP ${rankNum}</div>` : ''}
-      </div>
-      <div class="p-info">
-        <div>
-          <div class="p-tag ${p.isBeauty?'beauty-tag':''}">${p.Tag || p.Type}</div>
-          <div class="p-name">${p.Name}</div>
-          <div class="p-price-row">
-            <span class="p-price">${p.Price.toLocaleString()}</span>
-            ${p.Orig > p.Price ? `<span class="p-orig">$${p.Orig.toLocaleString()}</span>` : ''}
-          </div>
-        </div>
-        <div style="display:flex; justify-content:flex-end">
-          <div class="qty-ctrl">
-            <button class="q-btn minus ${qty>0?'active':''}" onclick="updateQty('${p.ID}', -1)">
-              <span class="material-icons-round" style="font-size:18px">remove</span>
-            </button>
-            <div class="q-val">${qty}</div>
-            <button class="q-btn" onclick="updateQty('${p.ID}', 1)">
-              <span class="material-icons-round" style="font-size:18px">add</span>
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  `;
-}
-
-/* --- LOGIC --- */
-function updateQty(id, delta) {
-  const p = PRODUCTS.find(x => x.ID === id);
-  let item = CART.find(i => i.ID === id);
-  
-  if(!item && delta > 0) {
-    if(p.Bundle) {
-      openBundle(p);
-      return;
-    }
-    CART.push({ ...p, qty: 1 });
-  } else if(item) {
-    item.qty += delta;
-    if(item.qty <= 0) CART = CART.filter(i => i.ID !== id);
-  }
-  
-  saveState();
-  refreshCart();
-  renderList();
-}
-
-function openBundle(p) {
-  currentBundleTarget = p;
-  const opts = p.Bundle.split(";");
-  const limit = parseInt(p.BundleLimit) || opts.length;
-  
-  document.getElementById("bm-name").innerText = p.Name;
-  document.getElementById("bm-limit-msg").innerText = `請選擇 ${limit} 項產品`;
-  
-  const container = document.getElementById("bm-options");
-  container.innerHTML = opts.map(opt => {
-    const isSel = (SELECTED_BUNDLE.get(p.ID) || []).includes(opt);
-    return `
-      <div class="opt-card ${isSel?'selected':''}" onclick="toggleBundleOpt('${opt}')">
-        <div class="opt-check"><span class="material-icons-round" style="font-size:16px">check</span></div>
-        <div style="font-weight:700">${opt}</div>
-      </div>
-    `;
-  }).join('');
-  
-  document.getElementById("bundle-modal").classList.add("open");
-}
-
-function toggleBundleOpt(opt) {
-  const p = currentBundleTarget;
-  let current = SELECTED_BUNDLE.get(p.ID) || [];
-  const limit = parseInt(p.BundleLimit) || 99;
-  
-  if(current.includes(opt)) {
-    current = current.filter(x => x !== opt);
-  } else {
-    if(current.length < limit) current.push(opt);
-    else showToast(`最多隻能選擇 ${limit} 項`, "warn");
-  }
-  
-  SELECTED_BUNDLE.set(p.ID, current);
-  openBundle(p); // Re-render
-}
-
-function closeBundle() {
-  const p = currentBundleTarget;
-  const sel = SELECTED_BUNDLE.get(p.ID) || [];
-  const limit = parseInt(p.BundleLimit) || 0;
-  
-  if(sel.length < limit) {
-    showToast(`請選滿 ${limit} 項產品`, "warn");
-    return;
-  }
-  
-  if(!CART.find(i => i.ID === p.ID)) {
-    CART.push({ ...p, qty: 1 });
-  }
-  
-  document.getElementById("bundle-modal").classList.remove("open");
-  saveState();
-  refreshCart();
-  renderList();
-}
-
-/* --- CALCULATION --- */
-function calcCart() {
-  let subTotal = 0;
-  let pAmt = 0, bAmt = 0; // 美容與一般分開計
-  let bogoSavings = 0;
-  let discounts = [];
-  
-  // 1. 買一送一與基礎計價
-  CART.forEach(item => {
-    let lineTotal = 0;
-    if(item.BOGO === "Y") {
-      const paidQty = Math.ceil(item.qty / 2);
-      const freeQty = Math.floor(item.qty / 2);
-      lineTotal = paidQty * item.Price;
-      bogoSavings += freeQty * item.Price;
-    } else {
-      lineTotal = item.qty * item.Price;
-    }
-    
-    if(item.isBeauty) bAmt += lineTotal;
-    else pAmt += lineTotal;
-    subTotal += lineTotal;
-  });
-  
-  // 2. 分區折扣規則 (Rules Gid=1)
-  RULES.forEach(r => {
-    const targetAmt = r.Type === "美容" ? bAmt : pAmt;
-    if(targetAmt >= parseInt(r.Threshold)) {
-      const disc = Math.floor(targetAmt * (1 - parseFloat(r.Rate)));
-      discounts.push({ name: r.Name, amt: disc });
-    }
-  });
-  
-  const totalDiscount = discounts.reduce((a,b) => a + b.amt, 0);
-  const finalTotal = subTotal - totalDiscount;
-  
-  return { subTotal, pAmt, bAmt, discounts, totalDiscount, finalTotal, bogoSavings };
+function updateQty(pid, delta) {
+    const p = PRODUCTS.find(x => x._id === pid);
+    let item = CART.find(i => i.code === p.code);
+    if(item) { item.qty += delta; if(item.qty<=0) CART = CART.filter(i => i!==item); }
+    else if(delta > 0) CART.push({...p, qty: 1});
+    refreshCart();
 }
 
 function refreshCart() {
-  const res = calcCart();
-  const fb = document.getElementById("float-bar");
-  const fbTotal = document.getElementById("fb-total");
-  const fbCount = document.getElementById("fb-count");
-  
-  if(CART.length > 0) {
-    fb.classList.remove("hidden");
-    fbTotal.innerText = res.finalTotal.toLocaleString();
-    fbCount.innerText = `共 ${CART.reduce((a,b)=>a+b.qty,0)} 件商品`;
-  } else {
-    fb.classList.add("hidden");
-  }
-  
-  if(isCartOpen) renderCartItems(res);
+    const list = document.getElementById("cartList"), sum = document.getElementById("sumPay");
+    list.innerHTML = ""; let total = 0;
+    CART.forEach(it => {
+        total += it.price * it.qty;
+        list.innerHTML += `<div class="c-item"><div class="c-info"><div>${it.name}</div><div>$${it.price} x ${it.qty}</div></div></div>`;
+    });
+    sum.innerText = "$" + total.toLocaleString();
+    document.getElementById("float-bar").classList.toggle("hidden", CART.length === 0);
+    document.querySelector(".fb-total").innerText = "$" + total.toLocaleString();
 }
 
-function renderCartItems(res) {
-  const body = document.getElementById("cart-items");
-  const foot = document.getElementById("cart-summary");
-  
-  // Items
-  body.innerHTML = CART.map(item => `
-    <div class="ci-card">
-      <img src="${item.Img}" class="ci-img">
-      <div class="ci-info">
-        <div class="ci-name">${item.Name}</div>
-        ${SELECTED_BUNDLE.has(item.ID) ? `<div style="font-size:11px; color:var(--primary); margin-bottom:4px">內容：${SELECTED_BUNDLE.get(item.ID).join(', ')}</div>` : ''}
-        <div class="ci-price">$${item.Price.toLocaleString()} ${item.BOGO==='Y'?'<span style="color:var(--accent); font-size:10px">(買一送一)</span>':''}</div>
-        <div class="ci-ctrl">
-           <div class="q-btn minus active" onclick="updateQty('${item.ID}', -1)"><span class="material-icons-round" style="font-size:16px">remove</span></div>
-           <div class="q-val">${item.qty}</div>
-           <div class="q-btn" onclick="updateQty('${item.ID}', 1)"><span class="material-icons-round" style="font-size:16px">add</span></div>
-        </div>
-      </div>
-    </div>
-  `).join('');
-  
-  // Gamification & Totals
-  let html = `<div class="gamification-box">`;
-  
-  // 一般滿額贈 (假設 2000 門檻)
-  const pNext = 2000, bNext = 1500;
-  const pPer = Math.min(100, (res.pAmt / pNext) * 100);
-  html += `
-    <div class="milestone-title"><span class="material-icons-round" style="font-size:16px">card_giftcard</span> 全館滿額贈進度</div>
-    <div class="milestone-track"><div class="milestone-bar p-bar" style="width:${pPer}%"></div></div>
-    <div class="milestone-msg">${res.pAmt >= pNext ? '✅ 已達成全館禮' : `再買 <b>$${pNext-res.pAmt}</b> 即可獲得滿額贈`}</div>
-  `;
-  
-  if(res.bAmt > 0) {
-    const bPer = Math.min(100, (res.bAmt / bNext) * 100);
-    html += `
-      <div class="milestone-title" style="margin-top:12px; color:var(--beauty)"><span class="material-icons-round" style="font-size:16px">face</span> 美容滿額禮</div>
-      <div class="milestone-track"><div class="milestone-bar b-bar" style="width:${bPer}%"></div></div>
-      <div class="milestone-msg">${res.bAmt >= bNext ? '✅ 已達成美容禮' : `再買 <b>$${bNext-res.bAmt}</b> 即可獲得美容禮`}</div>
-    `;
-  }
-  html += `</div>`;
-  
-  // Totals
-  html += `
-    <div style="margin-top:16px">
-      <div class="sum-line"><span>小計</span><b>$${res.subTotal.toLocaleString()}</b></div>
-      ${res.discounts.map(d => `<div class="sum-line" style="color:var(--accent)"><span>${d.name}</span><b>-$${d.amt.toLocaleString()}</b></div>`).join('')}
-      <div class="final-row">
-        <div class="final-label">應付總額</div>
-        <div class="final-amt">${res.finalTotal.toLocaleString()}</div>
-      </div>
-      <div class="btn-checkout" onclick="openForm()">前往結帳</div>
-    </div>
-  `;
-  foot.innerHTML = html;
+window.scrollToCat = (id) => document.getElementById(id).scrollIntoView({behavior:'smooth'});
+window.closeWelcome = () => document.getElementById("welcome-overlay").style.display = "none";
+window.openCart = () => { document.getElementById("drawer").classList.add("open"); document.body.classList.add("modal-open"); };
+window.closeCart = () => { document.getElementById("drawer").classList.remove("open"); document.body.classList.remove("modal-open"); };
+
+window.submitOrder = () => {
+    const name = document.getElementById("fName").value;
+    if(!name || !CART.length) return alert("請填寫姓名並選購");
+    fetch(GAS_URL, { method: "POST", body: "payload=" + encodeURIComponent(JSON.stringify({employee_name:name, items:CART})) })
+    .then(r => r.json()).then(res => { if(res.ok) { alert("訂購成功"); CART=[]; refreshCart(); closeCart(); } });
 }
 
-/* --- FORM & SUBMIT --- */
-function openForm() {
-  document.getElementById("form-modal").classList.add("open");
-  history.pushState({modal: 'form'}, null, "");
-}
-function closeForm() {
-  document.getElementById("form-modal").classList.remove("open");
-}
-
-function toggleDelivery() {
-  const isDel = document.getElementById("f-is-delivery").checked;
-  document.getElementById("delivery-fields").classList.toggle("show", isDel);
-}
-
-function submitOrder() {
-  const name = document.getElementById("f-name").value.trim();
-  const phone = document.getElementById("f-phone").value.trim();
-  const isDel = document.getElementById("f-is-delivery").checked;
-  const addr = document.getElementById("f-address").value.trim();
-  
-  if(!name || !phone) return showToast("請填寫姓名與電話", "warn");
-  if(isDel && !addr) return showToast("請填寫地址", "warn");
-  
-  const btn = document.getElementById("submit-btn");
-  btn.innerText = "訂單傳送中...";
-  btn.style.pointerEvents = "none";
-  
-  const res = calcCart();
-  const orderData = {
-    action: 'submit_order',
-    name, phone, note: document.getElementById("f-note").value,
-    is_delivery: isDel ? 'Y' : 'N',
-    address: addr,
-    total: res.finalTotal,
-    items: CART.map(i => {
-      let n = i.Name;
-      if(SELECTED_BUNDLE.has(i.ID)) n += `(${SELECTED_BUNDLE.get(i.ID).join(',')})`;
-      return `${n} x${i.qty}`;
-    }).join('\n')
-  };
-  
-  lastOrderData = orderData;
-  
-  fetch(GAS_URL, {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: "payload=" + encodeURIComponent(JSON.stringify(orderData))
-  })
-  .then(r => r.json())
-  .then(res => {
-    if(res.ok) {
-      showReceipt(res.order_id, orderData);
-    } else {
-      alert("傳送失敗，請連繫現場人員");
-    }
-  })
-  .catch(e => alert("網路錯誤:" + e))
-  .finally(() => {
-    btn.innerText = "確認送出訂單";
-    btn.style.pointerEvents = "auto";
-  });
-}
-
-/* --- UI HELPERS --- */
-function openCart() { 
-  document.getElementById("drawer").classList.add("open"); 
-  document.getElementById("float-bar").classList.add("hidden"); 
-  document.body.classList.add('modal-open');
-  
-  // 優化點：確保開啟時 Body 滾動位置重置
-  const drBody = document.getElementById("cart-items");
-  if(drBody) drBody.scrollTop = 0;
-  
-  isCartOpen = true; 
-  refreshCart();
-  history.pushState({modal: 'cart'}, null, ""); 
-}
-
-function closeCart() { 
-  document.getElementById("drawer").classList.remove("open"); 
-  document.body.classList.remove('modal-open');
-  isCartOpen = false; 
-  refreshCart(); 
-}
-
-function showToast(msg, type="info") {
-  const t = document.getElementById("toast");
-  t.innerText = msg;
-  t.style.background = type === "warn" ? "rgba(211,47,47,0.9)" : "rgba(38,50,56,0.9)";
-  t.classList.add("show");
-  setTimeout(() => t.classList.remove("show"), 2500);
-}
-
-function showReceipt(id, data) {
-  document.getElementById("rcOrderId").innerText = id;
-  document.getElementById("rcDetail").innerHTML = `
-    客戶姓名：${data.name}<br>
-    訂單總額：$${data.total.toLocaleString()}<br>
-    訂單內容：<br>${data.items.replace(/\n/g, '<br>')}
-  `;
-  document.getElementById("receiptModal").classList.add("open");
-  closeForm();
-}
-
-function closeReceipt() { 
-  document.getElementById("receiptModal").classList.remove("open"); 
-  CART = []; SELECTED_BUNDLE.clear();
-  saveState(); refreshCart(); closeCart(); renderList();
-}
-
-function toggleEmailInput() { document.getElementById("emailBox").classList.toggle("show"); }
-
-function sendReceipt() {
-  const email = document.getElementById("rcEmail").value.trim();
-  if(!email.includes('@')) return showToast("無效 Email", "warn");
-  
-  const btn = document.querySelector("#emailBox .btn-checkout");
-  const orgTxt = btn.innerText;
-  btn.innerText = "寄送中...";
-  btn.disabled = true;
-  
-  fetch(GAS_URL, {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: "payload=" + encodeURIComponent(JSON.stringify({
-      action: 'send_email',
-      email: email,
-      order_id: document.getElementById("rcOrderId").innerText,
-      order_data: lastOrderData
-    }))
-  })
-  .then(r => r.json())
-  .then(res => {
-    if(res.ok) {
-      showToast("✅ 已寄送電子序號");
-      toggleEmailInput();
-    } else {
-      showToast("寄送失敗", "warn");
-    }
-  })
-  .finally(() => {
-    btn.innerText = orgTxt;
-    btn.disabled = false;
-  });
-}
-
-/* --- STATE PERSISTENCE --- */
-function saveState() {
-  localStorage.setItem('cartV28', JSON.stringify(CART));
-  localStorage.setItem('bundleV28', JSON.stringify([...SELECTED_BUNDLE]));
-}
-function loadState() {
-  const c = localStorage.getItem('cartV28');
-  const b = localStorage.getItem('bundleV28');
-  if(c) CART = JSON.parse(c);
-  if(b) SELECTED_BUNDLE = new Map(JSON.parse(b));
-}
-
-/* --- EVENT LISTENERS --- */
-window.addEventListener('popstate', (e) => {
-  closeCart(); closeForm(); closeBundle();
-});
-
-window.addEventListener('scroll', () => {
-  const btt = document.getElementById('back-to-top');
-  btt.classList.toggle('show', window.scrollY > 300);
-});
-
-// Init
 initApp();
-
 </script>
 </body>
 </html>
