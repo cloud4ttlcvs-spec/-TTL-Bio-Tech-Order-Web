@@ -1332,8 +1332,7 @@ async function initApp() {
     loadState();
   } catch(e) {
     console.error(e);
-    alert("連線異常，請稍後重試。
-" + (e.message || e));
+    alert("連線異常，請稍後重試。\n" + (e.message || e));
   }
 }
 
