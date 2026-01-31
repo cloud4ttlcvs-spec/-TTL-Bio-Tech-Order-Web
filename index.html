@@ -618,7 +618,37 @@ const SHEET_R = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQU95r9_TOPlQXY
 const SHEET_RANK = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQj5QLrtaWikGcLNwMawbjiN8ZQDgFzW1RV7UECFgLzECWj16I2ugE_B6tzzLICCynsk1L6lAuJfccS/pub?gid=93142219&single=true&output=csv";
 const SHEET_GIFTS_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQBtV8q3Ank7Bnhs83IbOb97U46juV-RKeL3NpdFiNcSu-ifI21fQYo1-io62S3JIrXEO5MiDArc1Lr/pub?gid=1623055155&single=true&output=csv";
 const GAS_URL = "https://script.google.com/macros/s/AKfycbxQ9Etloak3ZNv6yfyMCK9KbjoLyDqjRQHHVlASY5iMwwy_c4NCPxWpMK1YkzSXstHN/exec";
-const PROXY = (url) => "https://corsproxy.io/?" + encodeURIComponent(url);
+
+// --- ENHANCED PROXY LOGIC (Remove corsproxy.io) ---
+async function fetchCSV(url) {
+  // 1. Try Direct Fetch (Works for many public Google Sheets)
+  try {
+    const response = await fetch(url, { cache: 'no-store' });
+    if (response.ok) return await response.text();
+  } catch (e) { console.warn("Direct fetch failed, trying proxy..."); }
+
+  // 2. Fallback Proxies (More stable than corsproxy.io)
+  const proxies = [
+    (u) => `https://api.allorigins.win/get?url=${encodeURIComponent(u)}`,
+    (u) => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(u)}`
+  ];
+
+  for (const proxyFn of proxies) {
+    try {
+      const proxyUrl = proxyFn(url);
+      const res = await fetch(proxyUrl);
+      if (res.ok) {
+        if (proxyUrl.includes('allorigins')) {
+          const json = await res.json();
+          return json.contents;
+        }
+        return await res.text();
+      }
+    } catch (e) { console.error("Proxy failed:", e); }
+  }
+  throw new Error("Unable to load data from any source.");
+}
+
 // Bump cache key to avoid stale config from older builds
 const CONFIG_CACHE_KEY = "ttl_order_config_cache_v2";
 const CONFIG_CACHE_TTL_MS = 6 * 60 * 60 * 1000; // 6h
@@ -1190,10 +1220,10 @@ function highlightText(text, query) {
 async function initApp() {
   try {
     const [pText, rText, rankText, gText] = await Promise.all([
-      fetch(PROXY(SHEET_P)).then(r => r.text()),
-      fetch(PROXY(SHEET_R)).then(r => r.text()),
-      fetch(PROXY(SHEET_RANK)).then(r => r.text()),
-      fetch(PROXY(SHEET_GIFTS_URL)).then(r => r.text())
+      fetchCSV(SHEET_P),
+      fetchCSV(SHEET_R),
+      fetchCSV(SHEET_RANK),
+      fetchCSV(SHEET_GIFTS_URL)
     ]);
 
     const pData = Papa.parse(pText, { header: true, skipEmptyLines: true }).data;
