@@ -876,6 +876,18 @@ window.openGiftList = function() {
         });
     }
 
+    // 3. Series Gift Section (by qty)
+    const seriesRules = (RULES.series_gift || []).filter(r => r.scope === 'zone_prefix' && String(r.gift||'').trim());
+    if (seriesRules.length > 0) {
+        grid.innerHTML += `<div class="g-section-title">系列贈品</div>`;
+        seriesRules.forEach(g => {
+            const prefixes = splitPrefixes(g.prefix);
+            const qty = prefixes.length ? sumQtyByPrefixes(CART, prefixes) : 0;
+            const reached = qty > 0;
+            grid.appendChild(createSeriesGiftItem(g, reached, qty));
+        });
+    }
+
     document.getElementById("giftModal").classList.add("open");
     history.pushState({modal: 'gift'}, null, "");
 };
@@ -892,6 +904,31 @@ function renderGiftImages(giftCode) {
     });
     html += `</div>`;
     return html;
+}
+
+function createSeriesGiftItem(g, reached, baseQty) {
+    let gName = (PRODUCT_MAP.get(g.gift) || {}).name || g.gift;
+    gName = gName.replace(/^(贈品|贈|Gift)[:\s|｜_]*/i, "");
+    let imgHtml = renderGiftImages(g.gift);
+    if(!imgHtml) imgHtml = '<div class="g-thumb" style="display:flex;align-items:center;justify-content:center;font-size:16px">🎁</div>';
+
+    const thr = Number(g.amt);
+    const ruleText = (Number.isFinite(thr) && thr > 0) ? `每 ${thr} 箱送` : `每箱送`;
+    const perText = `${ruleText} ${Number(g.qty)||0} 個`;
+
+    const div = document.createElement("div");
+    div.className = `gift-item ${reached ? 'unlocked' : ''}`;
+    div.innerHTML = `
+        <div class="g-status material-icons-round">${reached ? 'check_circle' : 'lock'}</div>
+        <div style="flex-shrink:0;">${imgHtml}</div>
+        <div class="g-info">
+          <div class="g-amt">${perText}</div>
+          <div class="g-name">${gName}</div>
+          <div style="font-size:12px;opacity:.8;margin-top:4px;">目前箱數：${baseQty}</div>
+          ${reached ? '<div class="g-tag">已獲得</div>' : ''}
+        </div>
+    `;
+    return div;
 }
 
 function createGiftItem(g, reached) {
@@ -1303,13 +1340,22 @@ const pData = Papa.parse(pText, { header: true, skipEmptyLines: true }).data;
     }
 
     const rData = Papa.parse(rText, { header: true, skipEmptyLines: true }).data;
-    RULES = { tiers: [], bogo: [], spend: [], bundle: [] };
+    RULES = { tiers: [], bogo: [], spend: [], bundle: [], series_gift: [] };
     rData.forEach(row => {
       const pick = (k) => row[Object.keys(row).find(key => key.toLowerCase() === k.toLowerCase())] || "";
       const type = pick("rule_type").toLowerCase();
       if(type.includes("tier")) RULES.tiers.push({ zone: pick("zone").trim(), min: Number(pick("min_qty")), pct: Number(pick("percent_off")) });
       else if(type.includes("bogo")) RULES.bogo.push({ code: pick("product_code"), buy: Number(pick("buy")), get: Number(pick("get")) });
-      else if(type.includes("spend")) RULES.spend.push({ scope: pick("threshold_scope"), prefix: pick("zone_prefix"), amt: Number(pick("threshold_amount")), gift: pick("gift_code"), qty: Number(pick("gift_qty")), mult: pick("multiples").toUpperCase()==="TRUE" });
+      else if(type.includes("series_gift")) {
+        const mRaw = String(pick("multiples") || "").trim().toUpperCase();
+        const mult = (mRaw === "TRUE" || mRaw === "1" || mRaw === "YES");
+        RULES.series_gift.push({ scope: pick("threshold_scope"), prefix: pick("zone_prefix"), amt: Number(pick("threshold_amount")), gift: pick("gift_code"), qty: Number(pick("gift_qty")), mult });
+      }
+      else if(type.includes("spend")) {
+        const mRaw = String(pick("multiples") || "").trim().toUpperCase();
+        const mult = (mRaw === "TRUE" || mRaw === "1" || mRaw === "YES");
+        RULES.spend.push({ scope: pick("threshold_scope"), prefix: pick("zone_prefix"), amt: Number(pick("threshold_amount")), gift: pick("gift_code"), qty: Number(pick("gift_qty")), mult });
+      }
       else if(type.includes("bundle")) RULES.bundle.push({ code: pick("product_code"), price: Number(pick("unit_price")) });
     });
 if (gText) {
@@ -1736,6 +1782,28 @@ window.updateCartItem = function(index, delta) {
     renderList(); 
 }
 
+function splitPrefixes(str){
+  return String(str||"").split(/[&＆|,、]/).map(s=>s.trim()).filter(Boolean);
+}
+function sumFinalByPrefixes(processedItems, prefixes){
+  if(!prefixes || prefixes.length===0) return 0;
+  let sum=0;
+  processedItems.forEach(it=>{
+    const cat = String(it.category||"");
+    if(prefixes.some(p=>cat.includes(p))) sum += (Number(it.finalLine)||0);
+  });
+  return sum;
+}
+function sumQtyByPrefixes(cartItems, prefixes){
+  if(!prefixes || prefixes.length===0) return 0;
+  let q=0;
+  cartItems.forEach(it=>{
+    const cat = String(it.category||"");
+    if(prefixes.some(p=>cat.includes(p))) q += (Number(it.qty)||0);
+  });
+  return q;
+}
+
 function calcCart() {
   let subTotal = 0, finalTotal = 0, beautyTotal = 0, discountAmt = 0;
   let warnings = [];
@@ -1782,10 +1850,14 @@ function calcCart() {
   });
   discountAmt = subTotal - finalTotal;
   const gifts = [];
+  // Spend-threshold gifts (supports zone_prefix with multi-prefix syntax: & ＆ | 、 ,)
   RULES.spend.forEach(r => {
-    let basis = r.scope === "zone_prefix" ? beautyTotal : finalTotal;
-    if(r.scope === "zone_prefix" && r.prefix && !r.prefix.includes("美容")) basis = 0; 
-    if(basis >= r.amt) {
+    let basis = finalTotal;
+    if(r.scope === "zone_prefix") {
+      const prefixes = splitPrefixes(r.prefix);
+      basis = prefixes.length ? sumFinalByPrefixes(processedItems, prefixes) : 0;
+    }
+    if(Number.isFinite(r.amt) && basis >= r.amt) {
       let qty = r.mult ? Math.floor(basis / r.amt) * r.qty : r.qty;
       if(qty > 0) {
         let gName = r.gift;
@@ -1795,6 +1867,34 @@ function calcCart() {
       }
     }
   });
+
+  // Series gift: per-box / per-qty gift by zone_prefix (e.g., 保健飲品每箱送2提袋)
+  (RULES.series_gift || []).forEach(r => {
+    if(r.scope !== "zone_prefix") return;
+    const prefixes = splitPrefixes(r.prefix);
+    if(!prefixes.length) return;
+
+    const totalQty = sumQtyByPrefixes(CART, prefixes); // qty = 箱數（購物車數量）
+    if(totalQty <= 0) return;
+
+    let giftQty = 0;
+    const thr = Number(r.amt);
+    if(Number.isFinite(thr) && thr > 0) {
+      const times = r.mult ? Math.floor(totalQty / thr) : (totalQty >= thr ? 1 : 0);
+      giftQty = times * (Number(r.qty) || 0);
+    } else {
+      // 若 threshold_amount 空白：視為「每箱送 gift_qty」
+      giftQty = totalQty * (Number(r.qty) || 0);
+    }
+
+    if(giftQty > 0 && r.gift) {
+      let gName = r.gift;
+      if(PRODUCT_MAP.has(r.gift)) gName = PRODUCT_MAP.get(r.gift).name;
+      gName = gName.replace(/^(贈品|贈|Gift)[:\s|｜_]*/i, "");
+      gifts.push({ name: gName, qty: giftQty, code: r.gift });
+    }
+  });
+
   return { items: processedItems, subTotal, finalTotal, discountAmt, beautyTotal, gifts, warnings };
 }
 
