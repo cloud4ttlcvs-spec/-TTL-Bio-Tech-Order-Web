@@ -420,12 +420,20 @@ input:focus, select:focus { border-color: var(--primary); background: #fff; outl
   .dr-body{ padding:10px; }
 
   /* Footer */
-  .dr-foot{ padding:12px 14px; padding-bottom: calc(12px + var(--safe-bottom)); }
-  .delivery-toggle-wrap{ margin:8px 0; padding:8px; }
+  /* Footer */
+  .dr-foot{ padding:8px 14px; padding-bottom: calc(8px + var(--safe-bottom)); }
+.delivery-toggle-wrap{ margin:8px 0; padding:8px; }
   .d-toggle-label{ font-size:14px; }
   .delivery-form{ gap:8px; margin-top:8px; padding-top:8px; }
 
-  /* Form controls only inside cart drawer */
+  
+  /* Footer summary spacing (mobile) */
+  .dr-foot > div:nth-child(1){ margin-top:2px !important; margin-bottom:2px !important; }
+  .dr-foot > div:nth-child(2){ margin-bottom:2px !important; }
+  .dr-foot > div:nth-child(3){ margin-bottom:2px !important; }
+  .dr-foot > div:nth-child(4){ margin-top:5px !important; padding-top:5px !important; }
+
+/* Form controls only inside cart drawer */
   #drawer-panel input, #drawer-panel select{ padding:12px; font-size:13px; }
   .form-grid{ gap:10px; margin-top:12px; }
 
