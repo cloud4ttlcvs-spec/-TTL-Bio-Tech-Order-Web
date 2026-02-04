@@ -912,8 +912,9 @@ function createSeriesGiftItem(g, reached, baseQty) {
     let imgHtml = renderGiftImages(g.gift);
     if(!imgHtml) imgHtml = '<div class="g-thumb" style="display:flex;align-items:center;justify-content:center;font-size:16px">🎁</div>';
 
+    const unit = seriesGiftUnit(g.prefix);
     const thr = Number(g.amt);
-    const ruleText = (Number.isFinite(thr) && thr > 0) ? `每 ${thr} 箱送` : `每箱送`;
+    const ruleText = (Number.isFinite(thr) && thr > 0) ? `每 ${thr} ${unit}送` : `每${unit}送`;
     const perText = `${ruleText} ${Number(g.qty)||0} 個`;
 
     const div = document.createElement("div");
@@ -924,7 +925,7 @@ function createSeriesGiftItem(g, reached, baseQty) {
         <div class="g-info">
           <div class="g-amt">${perText}</div>
           <div class="g-name">${gName}</div>
-          <div style="font-size:12px;opacity:.8;margin-top:4px;">目前箱數：${baseQty}</div>
+          <div style="font-size:12px;opacity:.8;margin-top:4px;">目前${unit}數：${baseQty}</div>
           ${reached ? '<div class="g-tag">已獲得</div>' : ''}
         </div>
     `;
@@ -1051,8 +1052,8 @@ function renderMilestoneContent() {
     const currentTotal = data.finalTotal;
     const currentBeauty = data.beautyTotal;
     
-    document.getElementById('ms-val-all').innerText = `$${currentTotal.toLocaleString()}`;
-    document.getElementById('ms-val-beauty').innerText = `$${currentBeauty.toLocaleString()}`;
+    document.getElementById('ms-val-all').innerText = `$${Math.round(Number(currentTotal)||0).toLocaleString()}`;
+    document.getElementById('ms-val-beauty').innerText = `$${Math.round(Number(currentBeauty)||0).toLocaleString()}`;
 
     const giftsAll = RULES.spend.filter(r => r.scope === 'all').sort((a,b) => a.amt - b.amt);
     const giftsBeauty = RULES.spend.filter(r => r.scope === 'zone_prefix').sort((a,b) => a.amt - b.amt);
@@ -1785,6 +1786,10 @@ window.updateCartItem = function(index, delta) {
 function splitPrefixes(str){
   return String(str||"").split(/[&＆|,、]/).map(s=>s.trim()).filter(Boolean);
 }
+function seriesGiftUnit(prefixStr){
+  return /麥汁/.test(String(prefixStr||"")) ? '箱' : '件';
+}
+
 function sumFinalByPrefixes(processedItems, prefixes){
   if(!prefixes || prefixes.length===0) return 0;
   let sum=0;
