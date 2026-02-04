@@ -246,6 +246,12 @@ justify-content: space-between;
   white-space:nowrap;
 }
 
+.p-price-pill .pill-label{
+  font-size:0.7em; /* 折後字型縮小30% */
+  font-weight:800;
+  margin-right:4px;
+}
+
 .stepper { display: flex; align-items: center; justify-content: flex-end; gap: 8px; margin-top: 10px; }
 .s-btn { 
   width: 32px; height: 32px; border-radius: 50%; border: 1px solid #eceff1; background: #fff; color: var(--primary); 
@@ -1678,8 +1684,8 @@ function getTierDiscountRangeForProduct(p){
 function getTierRangeText(p){
   const r = getTierDiscountRangeForProduct(p);
   if(!r) return "";
-  if(r.low === r.high) return `$${r.low.toLocaleString()}`;
-  return `$${r.low.toLocaleString()}–$${r.high.toLocaleString()}`;
+  if(r.low === r.high) return `${r.low.toLocaleString()}`;
+  return `${r.low.toLocaleString()}–${r.high.toLocaleString()}`;
 }
 
 function createProductCard(p, highlightQuery) {
@@ -1705,7 +1711,7 @@ function createProductCard(p, highlightQuery) {
     if (highlightQuery) { displayName = highlightText(p.name, highlightQuery); }
     
     const card = document.createElement("div"); card.className = "p-card"; card.id = `p-${p._id}`;
-    card.innerHTML = `<div class="p-img-box"><div class="badges">${badges}</div>${imgHtml}</div><div class="p-body"><div><div class="p-title">${displayName}</div><div class="p-code">${p.code}</div></div><div><div class="p-price-row"><span class="p-price">$${p.price.toLocaleString()}</span>${(function(){const t=getTierRangeText(p);return t?("<span class=\"p-price-pill\">折後 "+t+"</span>"):"";})()}</div>${actionBtn}<div class="stepper"><div class="s-btn ${qty===0?'hidden':''}" onclick="window.updateQty(this, ${p._id}, -1)">－</div><div class="s-val ${qty===0?'hidden':''}">${qty}</div><div class="s-btn add" onclick="window.updateQty(this, ${p._id}, 1)">＋</div></div></div></div>`;
+    card.innerHTML = `<div class="p-img-box"><div class="badges">${badges}</div>${imgHtml}</div><div class="p-body"><div><div class="p-title">${displayName}</div><div class="p-code">${p.code}</div></div><div><div class="p-price-row"><span class="p-price">$${p.price.toLocaleString()}</span>${(function(){const t=getTierRangeText(p);return t?("<span class=\"p-price-pill\"><span class=\"pill-label\">折後</span> "+t+"</span>"):"";})()}</div>${actionBtn}<div class="stepper"><div class="s-btn ${qty===0?'hidden':''}" onclick="window.updateQty(this, ${p._id}, -1)">－</div><div class="s-val ${qty===0?'hidden':''}">${qty}</div><div class="s-btn add" onclick="window.updateQty(this, ${p._id}, 1)">＋</div></div></div></div>`;
     return card;
 }
 
