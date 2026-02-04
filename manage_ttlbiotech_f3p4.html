@@ -748,12 +748,19 @@ function getTodayDigits() {
 
 async function init() {
   try {
-    const [ord, inv, sales, prods] = await Promise.all([
-      fetchCSV(getOrdersCsvUrl()), fetchCSV(INVENTORY_CSV), fetchCSV(SALES_CSV), fetchCSV(SHEET_P_CSV).catch(e => { console.warn('Product CSV load failed:', e); return [[]]; })
+    // V2 Sprint1: staged loading
+    // - core (orders/inventory/sales) renders ASAP
+    // - product bundle map loads in parallel and enhances UI after
+    const prodsPromise = fetchCSV(SHEET_P_CSV)
+      .then(prods => { processProducts(prods); return true; })
+      .catch(e => { console.warn('Product CSV load failed:', e); return false; });
+
+    const [ord, inv, sales] = await Promise.all([
+      fetchCSV(getOrdersCsvUrl()),
+      fetchCSV(INVENTORY_CSV),
+      fetchCSV(SALES_CSV)
     ]);
 
-    // [New] 建立產品組合包對照表
-    processProducts(prods);
     processOrders(ord);
     processInventory(inv);
     processSales(sales);
@@ -767,6 +774,14 @@ async function init() {
     
     document.getElementById('lastUpdate').innerText = "更新: " + new Date().toLocaleTimeString();
     showLoading(false);
+
+    // V2 Sprint1: if products load completes after core render, re-render tables to apply mappings
+    prodsPromise.then(ok => {
+      if(ok) {
+        try { if(typeof renderCurrentTable === 'function') renderCurrentTable(); } catch(e) {}
+      }
+    });
+
     updateRestoreWidget();
     
     const viewDash = document.getElementById('view-dashboard');
