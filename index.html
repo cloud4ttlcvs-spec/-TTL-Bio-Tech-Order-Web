@@ -666,29 +666,44 @@ async function fetchCsvTextSmart(sourceUrl, label = "data", options = {}) {
 }
 
 // Bump cache key to avoid stale config from older builds
-const CONFIG_CACHE_KEY = "ttl_order_config_cache_v2";
-const CONFIG_CACHE_TTL_MS = 6 * 60 * 60 * 1000; // 6h
+const // // V2 Sprint1: strict config loading (no time-based cache, no fallback degrade)
+let CONFIG_READY = false;
 
-async function loadConfigOptions() {
-  // 1) Try cache
-  try {
-    const raw = localStorage.getItem(CONFIG_CACHE_KEY);
-    if(raw) {
-      const obj = JSON.parse(raw);
-      if(obj && obj.ts && (Date.now() - obj.ts) < CONFIG_CACHE_TTL_MS && obj.data) {
-        applyConfigToForm(obj.data, true);
-        // 背景再拉一次最新（不阻塞）
-        fetchAndCacheConfigOptions().catch(()=>{});
-        return;
-      }
+function setConfigLoadingUI(state) {
+  const deptEl = document.getElementById("fDept");
+  const payEl = document.getElementById("fPay");
+
+  if(state === 'loading') {
+    if(deptEl) {
+      deptEl.disabled = true;
+      deptEl.innerHTML = '<option value="" selected disabled>載入中…</option>';
     }
-  } catch(e) {}
+    if(payEl) payEl.disabled = true; // keep existing options, just disable
+    return;
+  }
 
-  // 2) No cache -> fetch
-  await fetchAndCacheConfigOptions();
+  if(state === 'error') {
+    if(deptEl) {
+      deptEl.disabled = true;
+      deptEl.innerHTML = '<option value="" selected disabled>設定載入失敗，請重整</option>';
+    }
+    if(payEl) payEl.disabled = true;
+    return;
+  }
+
+  // ready
+  if(deptEl) deptEl.disabled = false;
+  if(payEl) payEl.disabled = false;
 }
 
-async function fetchAndCacheConfigOptions() {
+async function loadConfigOptions() {
+  return await fetchAndApplyConfigOptions();
+}
+
+async function fetchAndApplyConfigOptions() {
+  CONFIG_READY = false;
+  setConfigLoadingUI('loading');
+
   const payload = { action: "get_config" };
   try {
     const res = await fetch(GAS_URL, {
@@ -703,22 +718,20 @@ async function fetchAndCacheConfigOptions() {
         departments: Array.isArray(res.departments) ? res.departments : [],
         payments: Array.isArray(res.payments) ? res.payments : []
       };
-      try {
-        localStorage.setItem(CONFIG_CACHE_KEY, JSON.stringify({ ts: Date.now(), data }));
-      } catch(e) {}
       applyConfigToForm(data, false);
-      return;
+      setConfigLoadingUI('ready');
+      CONFIG_READY = true;
+      return true;
     }
-  } catch(e) {
-    // ignore and fall back
-  }
 
-  // fetch 失敗：至少提供可用的預設選項，避免使用者看到「載入中…」卡住
-  // 部門：其他；付款：現金
-  applyConfigToForm({
-    departments: [{label:"其他", value:"其他", active:true}],
-    payments: [{label:"現金", value:"現金", active:true}]
-  }, false);
+    throw new Error((res && (res.message || res.error)) || 'get_config failed');
+  } catch(e) {
+    console.warn('[Config] load failed:', e);
+    CONFIG_READY = false;
+    setConfigLoadingUI('error');
+    try { showToast('系統設定載入失敗，請重新整理再試', 'warn'); } catch(_) {}
+    return false;
+  }
 }
 
 function normalizeConfigList(list, fallbackLabel) {
@@ -1235,11 +1248,10 @@ function highlightText(text, query) {
 
 async function initApp() {
   try {
-    const pText = await fetchCsvTextSmart(SHEET_P, "商品資料");
-const rText = await fetchCsvTextSmart(SHEET_R, "優惠規則");
-
-// Optional resources: failure should NOT block core ordering flow
-const [rankText, gText] = await Promise.all([
+    // V2 Sprint1: core datasets fetched in parallel (faster + consistent)
+const [pText, rText, rankText, gText] = await Promise.all([
+  fetchCsvTextSmart(SHEET_P, "商品資料"),
+  fetchCsvTextSmart(SHEET_R, "優惠規則"),
   fetchCsvTextSmart(SHEET_RANK, "熱銷榜", { optional: true }),
   fetchCsvTextSmart(SHEET_GIFTS_URL, "贈品圖片", { optional: true })
 ]);
@@ -1323,13 +1335,25 @@ if (rankText) {
 
 
     renderUI();
-    // Load dropdown config (departments / payments) before restoring state,
-    // so saved values can be correctly applied to <select> options.
-    await loadConfigOptions();
-    document.getElementById("loader").style.opacity = 0;
-    setTimeout(()=>document.getElementById("loader").remove(), 300);
-    loadState();
-  } catch(e) { alert("連線異常，請稍後重試。\n" + e.message); }
+
+// V2 Sprint1: staged rendering (reduce perceived waiting)
+// Do NOT block the whole page on config fetch.
+const loaderEl = document.getElementById("loader");
+if(loaderEl) {
+  loaderEl.style.opacity = 0;
+  setTimeout(()=>{ try{ loaderEl.remove(); } catch(e){} }, 300);
+}
+
+// Let the browser paint the UI ASAP
+await new Promise(r => requestAnimationFrame(r));
+
+// Restore cart as soon as UI exists
+loadState();
+
+// Load dropdown config (departments / payments) in background.
+// Ordering stays strict: config not ready => cannot submit.
+loadConfigOptions().catch(()=>{});
+} catch(e) { alert("連線異常，請稍後重試。\n" + e.message); }
 }
 
 function processRankings(csvText) {
@@ -2018,8 +2042,13 @@ window.addEventListener("pageshow", () => {
   setTimeout(() => window.syncDeliveryUI && window.syncDeliveryUI({ collapse: true }), 200);
 });
 
-window.submitOrder = () => { 
-    const f = (id) => document.getElementById(id).value.trim(); 
+window.submitOrder = () => {
+    // V2 Sprint1: strict mode — if config isn't ready, don't allow submission
+    if(!CONFIG_READY) {
+        try { showToast('系統設定載入中或失敗，請稍候或重整頁面再試。', 'warn'); } catch(e) {}
+        return;
+    }
+const f = (id) => document.getElementById(id).value.trim(); 
     const nameEl = document.getElementById("fName");
     const deptEl = document.getElementById("fDept");
 
