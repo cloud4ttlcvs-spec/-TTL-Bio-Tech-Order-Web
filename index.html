@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"/>
-<title>生技展訂購系統 V28</title>
+<title>生技展訂購系統 V28（v2.7 加價購修復）</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&family=Roboto:wght@500;700;900&display=swap" rel="stylesheet">
 <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
@@ -231,6 +231,7 @@ main { padding: 12px; max-width: 900px; margin: 0 auto; margin-top: 10px; }
 justify-content: space-between;
 }
 .p-price { font-size: 17px; font-weight: 800; color: #263238; }
+.p-price.strike { font-weight: 600; color: #90a4ae; text-decoration: line-through; }
 
 
 
@@ -871,6 +872,58 @@ let GIFT_MAP = new Map();
 let achievedGifts = [];
 let isFirstAdd = true; 
 
+// --- ADDON (加價購) HELPERS ---
+// Multi-value splitter for fields like requires_any_zone_in / zone_prefix
+function splitMultiVals(s) {
+  return String(s || "")
+    .split(/[&＆|、,;；]/)
+    .map(x => x.trim())
+    .filter(Boolean);
+}
+
+function getFlatPriceRule(code, zoneText) {
+  if(!RULES || !RULES.flat_price) return null;
+  const z = String(zoneText||"");
+  return RULES.flat_price.find(r => r.code === code && z.includes(r.zone)) || null;
+}
+
+// Eligibility: requires cart contains >= minQty items from ANY of required zones (excluding add-on items)
+function isAddonEligible(addonZoneText) {
+  const z = String(addonZoneText||"");
+  const rule = (RULES && RULES.eligibility) ? (RULES.eligibility.find(e => z.includes(e.zone)) || null) : null;
+  if(!rule) return true; // if no eligibility rule, allow
+  const reqZones = splitMultiVals(rule.requires);
+  const minQty = Number(rule.minQty || 1);
+  if(reqZones.length === 0) return true;
+
+  let eligibleQty = 0;
+  CART.forEach(it => {
+    if(!it || !it.category) return;
+    if(String(it.category).includes("加價購")) return; // exclude add-ons
+    if(reqZones.some(rz => String(it.category).includes(rz))) eligibleQty += (Number(it.qty)||0);
+  });
+  return eligibleQty >= (Number.isNaN(minQty) ? 1 : minQty);
+}
+
+// Remove ineligible add-on items after cart changes. Returns number of removed lines.
+function enforceAddonEligibility() {
+  const addonItems = CART.filter(it => it && it.category && String(it.category).includes("加價購"));
+  if(addonItems.length === 0) return 0;
+
+  const zones = Array.from(new Set(addonItems.map(it => String(it.category))));
+  let removed = 0;
+
+  zones.forEach(z => {
+    if(!isAddonEligible(z)) {
+      const before = CART.length;
+      CART = CART.filter(it => !(it && String(it.category) === z));
+      removed += (before - CART.length);
+    }
+  });
+
+  return removed;
+}
+
 // --- GLOBAL FUNCTIONS ---
 
 function cleanupUI() {
@@ -1042,10 +1095,24 @@ window.updateQty = function(btnEl, pid, delta) {
   const p = PRODUCTS.find(x => x._id === pid);
   if(!p) return;
 
+  // Strict mode: if config isn't ready, do not allow cart operations
+  if(typeof CONFIG_READY !== 'undefined' && !CONFIG_READY) {
+    try { showToast('系統設定載入中或失敗，請稍候或重整頁面再試。', 'warn'); } catch(e) {}
+    return;
+  }
+
   if(delta > 0 && p.category.includes("加價購")) {
-    const mainCount = CART.reduce((acc, it) => acc + (!it.category.includes("加價購") ? it.qty : 0), 0);
-    if(mainCount === 0) {
-      showToast("請先選購主商品，才能加購喔！", "warn");
+    if(!isAddonEligible(p.category)) {
+      // Build a clearer hint from eligibility config
+      let hint = "請先選購指定主商品，才能加購喔！";
+      const rule = (RULES && RULES.eligibility) ? (RULES.eligibility.find(e => String(p.category).includes(e.zone)) || null) : null;
+      if(rule && rule.requires) {
+        const reqZones = splitMultiVals(rule.requires);
+        if(reqZones.length > 0) {
+          hint = `請先選購「${reqZones[0]}」系列商品，才能加購喔！`;
+        }
+      }
+      showToast(hint, "warn");
       return;
     }
   }
@@ -1077,6 +1144,12 @@ window.updateQty = function(btnEl, pid, delta) {
           const data = calcCart();
           checkNewGifts(data.gifts); 
       }, 800);
+  }
+
+  // Enforce add-on eligibility after any cart change
+  const removedAddon = enforceAddonEligibility();
+  if(removedAddon > 0) {
+    showToast("加價購商品已移除（未符合加購條件）", "warn");
   }
 
   saveState();
@@ -1409,12 +1482,24 @@ const pData = Papa.parse(pText, { header: true, skipEmptyLines: true }).data;
     }
 
     const rData = Papa.parse(rText, { header: true, skipEmptyLines: true }).data;
-    RULES = { tiers: [], bogo: [], spend: [], bundle: [], series_gift: [] };
+    RULES = { tiers: [], bogo: [], spend: [], bundle: [], series_gift: [], flat_price: [], eligibility: [] };
     rData.forEach(row => {
       const pick = (k) => row[Object.keys(row).find(key => key.toLowerCase() === k.toLowerCase())] || "";
       const type = pick("rule_type").toLowerCase();
       if(type.includes("tier")) RULES.tiers.push({ zone: pick("zone").trim(), min: Number(pick("min_qty")), pct: Number(pick("percent_off")) });
       else if(type.includes("bogo")) RULES.bogo.push({ code: pick("product_code"), buy: Number(pick("buy")), get: Number(pick("get")) });
+      else if(type.includes("flat_price")) {
+        const zone = pick("zone").trim();
+        const code = String(pick("product_code")||"").trim();
+        const unit = Number(pick("unit_price")||pick("charge")||0);
+        if(zone && code && !Number.isNaN(unit)) RULES.flat_price.push({ zone, code, unit });
+      }
+      else if(type.includes("eligibility")) {
+        const zone = pick("zone").trim();
+        const requires = String(pick("requires_any_zone_in")||"").trim();
+        const minQty = Number(pick("requires_min_qty")||pick("requires_min_qty ")||pick("requires_min_qty\t")||1);
+        if(zone) RULES.eligibility.push({ zone, requires, minQty: (Number.isNaN(minQty) ? 1 : minQty) });
+      }
       else if(type.includes("series_gift")) {
         const mRaw = String(pick("multiples") || "").trim().toUpperCase();
         const mult = (mRaw === "TRUE" || mRaw === "1" || mRaw === "YES");
@@ -1711,7 +1796,18 @@ function createProductCard(p, highlightQuery) {
     if (highlightQuery) { displayName = highlightText(p.name, highlightQuery); }
     
     const card = document.createElement("div"); card.className = "p-card"; card.id = `p-${p._id}`;
-    card.innerHTML = `<div class="p-img-box"><div class="badges">${badges}</div>${imgHtml}</div><div class="p-body"><div><div class="p-title">${displayName}</div><div class="p-code">${p.code}</div></div><div><div class="p-price-row"><span class="p-price">$${p.price.toLocaleString()}</span>${(function(){const t=getTierRangeText(p);return t?("<span class=\"p-price-pill\"><span class=\"pill-label\">折後</span> "+t+"</span>"):"";})()}</div>${actionBtn}<div class="stepper"><div class="s-btn ${qty===0?'hidden':''}" onclick="window.updateQty(this, ${p._id}, -1)">－</div><div class="s-val ${qty===0?'hidden':''}">${qty}</div><div class="s-btn add" onclick="window.updateQty(this, ${p._id}, 1)">＋</div></div></div></div>`;
+    card.innerHTML = `<div class="p-img-box"><div class="badges">${badges}</div>${imgHtml}</div><div class="p-body"><div><div class="p-title">${displayName}</div><div class="p-code">${p.code}</div></div><div><div class="p-price-row">${(function(){
+      if(String(p.category||"").includes("加價購")){
+        const fr = getFlatPriceRule(p.code, p.category);
+        const ap = (fr && fr.unit > 0) ? Number(fr.unit).toLocaleString() : "";
+        return '<span class="p-price strike">$' + p.price.toLocaleString() + '</span>' +
+               (ap ? ' <span class="p-price-pill"><span class="pill-label">加購</span> ' + ap + '</span>' : '');
+      } else {
+        const t = getTierRangeText(p);
+        return '<span class="p-price">$' + p.price.toLocaleString() + '</span>' +
+               (t ? ' <span class="p-price-pill"><span class="pill-label">折後</span> ' + t + '</span>' : '');
+      }
+    })()}</div>${actionBtn}<div class="stepper"><div class="s-btn ${qty===0?'hidden':''}" onclick="window.updateQty(this, ${p._id}, -1)">－</div><div class="s-val ${qty===0?'hidden':''}">${qty}</div><div class="s-btn add" onclick="window.updateQty(this, ${p._id}, 1)">＋</div></div></div></div>`;
     return card;
 }
 
@@ -1847,6 +1943,12 @@ window.updateCartItem = function(index, delta) {
         CART.splice(index, 1);
     }
     
+    // Enforce add-on eligibility after any cart change
+    const removedAddon = enforceAddonEligibility();
+    if(removedAddon > 0) {
+        showToast("加價購商品已移除（未符合加購條件）", "warn");
+    }
+
     saveState();
     const data = refreshCart(); // Refresh and get data
     
@@ -1921,6 +2023,19 @@ function calcCart() {
     subTotal += originalLine;
     let finalLine = originalLine;
     let tags = [];
+
+    // Add-on (加價購) uses flat_price override (do NOT apply tier/bogo/bundle)
+    if(String(it.category||"").includes("加價購")) {
+      const fr = getFlatPriceRule(it.code, it.category);
+      if(fr && fr.unit > 0) {
+        finalLine = fr.unit * it.qty;
+        tags.push({ text: `加購價 ${Number(fr.unit).toLocaleString()}`, cls: "save" });
+      }
+      finalTotal += finalLine;
+      if(it.category.includes("美容")) beautyTotal += finalLine;
+      return { ...it, finalLine, tags };
+    }
+
     const bundleRule = RULES.bundle.find(b => b.code === it.code);
     if(bundleRule && bundleRule.price < it.price) {
       finalLine = bundleRule.price * it.qty;
