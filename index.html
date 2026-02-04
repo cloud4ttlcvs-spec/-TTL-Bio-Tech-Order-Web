@@ -400,6 +400,44 @@ input:focus, select:focus { border-color: var(--primary); background: #fff; outl
 .d-collapse-btn { position: absolute; top: 8px; right: 8px; border: none; background: #ef6c00; color: #fff; font-size: 12px; font-weight: 700; padding: 4px 10px; border-radius: 999px; cursor: pointer; display: none; }
 .d-collapse-btn:hover { filter: brightness(0.95); }
 .d-collapse-btn:active { transform: translateY(1px); }
+
+/* --- V2.3 Cart Compact Header/Footer (mobile) --- */
+@media (max-width: 480px){
+  /* Header */
+  .dr-head{ padding:10px 14px; }
+  .dr-head h2{ font-size:18px !important; }
+  .dr-head .material-icons-round{ font-size:22px !important; }
+  .dr-head > span.material-icons-round{ padding:6px !important; }
+
+  /* Progress strip */
+  .gamification-box{ padding:10px 14px; }
+  .game-txt{ font-size:12px; }
+  .game-icon{ font-size:15px; }
+  .game-icon-wrap{ padding:3px 7px; }
+  .progress-wrap{ height:8px; margin-top:6px; }
+
+  /* Body */
+  .dr-body{ padding:10px; }
+
+  /* Footer */
+  .dr-foot{ padding:12px 14px; padding-bottom: calc(12px + var(--safe-bottom)); }
+  .delivery-toggle-wrap{ margin:8px 0; padding:8px; }
+  .d-toggle-label{ font-size:14px; }
+  .delivery-form{ gap:8px; margin-top:8px; padding-top:8px; }
+
+  /* Form controls only inside cart drawer */
+  #drawer-panel input, #drawer-panel select{ padding:12px; font-size:13px; }
+  .form-grid{ gap:10px; margin-top:12px; }
+
+  /* Buttons */
+  .btn-bar{ margin-top:14px; }
+  .btn-submit{ padding:14px; font-size:15px; border-radius:14px; }
+  .btn-clear{ flex:0 0 46px; }
+
+  /* Summary */
+  .sum-card{ margin-top:10px; }
+  .sum-head{ padding:10px 14px; font-size:13px; }
+}
 </style>
 </head>
 <body>
