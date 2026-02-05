@@ -1872,11 +1872,14 @@ const pData = Papa.parse(pText, { header: true, skipEmptyLines: true }).data;
         );
         return (foundKey ? row[foundKey] : "") || "";
       };
-      const type = pick("rule_type").toLowerCase();
-      if(type === "tier" || type.startsWith("tier_")) {
+      const type = String(pick("rule_type") || "").trim().toLowerCase();
+      // Parse item-quantity tier discounts (exclude order-level tiers like "order_tier")
+      const scope = String(pick("threshold_scope") || pick("scope") || "").trim().toLowerCase();
+      const isOrderTier = type.includes("order") || scope.includes("order");
+      if(type.includes("tier") && !isOrderTier) {
         const zone = String(pick("zone") || "").trim();
-        const min = Number(pick("min_qty") || 0);
-        const pct = Number(pick("percent_off") || 0);
+        const min = Number(String(pick("min_qty") || "0").replace(/,/g, ""));
+        const pct = Number(String(pick("percent_off") || "0").replace(/,/g, ""));
         // Only treat as "多件優惠" when min_qty > 1 and percent_off > 0
         if(zone && isFinite(min) && min > 1 && isFinite(pct) && pct > 0) {
           RULES.tiers.push({ zone, min, pct });
