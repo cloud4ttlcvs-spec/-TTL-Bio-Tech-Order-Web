@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"/>
-<title>生技展訂購系統 V28（v2.7 加價購修復）</title>
+<title>生技展訂購系統 V29（v2.8 加價購導引＋宅配免運提示）</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&family=Roboto:wght@500;700;900&display=swap" rel="stylesheet">
 <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
@@ -424,6 +424,39 @@ input:focus, select:focus { border-color: var(--primary); background: #fff; outl
 .d-collapse-btn:hover { filter: brightness(0.95); }
 .d-collapse-btn:active { transform: translateY(1px); }
 
+
+/* --- V2.8: Delivery free-shipping badge + better spacing when expanded --- */
+.ship-free-badge{
+  position:absolute;
+  top:8px;
+  right:72px;
+  display:none;
+  align-items:center;
+  gap:4px;
+  padding:4px 10px;
+  border-radius:999px;
+  font-size:12px;
+  font-weight:800;
+  white-space:nowrap;
+  border:1px solid;
+}
+.ship-free-badge.ok{ background:#e8f5e9; border-color:#c8e6c9; color:#2e7d32; }
+.ship-free-badge:not(.ok){ background:#fff8e1; border-color:#ffe0b2; color:#e65100; }
+.delivery-toggle-wrap.has-badge .d-toggle-label{ padding-right: 168px; }
+
+@media (max-width: 480px){
+  .ship-free-badge{ top:6px; right:66px; font-size:11px; padding:3px 8px; }
+  .delivery-toggle-wrap.has-badge .d-toggle-label{ padding-right: 156px; }
+}
+
+/* --- V2.8: Auto-scroll target highlight --- */
+.cat-section.zone-highlight{
+  outline: 2px solid #ffca28;
+  box-shadow: 0 0 0 6px rgba(255,202,40,0.18);
+  border-radius: 18px;
+}
+
+
 /* --- V2.3 Cart Compact Header/Footer (mobile) --- */
 @media (max-width: 480px){
   /* Header */
@@ -607,6 +640,7 @@ input:focus, select:focus { border-color: var(--primary); background: #fff; outl
           <input type="checkbox" id="chkDelivery" onchange="toggleDelivery()">
           <span>需宅配寄送</span> <span id="deliveryStatusText" style="font-size:12px;font-weight:400;color:#ef6c00">(請填寫收件資訊)</span>
         </label>
+        <span id="shipFreeBadge" class="ship-free-badge" style="display:none"></span>
         <button type="button" class="d-collapse-btn" id="btnDeliveryCollapse" onclick="collapseDelivery()">收合</button>
 
         <div id="deliveryForm" class="delivery-form">
@@ -687,6 +721,9 @@ const SHEET_R = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQU95r9_TOPlQXY
 const SHEET_RANK = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQj5QLrtaWikGcLNwMawbjiN8ZQDgFzW1RV7UECFgLzECWj16I2ugE_B6tzzLICCynsk1L6lAuJfccS/pub?gid=93142219&single=true&output=csv";
 const SHEET_GIFTS_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQBtV8q3Ank7Bnhs83IbOb97U46juV-RKeL3NpdFiNcSu-ifI21fQYo1-io62S3JIrXEO5MiDArc1Lr/pub?gid=1623055155&single=true&output=csv";
 const GAS_URL = "https://script.google.com/macros/s/AKfycbxQ9Etloak3ZNv6yfyMCK9KbjoLyDqjRQHHVlASY5iMwwy_c4NCPxWpMK1YkzSXstHN/exec";
+// Free-shipping threshold for宅配提示（可依活動調整）
+const FREE_SHIP_THRESHOLD = 1000;
+
 const PROXY = (url) => "https://corsproxy.io/?" + encodeURIComponent(url);
 // --- V28.1 FIX: Resilient CSV fetch (direct-first, proxy fallback) ---
 const CORS_FALLBACKS = [
@@ -920,8 +957,78 @@ function enforceAddonEligibility() {
       removed += (before - CART.length);
     }
   });
-
   return removed;
+}
+
+
+// Auto-navigate helper: scroll to a category section by raw zone text (from pricing_strategy)
+function findCategoryForZone(zoneText){
+  const z = String(zoneText||'').trim();
+  if(!z) return null;
+  // Prefer exact match on full category
+  let cat = categories.find(c => String(c).trim() === z);
+  if(!cat) cat = categories.find(c => String(c).includes(z));
+  if(!cat) cat = categories.find(c => z.includes(String(c)));
+  return cat || null;
+}
+
+function scrollToZoneSection(zoneText){
+  try{
+    const cat = findCategoryForZone(zoneText);
+    if(!cat) return false;
+    const id = `cat-${String(cat).replace(/\s+/g,'-')}`;
+    scrollToSection(id);
+    setTimeout(() => {
+      const el = document.getElementById(id);
+      if(el){
+        el.classList.add('zone-highlight');
+        setTimeout(() => el.classList.remove('zone-highlight'), 900);
+      }
+    }, 650);
+    return true;
+  }catch(e){ return false; }
+}
+
+function getFreeShipThreshold(){
+  const t = (RULES && RULES.freeShipThreshold != null) ? Number(RULES.freeShipThreshold) : Number(FREE_SHIP_THRESHOLD);
+  return (isFinite(t) && t > 0) ? t : 0;
+}
+
+function updateShipFreeBadge(total){
+  const badge = document.getElementById('shipFreeBadge');
+  if(!badge) return;
+  const thr = getFreeShipThreshold();
+  if(!thr){ badge.style.display='none'; return; }
+  const diff = Math.max(0, Math.round(thr - (Number(total)||0)));
+  if((Number(total)||0) >= thr){
+    badge.classList.add('ok');
+    badge.textContent = '✔ 滿額免運';
+  } else {
+    badge.classList.remove('ok');
+    badge.textContent = `差 ${diff.toLocaleString()} 免運`;
+  }
+}
+
+function syncDeliveryHeaderUI(){
+  const wrap = document.querySelector('.delivery-toggle-wrap');
+  const form = document.getElementById('deliveryForm');
+  const status = document.getElementById('deliveryStatusText');
+  const badge = document.getElementById('shipFreeBadge');
+  const chk = document.getElementById('chkDelivery');
+  if(!wrap || !form || !status || !badge || !chk) return;
+
+  const expanded = !!(chk.checked && form.classList.contains('show'));
+  if(expanded){
+    status.style.display = 'none';
+    badge.style.display = 'inline-flex';
+    wrap.classList.add('has-badge');
+    const total = parseFloat(String(document.getElementById('sumPay')?.innerText||'').replace(/[^\d.]/g,'')) || 0;
+    updateShipFreeBadge(total);
+  } else {
+    status.style.display = 'inline';
+    badge.style.display = 'none';
+    wrap.classList.remove('has-badge');
+  }
 }
 
 // --- GLOBAL FUNCTIONS ---
@@ -1103,16 +1210,22 @@ window.updateQty = function(btnEl, pid, delta) {
 
   if(delta > 0 && p.category.includes("加價購")) {
     if(!isAddonEligible(p.category)) {
-      // Build a clearer hint from eligibility config
+      // Clearer hint + auto-navigate to required主商品區
       let hint = "請先選購指定主商品，才能加購喔！";
+      let targetZoneRaw = null;
       const rule = (RULES && RULES.eligibility) ? (RULES.eligibility.find(e => String(p.category).includes(e.zone)) || null) : null;
       if(rule && rule.requires) {
         const reqZones = splitMultiVals(rule.requires);
         if(reqZones.length > 0) {
-          hint = `請先選購「${reqZones[0]}」系列商品，才能加購喔！`;
+          targetZoneRaw = reqZones[0];
+          const zoneDisplay = String(targetZoneRaw).split(/[\s_]/)[0];
+          hint = `選購「${zoneDisplay}」系列商品，立即享加購優惠`;
         }
       }
       showToast(hint, "warn");
+      if(targetZoneRaw) {
+        setTimeout(() => { scrollToZoneSection(targetZoneRaw); }, 300);
+      }
       return;
     }
   }
@@ -2174,7 +2287,10 @@ function refreshCart() {
   data.items.forEach(i => sumHtml += `<div class="sum-line"><span>${i.name}</span><span>x${i.qty}</span></div>`);
   data.gifts.forEach(g => sumHtml += `<div class="sum-line" style="color:#e65100"><span>🎁 ${g.name}</span><span>x${g.qty}</span></div>`);
   finalList.innerHTML = sumHtml; // V22.2 Fix: Ensure HTML is set
-  
+
+  // Update宅配列右側免運提示（僅在展開時顯示）
+  try { syncDeliveryHeaderUI(); } catch(e) {}
+
   return data;
 }
 
@@ -2284,6 +2400,7 @@ window.toggleDelivery = function() {
     if(btn) btn.style.display = "none";
     setStatus(false);
   }
+  try { syncDeliveryHeaderUI(); } catch(e) {}
 };
 
 // [NEW] 宅配表單收合（需先完成必填欄位）
@@ -2326,6 +2443,7 @@ window.collapseDelivery = function() {
     status.style.color = "#2e7d32";
     status.style.fontWeight = "700";
   }
+  try { syncDeliveryHeaderUI(); } catch(e) {}
 };
 
 
@@ -2353,6 +2471,7 @@ window.syncDeliveryUI = function(opts = { collapse: true }) {
       if(btn) btn.style.display = "none";
     }
   }
+  try { syncDeliveryHeaderUI(); } catch(e) {}
 };
 
 // 兼容瀏覽器 Autofill：延遲同步一次，並於 pageshow 再同步
