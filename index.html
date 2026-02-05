@@ -1812,7 +1812,13 @@ const [pText, rText, rankText, gText] = await Promise.all([
 
 const pData = Papa.parse(pText, { header: true, skipEmptyLines: true }).data;
     PRODUCTS = pData.map((row, i) => {
-      const pick = (k) => row[Object.keys(row).find(key => key.toLowerCase() === k.toLowerCase())] || "";
+      const pick = (k) => {
+        const kk = String(k || "").replace(/^\uFEFF/, "").trim().toLowerCase();
+        const foundKey = Object.keys(row).find(key =>
+          String(key || "").replace(/^\uFEFF/, "").trim().toLowerCase() === kk
+        );
+        return (foundKey ? row[foundKey] : "") || "";
+      };
       const code = String(pick("product_code")||"").trim();
       const name = String(pick("product_name")||"").trim();
       if(!code || !name) return null;
@@ -1859,9 +1865,23 @@ const pData = Papa.parse(pText, { header: true, skipEmptyLines: true }).data;
     const rData = Papa.parse(rText, { header: true, skipEmptyLines: true }).data;
     RULES = { tiers: [], bogo: [], spend: [], bundle: [], series_gift: [], flat_price: [], eligibility: [] };
     rData.forEach(row => {
-      const pick = (k) => row[Object.keys(row).find(key => key.toLowerCase() === k.toLowerCase())] || "";
+      const pick = (k) => {
+        const kk = String(k || "").replace(/^\uFEFF/, "").trim().toLowerCase();
+        const foundKey = Object.keys(row).find(key =>
+          String(key || "").replace(/^\uFEFF/, "").trim().toLowerCase() === kk
+        );
+        return (foundKey ? row[foundKey] : "") || "";
+      };
       const type = pick("rule_type").toLowerCase();
-      if(type.includes("tier")) RULES.tiers.push({ zone: pick("zone").trim(), min: Number(pick("min_qty")), pct: Number(pick("percent_off")) });
+      if(type === "tier" || type.startsWith("tier_")) {
+        const zone = String(pick("zone") || "").trim();
+        const min = Number(pick("min_qty") || 0);
+        const pct = Number(pick("percent_off") || 0);
+        // Only treat as "多件優惠" when min_qty > 1 and percent_off > 0
+        if(zone && isFinite(min) && min > 1 && isFinite(pct) && pct > 0) {
+          RULES.tiers.push({ zone, min, pct });
+        }
+      }
       else if(type.includes("bogo")) RULES.bogo.push({ code: pick("product_code"), buy: Number(pick("buy")), get: Number(pick("get")) });
       else if(type.includes("flat_price")) {
         const zone = pick("zone").trim();
@@ -1876,7 +1896,7 @@ const pData = Papa.parse(pText, { header: true, skipEmptyLines: true }).data;
         if(zone) RULES.eligibility.push({ zone, requires, minQty: (Number.isNaN(minQty) ? 1 : minQty) });
       }
       else if(type.includes("shipping_threshold")) {
-        const amt = Number(pick("threshold_amount")||0);
+        const amt = Number(String(pick("threshold_amount") || "0").replace(/,/g, ""));
         if(!Number.isNaN(amt) && isFinite(amt) && amt > 0) RULES.freeShipThreshold = amt;
       }
 
@@ -1895,7 +1915,13 @@ const pData = Papa.parse(pText, { header: true, skipEmptyLines: true }).data;
 if (gText) {
   const gData = Papa.parse(gText, { header: true, skipEmptyLines: true }).data;
   gData.forEach(row => {
-      const pick = (k) => row[Object.keys(row).find(key => key.toLowerCase() === k.toLowerCase())] || "";
+      const pick = (k) => {
+        const kk = String(k || "").replace(/^\uFEFF/, "").trim().toLowerCase();
+        const foundKey = Object.keys(row).find(key =>
+          String(key || "").replace(/^\uFEFF/, "").trim().toLowerCase() === kk
+        );
+        return (foundKey ? row[foundKey] : "") || "";
+      };
       const code = pick("product_code");
       const url = pick("photos url");
       if(code && url) {
@@ -1979,8 +2005,8 @@ function processRankings(csvText) {
 }
 
 function getRankingCategory(name, originalCat) {
-  const n = name.toLowerCase();
-  const c = originalCat.toLowerCase();
+  const n = String(name || "").toLowerCase();
+  const c = String(originalCat || "").toLowerCase();
 
   // Cleaning: remove overly-broad single-char "洗", use explicit terms instead
   if (
@@ -1992,6 +2018,10 @@ function getRankingCategory(name, originalCat) {
   // Beauty: remove 洗髮/沐浴, add 護髮/護手
   const beautyKeywords = ["vinata","面膜","精華","霜","露","乳液","潔顏","卸妝","美白","保濕","抗皺","潤","透","亮","膚","痘","護髮","護手"];
   if (c.includes("美容") || c.includes("保養") || beautyKeywords.some(k => n.includes(k))) return "beauty";
+
+  // Health: 保健 / 保健食品 / 保健飲品 (fallback by keywords)
+  const healthKeywords = ["益生菌","魚油","葉黃素","葡萄糖胺","膠原","胜肽","納豆","紅麴","q10","b群","維他命","維生素","酵母","啤酒酵母","精力湯"];
+  if (c.includes("保健") || healthKeywords.some(k => n.includes(k))) return "health";
 
   return "general";
 }
