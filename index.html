@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"/>
-<title>生技展訂購系統 V29（v2.8.1 初始化提示優化）</title>
+<title>生技展訂購系統 V29（v2.8.2：bundle價顯示＋免運門檻可配置＋熱銷分類修正＋多件提示＋初始化友善提示）</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&family=Roboto:wght@500;700;900&display=swap" rel="stylesheet">
 <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
@@ -347,31 +347,26 @@ header { position: sticky; top: 0; z-index: 1000; background: rgba(255,255,255,0
 #toast-container { position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%); z-index: 9999; pointer-events: none; width: 90%; max-width: 320px; display: flex; flex-direction: column-reverse; gap: 8px; align-items: center; }
 .toast { background: rgba(33, 33, 33, 0.95); color: #fff; padding: 12px 24px; border-radius: 50px; font-size: 14px; text-align: center; box-shadow: 0 8px 20px rgba(0,0,0,0.2); opacity: 0; transform: translateY(20px); animation: toastIn 0.3s forwards, toastOut 0.3s forwards 2.5s; backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; gap: 8px; transition: 0.3s; }
 .toast.game { background: linear-gradient(135deg, #ffa726, #ff6f00); font-weight: 700; box-shadow: 0 10px 25px rgba(255, 111, 0, 0.4); }
-/* --- V2.8.1: Init Pill (config/background init feedback, non-alarming) --- */
-#init-pill{
+
+.toast.info { background: rgba(0, 77, 64, 0.92); }
+.badge-tier { border: none; cursor: pointer; }
+.badge-tier:active { transform: scale(0.98); }
+.init-pill{
   position: fixed;
   left: 50%;
-  bottom: calc(98px + var(--safe-bottom));
-  transform: translateX(-50%) translateY(10px);
-  background: rgba(33,33,33,0.88);
-  color: #fff;
+  bottom: 92px;
+  transform: translateX(-50%);
   padding: 10px 14px;
   border-radius: 999px;
+  background: rgba(0, 0, 0, 0.72);
+  color: #fff;
   font-size: 13px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  box-shadow: 0 10px 25px rgba(0,0,0,0.25);
-  z-index: 2500;
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity .25s ease, transform .25s ease;
+  letter-spacing: 0.2px;
+  z-index: 9999;
   backdrop-filter: blur(6px);
+  box-shadow: 0 10px 22px rgba(0,0,0,0.18);
+  pointer-events: none;
 }
-#init-pill.show{ opacity: 1; transform: translateX(-50%) translateY(0); }
-#init-pill .material-icons-round{ color: #ffd54f; font-size: 18px; }
-#init-pill .init-sub{ opacity: .75; font-size: 12px; }
-
 @keyframes toastIn { to { opacity: 1; transform: translateY(0); } }
 @keyframes toastOut { to { opacity: 0; transform: translateY(-10px); } }
 
@@ -564,15 +559,6 @@ input:focus, select:focus { border-color: var(--primary); background: #fff; outl
 </div>
 
 <div id="toast-container"></div>
-
-<div id="init-pill" aria-live="polite">
-  <span class="material-icons-round">hourglass_top</span>
-  <div>
-    <div id="init-pill-text">系統初始化中…</div>
-    <div class="init-sub" id="init-pill-sub" style="display:none"></div>
-  </div>
-</div>
-
 
 <div id="back-to-top" onclick="window.scrollTo({top:0, behavior:'smooth'})">
   <span class="material-icons-round">arrow_upward</span>
@@ -809,6 +795,50 @@ async function fetchCsvTextSmart(sourceUrl, label = "data", options = {}) {
 // V2 Sprint1: strict config loading (no time-based cache, no fallback degrade)
 let CONFIG_READY = false;
 
+// Init feedback (避免使用者在設定尚未就緒時誤觸下單/加購按鈕)
+const INIT_FEEDBACK = { startedAt: Date.now(), lastToastAt: 0, timer: null, pill: null };
+
+function ensureInitPill() {
+  if (INIT_FEEDBACK.pill) return INIT_FEEDBACK.pill;
+  const pill = document.createElement('div');
+  pill.id = 'init-pill';
+  pill.className = 'init-pill';
+  pill.style.display = 'none';
+  pill.textContent = '系統初始化中…請稍候';
+  document.body.appendChild(pill);
+  INIT_FEEDBACK.pill = pill;
+  return pill;
+}
+
+function startInitFeedback() {
+  INIT_FEEDBACK.startedAt = Date.now();
+  const pill = ensureInitPill();
+  pill.style.display = 'block';
+
+  if (INIT_FEEDBACK.timer) clearInterval(INIT_FEEDBACK.timer);
+  INIT_FEEDBACK.timer = setInterval(() => {
+    if (CONFIG_READY) { stopInitFeedback(); return; }
+    const sec = Math.max(1, Math.floor((Date.now() - INIT_FEEDBACK.startedAt) / 1000));
+    pill.textContent = sec <= 2 ? '系統初始化中…請稍候' : `系統初始化中…已等待 ${sec} 秒`;
+  }, 1000);
+}
+
+function stopInitFeedback() {
+  if (INIT_FEEDBACK.timer) { clearInterval(INIT_FEEDBACK.timer); INIT_FEEDBACK.timer = null; }
+  const pill = ensureInitPill();
+  pill.style.display = 'none';
+}
+
+function showInitHint() {
+  const now = Date.now();
+  if (now - INIT_FEEDBACK.lastToastAt < 1200) return;
+  INIT_FEEDBACK.lastToastAt = now;
+  const sec = Math.max(1, Math.floor((now - INIT_FEEDBACK.startedAt) / 1000));
+  const msg = sec <= 2 ? '系統初始化中…請稍候' : `系統初始化中…已等待 ${sec} 秒`;
+  try { showToast(msg, 'info'); } catch(_) {}
+}
+
+
 function setConfigLoadingUI(state) {
   const deptEl = document.getElementById("fDept");
   const payEl = document.getElementById("fPay");
@@ -843,7 +873,7 @@ async function loadConfigOptions() {
 async function fetchAndApplyConfigOptions() {
   CONFIG_READY = false;
   setConfigLoadingUI('loading');
-  try { showInitPill(); } catch(e) {}
+  startInitFeedback();
 
   const payload = { action: "get_config" };
   try {
@@ -862,7 +892,7 @@ async function fetchAndApplyConfigOptions() {
       applyConfigToForm(data, false);
       setConfigLoadingUI('ready');
       CONFIG_READY = true;
-      try { hideInitPill(); } catch(e) {}
+      stopInitFeedback();
       return true;
     }
 
@@ -870,8 +900,14 @@ async function fetchAndApplyConfigOptions() {
   } catch(e) {
     console.warn('[Config] load failed:', e);
     CONFIG_READY = false;
-    try { hideInitPill(); } catch(e) {}
     setConfigLoadingUI('error');
+    try {
+      const pill = ensureInitPill();
+      pill.style.display = 'block';
+      pill.textContent = '系統設定載入失敗，請重整';
+      if (INIT_FEEDBACK.timer) { clearInterval(INIT_FEEDBACK.timer); INIT_FEEDBACK.timer = null; }
+    } catch(_) {}
+
     try { showToast('系統設定載入失敗，請重新整理再試', 'warn'); } catch(_) {}
     return false;
   }
@@ -1241,7 +1277,7 @@ window.updateQty = function(btnEl, pid, delta) {
 
   // Strict mode: if config isn't ready, do not allow cart operations
   if(typeof CONFIG_READY !== 'undefined' && !CONFIG_READY) {
-    try { notifyInitPending(); } catch(e) {}
+    showInitHint();
     return;
   }
 
@@ -1465,73 +1501,56 @@ function showToast(msg, type='normal') {
   const t = document.createElement('div');
   t.className = 'toast';
   if(type === 'game') t.classList.add('game');
+  if(type === 'info') t.classList.add('info');
 
   let icon = 'check_circle';
-  let color = '#69f0ae';
-  if (type === 'warn') { icon = 'error_outline'; color = '#ff5252'; }
-  if (type === 'game') { icon = 'stars'; color = '#fff'; }
-  if (type === 'info') { icon = 'hourglass_top'; color = '#ffd54f'; }
+  if (type === 'warn') icon = 'error_outline';
+  if (type === 'game') icon = 'stars';
+  if (type === 'info') icon = 'info';
 
-  t.innerHTML = `<span class="material-icons-round" style="color:${color}">${icon}</span> ${msg}`;
+  const iconColor = (type === 'warn') ? '#ff5252'
+                   : (type === 'game') ? '#fff'
+                   : (type === 'info') ? '#4fc3f7'
+                   : '#69f0ae';
+
+  t.innerHTML = `<span class="material-icons-round" style="color:${iconColor}">${icon}</span> ${msg}`;
   c.appendChild(t);
 
-  const ttl = (type === 'game') ? 3000 : 2500;
+  const ttl = (type === 'game') ? 3000 : (type === 'info' ? 2000 : 2500);
   setTimeout(() => t.remove(), ttl);
   return t;
 }
 
-// --- V2.8.1: Init feedback helpers (for background config loading) ---
-let INIT_STARTED_AT = 0;
-let INIT_TICKER = null;
-let INIT_TOAST_TS = 0;
 
-function showInitPill() {
-  const pill = document.getElementById('init-pill');
-  const textEl = document.getElementById('init-pill-text');
-  const subEl  = document.getElementById('init-pill-sub');
-  if(!pill || !textEl) return;
+function formatTierHintForZone(zone) {
+  const z = String(zone || '').trim();
+  if(!z || !RULES || !Array.isArray(RULES.tiers)) return "";
+  const rules = RULES.tiers
+    .filter(t => t && String(t.zone || '').trim() === z)
+    .map(t => ({ min: Number(t.min)||1, pct: Number(t.pct)||0 }))
+    .filter(t => isFinite(t.pct) && t.pct > 0)
+    .sort((a,b) => a.min - b.min);
 
-  if(CONFIG_READY) { hideInitPill(); return; }
-  if(!INIT_STARTED_AT) INIT_STARTED_AT = Date.now();
+  if(rules.length === 0) return "";
+  const parts = rules.map(r => {
+    const zhe = (100 - r.pct) / 10;
+    const zheTxt = (Math.round(zhe * 10) / 10).toString().replace(/\.0$/, "");
+    return `滿${r.min}件 ${zheTxt}折`;
+  });
 
-  pill.classList.add('show');
-
-  const update = () => {
-    if(CONFIG_READY) { hideInitPill(); return; }
-    const sec = Math.max(1, Math.floor((Date.now() - INIT_STARTED_AT) / 1000));
-    // Non-alarming wording: show elapsed, not "remaining"
-    textEl.textContent = `系統初始化中…已等待 ${sec} 秒`;
-    if(subEl) {
-      if(sec >= 10) {
-        subEl.style.display = 'block';
-        subEl.textContent = '如持續較久，可嘗試重整頁面';
-      } else {
-        subEl.style.display = 'none';
-        subEl.textContent = '';
-      }
-    }
-  };
-
-  update();
-  if(!INIT_TICKER) INIT_TICKER = setInterval(update, 500);
+  return `多件優惠：${parts.join('、')}`;
 }
 
-function hideInitPill() {
-  const pill = document.getElementById('init-pill');
-  const subEl  = document.getElementById('init-pill-sub');
-  if(pill) pill.classList.remove('show');
-  if(subEl){ subEl.style.display='none'; subEl.textContent=''; }
-  if(INIT_TICKER) { clearInterval(INIT_TICKER); INIT_TICKER = null; }
-}
-
-function notifyInitPending() {
-  try { showInitPill(); } catch(e) {}
-  const now = Date.now();
-  // Throttle to avoid spam when user taps repeatedly
-  if(now - INIT_TOAST_TS < 1500) return;
-  INIT_TOAST_TS = now;
-  try { showToast('系統初始化中…請稍候', 'info'); } catch(e) {}
-}
+// 點擊「多件優惠」小標籤：顯示不惱人的提示（toast）
+document.addEventListener('click', (e) => {
+  const el = e.target.closest('.badge-tier');
+  if(!el) return;
+  e.preventDefault();
+  e.stopPropagation();
+  const z = decodeURIComponent(el.getAttribute('data-tier-zone') || '');
+  const msg = formatTierHintForZone(z);
+  if(msg) showToast(msg, 'info');
+});
 
 function animateFly(startEl) {
   const card = startEl.closest('.p-card') || startEl.closest('.r-card');
@@ -1636,9 +1655,8 @@ function highlightText(text, query) {
 
 async function initApp() {
   try {
-    // V2.8.1: start background config fetch ASAP to reduce "not ready" window
-    try { INIT_STARTED_AT = Date.now(); } catch(e) {}
-    try { loadConfigOptions().catch(()=>{}); } catch(e) {}
+    // Preload dropdown config ASAP (reduces race window on first click)
+    loadConfigOptions().catch(()=>{});
 
     // V2 Sprint1: core datasets fetched in parallel (faster + consistent)
 const [pText, rText, rankText, gText] = await Promise.all([
@@ -1695,11 +1713,15 @@ const pData = Papa.parse(pText, { header: true, skipEmptyLines: true }).data;
     }
 
     const rData = Papa.parse(rText, { header: true, skipEmptyLines: true }).data;
-    RULES = { tiers: [], bogo: [], spend: [], bundle: [], series_gift: [], flat_price: [], eligibility: [] };
+    RULES = { tiers: [], bogo: [], spend: [], bundle: [], series_gift: [], flat_price: [], eligibility: [], freeShipThreshold: null };
     rData.forEach(row => {
       const pick = (k) => row[Object.keys(row).find(key => key.toLowerCase() === k.toLowerCase())] || "";
       const type = pick("rule_type").toLowerCase();
-      if(type.includes("tier")) RULES.tiers.push({ zone: pick("zone").trim(), min: Number(pick("min_qty")), pct: Number(pick("percent_off")) });
+      if(type.includes("shipping_threshold")) {
+        const amt = Number(pick("threshold_amount") || pick("amt") || pick("value") || pick("unit_price") || 0);
+        if(isFinite(amt) && amt > 0) RULES.freeShipThreshold = amt;
+      }
+      else if(type.includes("tier")) RULES.tiers.push({ zone: pick("zone").trim(), min: Number(pick("min_qty")), pct: Number(pick("percent_off")) });
       else if(type.includes("bogo")) RULES.bogo.push({ code: pick("product_code"), buy: Number(pick("buy")), get: Number(pick("get")) });
       else if(type.includes("flat_price")) {
         const zone = pick("zone").trim();
@@ -1763,6 +1785,7 @@ await new Promise(r => requestAnimationFrame(r));
 // Restore cart as soon as UI exists
 loadState();
 
+// Load dropdown config already started earlier (preload).
 } catch(e) { alert("連線異常，請稍後重試。\n" + e.message); }
 }
 
@@ -1802,14 +1825,37 @@ function processRankings(csvText) {
 }
 
 function getRankingCategory(name, originalCat) {
-  const n = name.toLowerCase();
-  const c = originalCat.toLowerCase();
-  if (n.includes("易洗樂") || n.includes("洗潔") || n.includes("洗衣") || n.includes("洗碗") || n.includes("菜瓜布") || c.includes("清潔") || n.includes("洗") || n.includes("皂")) return "cleaning";
-  const beautyKeywords = ["vinata", "面膜", "精華", "霜", "露", "乳液", "潔顏", "卸妝", "美白", "保濕", "抗皺", "潤", "透", "亮", "膚", "痘", "洗髮", "沐浴"];
+  const n = String(name || "").toLowerCase();
+  const c = String(originalCat || "").toLowerCase();
+
+  // 清潔：以明確詞組為主，避免單字「洗」造成誤判
+  if (
+    c.includes("清潔") ||
+    n.includes("易洗樂") ||
+    n.includes("洗潔") ||
+    n.includes("洗衣") ||
+    n.includes("洗碗") ||
+    n.includes("菜瓜布") ||
+    n.includes("皂") ||
+    // 指定新增：洗髮/沐浴/洗面/洗手（你要歸到清潔）
+    n.includes("洗髮") ||
+    n.includes("沐浴") ||
+    n.includes("洗面") ||
+    n.includes("洗手")
+  ) return "cleaning";
+
+  // 美容：移除洗髮/沐浴，新增護髮/護手
+  const beautyKeywords = [
+    "vinata", "面膜", "精華", "霜", "露", "乳液", "潔顏", "卸妝",
+    "美白", "保濕", "抗皺", "潤", "透", "亮", "膚", "痘",
+    "護髮", "護手"
+  ];
   if (c.includes("美容") || c.includes("保養") || beautyKeywords.some(kw => n.includes(kw))) return "beauty";
+
   const healthKeywords = ["安可健", "s11", "益生菌", "納豆", "紅麴", "魚油", "鈣", "葡萄糖胺", "葉黃素", "膠囊", "錠", "酵素"];
   if (c.includes("保健") || c.includes("健康") || healthKeywords.some(kw => n.includes(kw))) return "health";
-  return "other"; 
+
+  return "other";
 }
 
 function renderRanking(type) {
@@ -1990,7 +2036,13 @@ function createProductCard(p, highlightQuery) {
     if(p.category.includes("加價購")) badges += `<span class="badge bg-red">加價購</span>`;
     if(RULES.bogo.some(b => b.code === p.code)) badges += `<span class="badge bg-blue">買一送一</span>`;
     if(p.name.includes("任選")) badges += `<span class="badge bg-gold">優惠組合</span>`;
-    if(RULES.tiers.some(t => p.category.includes(t.zone))) badges += `<span class="badge bg-purple">多件優惠</span>`;
+    (function(){
+      const tierHit = (RULES && Array.isArray(RULES.tiers)) ? RULES.tiers.find(t => t && p.category && p.category.includes(t.zone)) : null;
+      if(tierHit) {
+        const z = encodeURIComponent(String(tierHit.zone||'').trim());
+        badges += `<button type="button" class="badge bg-purple badge-tier" data-tier-zone="${z}" data-pid="${p._id}">多件優惠</button>`;
+      }
+    })();
     let actionBtn = "";
     if(p.bundle.length >= 2 && p.name.includes("任選")) {
       const hasSel = SELECTED_BUNDLE.has(p._id);
@@ -2013,6 +2065,16 @@ function createProductCard(p, highlightQuery) {
         return '<span class="p-price strike">$' + p.price.toLocaleString() + '</span>' +
                (ap ? ' <span class="p-price-pill"><span class="pill-label">加購</span> ' + ap + '</span>' : '');
       } else {
+        // 美容超值組：用 bundle 規則顯示「建議售價(刪除線) + 優惠價」
+        if(String(p.category||"").includes("美容超值組")) {
+          const br = (RULES && Array.isArray(RULES.bundle)) ? RULES.bundle.find(b => b && b.code === p.code) : null;
+          if(br && isFinite(Number(br.price)) && Number(br.price) > 0 && Number(br.price) < Number(p.price)) {
+            const promo = Number(br.price).toLocaleString();
+            return '<span class="p-price strike">$' + p.price.toLocaleString() + '</span>' +
+                   ' <span class="p-price-pill"><span class="pill-label">優惠</span> ' + promo + '</span>';
+          }
+        }
+
         const t = getTierRangeText(p);
         return '<span class="p-price">$' + p.price.toLocaleString() + '</span>' +
                (t ? ' <span class="p-price-pill"><span class="pill-label">折後</span> ' + t + '</span>' : '');
@@ -2580,7 +2642,7 @@ window.addEventListener("pageshow", () => {
 window.submitOrder = () => {
     // V2 Sprint1: strict mode — if config isn't ready, don't allow submission
     if(!CONFIG_READY) {
-        try { notifyInitPending(); } catch(e) {}
+        showInitHint();
         return;
     }
 const f = (id) => document.getElementById(id).value.trim(); 
