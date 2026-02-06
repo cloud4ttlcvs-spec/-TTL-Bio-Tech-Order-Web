@@ -503,35 +503,55 @@ input:focus, select:focus { border-color: var(--primary); background: #fff; outl
   .sum-head{ padding:10px 14px; font-size:13px; }
 }
 
-/* --- V2.8.8: System announcement slot (between rankings and categories) --- */
-#systemAnnouncementSlot{ padding:0 14px; margin: 10px 0 6px; }
-.sys-ann{
-  background: rgba(0,137,123,0.08);
-  border: 1px solid rgba(0,137,123,0.18);
-  color: #004d40;
-  border-radius: 14px;
-  padding: 10px 12px;
+/* ===== v2.8.3 UX polish: promo hints + init skeleton ===== */
+.promo-badge, .promo-pill { cursor: pointer; }
+.promo-badge:focus, .promo-pill:focus { outline: 2px solid rgba(255,255,255,0.35); outline-offset: 2px; }
+
+/* Config init: disable cart interactions (no scary warnings) */
+.boot-not-ready .stepper .s-btn { opacity: 0.55; pointer-events: none; }
+.boot-not-ready .stepper .s-btn.add { position: relative; }
+.boot-not-ready .stepper .s-btn.add::after {
+  content: "";
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  margin-left: 6px;
+  vertical-align: middle;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: v283spin 0.9s linear infinite;
+}
+@keyframes v283spin { to { transform: rotate(360deg); } }
+
+/* Init pill */
+.init-pill {
+  position: fixed;
+  left: 50%;
+  bottom: 14px;
+  transform: translateX(-50%);
+  z-index: 9999;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: 999px;
+  background: rgba(0,0,0,0.55);
+  color: #fff;
   font-size: 13px;
-  line-height: 1.35;
-  box-shadow: 0 6px 18px rgba(0,0,0,0.04);
+  letter-spacing: 0.2px;
+  backdrop-filter: blur(6px);
 }
-.sys-ann .title{ font-weight: 800; margin-bottom: 4px; }
-
-/* --- V2.8.8: Promo badges/pills are clickable (subtle) --- */
-.promo-badge, .p-price-pill{ cursor: pointer; }
-.promo-badge:active, .p-price-pill:active{ transform: translateY(1px); }
-
-/* --- V2.8.8: Disable add/remove during config init (not scary, but blocks wrong ops) --- */
-body.cfg-loading .s-btn,
-body.cfg-loading .btn-bundle{
-  pointer-events:none;
-  opacity: .45;
-  filter: grayscale(.15);
+.init-pill .dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.75;
+  animation: v283pulse 1.1s ease-in-out infinite;
 }
-body.cfg-error .s-btn,
-body.cfg-error .btn-bundle{
-  pointer-events:none;
-  opacity: .45;
+@keyframes v283pulse {
+  0%,100%{ transform: scale(0.9); opacity:0.55; }
+  50%{ transform: scale(1.15); opacity:0.95; }
 }
 
 </style>
@@ -609,8 +629,6 @@ body.cfg-error .btn-bundle{
   <div class="rank-list" id="rankList"></div>
 </div>
 
-<div id="systemAnnouncementSlot" style="display:none"></div>
-
 <main id="list"></main>
 <div id="empty-state">
   <span class="material-icons-round" style="font-size:48px">search_off</span>
@@ -674,7 +692,7 @@ body.cfg-error .btn-bundle{
           <input type="checkbox" id="chkDelivery" onchange="toggleDelivery()">
           <span>需宅配寄送</span> <span id="deliveryStatusText" style="font-size:12px;font-weight:400;color:#ef6c00">(請填寫收件資訊)</span>
         </label>
-        <span id="shipFreeBadge" class="ship-free-badge" style="display:none"></span>
+        <span id="shipFreeBadge" class="ship-free-badge promo-badge" data-promo="shipping" role="button" tabindex="0" style="display:none"></span>
         <button type="button" class="d-collapse-btn" id="btnDeliveryCollapse" onclick="collapseDelivery()">收合</button>
 
         <div id="deliveryForm" class="delivery-form">
@@ -843,7 +861,7 @@ async function loadConfigOptions() {
 async function fetchAndApplyConfigOptions() {
   CONFIG_READY = false;
   setConfigLoadingUI('loading');
-  setBootConfigState('loading');
+  try { setBootConfigState('loading'); } catch(e) {}
 
   const payload = { action: "get_config" };
   try {
@@ -862,7 +880,7 @@ async function fetchAndApplyConfigOptions() {
       applyConfigToForm(data, false);
       setConfigLoadingUI('ready');
       CONFIG_READY = true;
-      setBootConfigState('ready');
+      try { setBootConfigState('ready'); } catch(e) {}
       return true;
     }
 
@@ -871,7 +889,7 @@ async function fetchAndApplyConfigOptions() {
     console.warn('[Config] load failed:', e);
     CONFIG_READY = false;
     setConfigLoadingUI('error');
-    setBootConfigState('error');
+    try { setBootConfigState('error'); } catch(e) {}
     try { showToast('系統設定載入失敗，請重新整理再試', 'warn'); } catch(_) {}
     return false;
   }
@@ -955,6 +973,213 @@ function splitMultiVals(s) {
     .filter(Boolean);
 }
 
+
+// --- v2.8.3 INIT / PROMO HINT HELPERS ---
+const BOOT = {
+  initTs: Date.now(),
+  configState: "idle", // "idle" | "loading" | "ready" | "error"
+  timer: null,
+  lastInitToastAt: 0
+};
+
+function ensureInitPill() {
+  let el = document.getElementById("initPill");
+  if(!el) {
+    el = document.createElement("div");
+    el.id = "initPill";
+    el.className = "init-pill";
+    el.style.display = "none";
+    el.innerHTML = '<span class="dot"></span><span class="txt">系統初始化中…</span>';
+    document.body.appendChild(el);
+  }
+  return el;
+}
+
+function updateInitPillText() {
+  const el = document.getElementById("initPill");
+  if(!el) return;
+  const sec = Math.max(1, Math.round((Date.now() - BOOT.initTs) / 1000));
+  const txt = el.querySelector(".txt");
+  if(txt) txt.textContent = `系統初始化中…已等待 ${sec} 秒`;
+}
+
+function setBootConfigState(state) {
+  BOOT.configState = state;
+
+  // LOADING: disable cart controls + show gentle timer pill
+  if(state === "loading") {
+    BOOT.initTs = Date.now();
+    document.documentElement.classList.add("boot-not-ready");
+    try { ensureInitPill().style.display = "inline-flex"; } catch(e) {}
+    updateInitPillText();
+    if(BOOT.timer) clearInterval(BOOT.timer);
+    BOOT.timer = setInterval(updateInitPillText, 1000);
+    return;
+  }
+
+  // ERROR: keep disabled, but show clear message (no timer)
+  if(state === "error") {
+    if(BOOT.timer) { clearInterval(BOOT.timer); BOOT.timer = null; }
+    document.documentElement.classList.add("boot-not-ready");
+    try {
+      const pill = ensureInitPill();
+      pill.style.display = "inline-flex";
+      const txt = pill.querySelector(".txt");
+      if(txt) txt.textContent = "系統設定載入失敗，請重整頁面";
+    } catch(e) {}
+    return;
+  }
+
+  // READY (or idle): re-enable + hide
+  if(BOOT.timer) { clearInterval(BOOT.timer); BOOT.timer = null; }
+  const pill = document.getElementById("initPill");
+  if(pill) pill.style.display = "none";
+  document.documentElement.classList.remove("boot-not-ready");
+}
+
+function showInitBlockedToast() {
+  const now = Date.now();
+  if(now - BOOT.lastInitToastAt < 900) return; // throttle
+  BOOT.lastInitToastAt = now;
+
+  if(BOOT.configState === "error") {
+    try { showToast("系統設定載入失敗，請重整頁面再試。", "warn"); } catch(e) {}
+    return;
+  }
+
+  const sec = Math.max(1, Math.round((now - BOOT.initTs) / 1000));
+  try { showToast(`系統初始化中…已等待 ${sec} 秒`, "info"); } catch(e) {}
+}
+
+function formatZoneDisplay(zoneRaw) {
+  const cat = findCategoryForZone(zoneRaw);
+  if(cat) return String(cat).trim();
+  return String(zoneRaw || "").split(/[\s_]/)[0].trim() || String(zoneRaw || "").trim();
+}
+
+function getEligibilityRuleForAddonZone(addonZoneText){
+  const z = String(addonZoneText||"");
+  return (RULES && RULES.eligibility) ? (RULES.eligibility.find(e => z.includes(e.zone)) || null) : null;
+}
+
+function buildAddonHint(addonZoneText){
+  let hint = "請先選購指定主商品，才能加購喔！";
+  let targetZoneRaw = null;
+  let minQty = 1;
+
+  const rule = getEligibilityRuleForAddonZone(addonZoneText);
+  if(rule && rule.requires) {
+    const reqZones = splitMultiVals(rule.requires);
+    minQty = Number(rule.minQty || 1);
+    if(reqZones.length > 0) {
+      targetZoneRaw = reqZones[0];
+      const zoneDisplay = formatZoneDisplay(targetZoneRaw);
+      const mq = (isFinite(minQty) && minQty > 1) ? `（至少${minQty}件）` : "";
+      hint = `選購『${zoneDisplay}』系列商品${mq}，立即享加購優惠`;
+    }
+  }
+  return { hint, targetZoneRaw, minQty };
+}
+
+function promoHintMessage(el){
+  const promo = String(el?.dataset?.promo || "").trim();
+  const pid = (el?.dataset?.pid != null) ? Number(el.dataset.pid) : NaN;
+  const p = (!Number.isNaN(pid)) ? (PRODUCTS.find(x => x._id === pid) || null) : null;
+
+  if(promo === "shipping"){
+    const thr = getFreeShipThreshold();
+    if(thr) return `免運門檻：滿 ${Number(thr).toLocaleString()} 免運（宅配）`;
+    return "免運門檻：目前未設定";
+  }
+
+  if(promo === "addon" || promo === "addon_price"){
+    if(p){
+      const { hint } = buildAddonHint(p.category);
+      return (promo === "addon_price") ? `加購優惠價：符合加價購條件後可用此價格加購。${hint}` : hint;
+    }
+    return "加價購：需先符合主商品資格";
+  }
+
+  if(promo === "bogo"){
+    if(p){
+      const r = (RULES && RULES.bogo) ? (RULES.bogo.find(b => b.code === p.code) || null) : null;
+      if(r) return `買一送一：買${r.buy}送${r.get}（同品項）`;
+    }
+    return "買一送一：符合活動條件即贈送";
+  }
+
+  if(promo === "tier" || promo === "tier_price"){
+    if(p){
+      const zone = getBestTierZoneForCategory(p.category);
+      if(zone){
+        const rows = getTierRulesByZone(zone);
+        if(rows.length){
+          const isMulti = (rows.length > 1) || rows.some(r => r.min > 1);
+
+          // Single-tier (min=1 only): show as "訂單折扣" (avoid mislabeling as 多件優惠)
+          if(!isMulti){
+            const pct = Number(rows[0].pct||0);
+            const payPct = Math.max(0, Math.round(100 - pct));
+            const zhe = payPct / 10;
+            const zheText = (Number.isInteger(zhe) ? `${zhe}折` : `${payPct}%`);
+            const msg = `訂單折扣：全系列 ${zheText}`;
+            return (promo === "tier_price") ? `${msg}（折後價已顯示於商品卡，實際以結帳為準）` : msg;
+          }
+
+          const parts = rows.map(x => {
+            const payPct = Math.max(0, Math.round(100 - Number(x.pct||0)));
+            const zhe = payPct / 10;
+            const zheText = (Number.isInteger(zhe) ? `${zhe}折` : `${payPct}%`);
+            return `滿${x.min}件 ${zheText}`;
+          });
+          const msg = `多件優惠：${parts.join("、")}`;
+          return (promo === "tier_price") ? `${msg}（折後區間依件數計算，實際以結帳為準）` : msg;
+        }
+      }
+    }
+    return "多件優惠：依件數享折扣";
+  }
+
+  if(promo === "bundle"){
+    return "優惠組合：請先點「選擇內容物」挑選指定件數，再加入購物車";
+  }
+
+  if(promo === "bundle_price"){
+    return "超值組優惠價：已套用活動優惠價（實際以結帳為準）";
+  }
+
+  return "";
+}
+
+function bindPromoHintEvents(){
+  if(window.__PROMO_HINT_BOUND) return;
+  window.__PROMO_HINT_BOUND = true;
+
+  const handler = (targetEl) => {
+    const msg = promoHintMessage(targetEl);
+    if(!msg) return;
+    try { showToast(msg, "info"); } catch(e) {}
+  };
+
+  document.addEventListener("click", (e) => {
+    const el = e.target && e.target.closest ? e.target.closest(".promo-badge, .promo-pill") : null;
+    if(!el) return;
+    e.preventDefault();
+    e.stopPropagation();
+    handler(el);
+  }, true);
+
+  document.addEventListener("keydown", (e) => {
+    if(e.key !== "Enter" && e.key !== " ") return;
+    const el = e.target && e.target.closest ? e.target.closest(".promo-badge, .promo-pill") : null;
+    if(!el) return;
+    e.preventDefault();
+    e.stopPropagation();
+    handler(el);
+  }, true);
+}
+
+
 function getFlatPriceRule(code, zoneText) {
   if(!RULES || !RULES.flat_price) return null;
   const z = String(zoneText||"");
@@ -986,14 +1211,19 @@ function enforceAddonEligibility() {
 
   const zones = Array.from(new Set(addonItems.map(it => String(it.category))));
   let removed = 0;
+  let removedZones = [];
 
   zones.forEach(z => {
     if(!isAddonEligible(z)) {
       const before = CART.length;
       CART = CART.filter(it => !(it && String(it.category) === z));
-      removed += (before - CART.length);
+      const diff = (before - CART.length);
+      if(diff > 0) removedZones.push(z);
+      removed += diff;
     }
   });
+
+  try { window.__LAST_REMOVED_ADDON_ZONES = removedZones; } catch(e) {}
   return removed;
 }
 
@@ -1241,26 +1471,17 @@ window.updateQty = function(btnEl, pid, delta) {
 
   // Strict mode: if config isn't ready, do not allow cart operations
   if(typeof CONFIG_READY !== 'undefined' && !CONFIG_READY) {
-    try { showInitBlockedToast(); } catch(e) { try { showToast('系統初始化中…請稍候', 'info', 2800); } catch(e2) {} }return;
+    try { showInitBlockedToast(); } catch(e) {}
+    return;
   }
 
   if(delta > 0 && p.category.includes("加價購")) {
     if(!isAddonEligible(p.category)) {
-      // Clearer hint + auto-navigate to required主商品區
-      let hint = "請先選購指定主商品，才能加購喔！";
-      let targetZoneRaw = null;
-      const rule = (RULES && RULES.eligibility) ? (RULES.eligibility.find(e => String(p.category).includes(e.zone)) || null) : null;
-      if(rule && rule.requires) {
-        const reqZones = splitMultiVals(rule.requires);
-        if(reqZones.length > 0) {
-          targetZoneRaw = reqZones[0];
-          const zoneDisplay = String(targetZoneRaw).split(/[\s_]/)[0];
-          hint = `選購「${zoneDisplay}」系列商品，立即享加購優惠`;
-        }
-      }
-      showToast(hint, "warn");
-      if(targetZoneRaw) {
-        setTimeout(() => { scrollToZoneSection(targetZoneRaw); }, 300);
+      // Unified hint + auto-navigate to required主商品區
+      const info = buildAddonHint(p.category);
+      showToast(info.hint, "info");
+      if(info.targetZoneRaw) {
+        setTimeout(() => { scrollToZoneSection(info.targetZoneRaw); }, 300);
       }
       return;
     }
@@ -1298,7 +1519,17 @@ window.updateQty = function(btnEl, pid, delta) {
   // Enforce add-on eligibility after any cart change
   const removedAddon = enforceAddonEligibility();
   if(removedAddon > 0) {
-    showToast("加價購商品已移除（未符合加購條件）", "warn");
+    try {
+    const z = (window.__LAST_REMOVED_ADDON_ZONES && window.__LAST_REMOVED_ADDON_ZONES[0]) ? window.__LAST_REMOVED_ADDON_ZONES[0] : null;
+    if(z){
+      const info2 = buildAddonHint(z);
+      showToast(`加價購商品已移除（未符合加購條件）。${info2.hint}`, "info");
+    } else {
+      showToast("加價購商品已移除（未符合加購條件）", "info");
+    }
+  } catch(e) {
+    try { showToast("加價購商品已移除（未符合加購條件）", "info"); } catch(_) {}
+  }
   }
 
   saveState();
@@ -1459,100 +1690,23 @@ function loadState() {
   } catch(e) { console.error("Load state failed", e); }
 }
 
-function showToast(msg, type='normal', durationMs=null) {
+function showToast(msg, type='normal') {
   const c = document.getElementById('toast-container');
   const t = document.createElement('div');
   t.className = 'toast';
   if(type === 'game') t.classList.add('game');
+
   let icon = 'check_circle';
   if (type === 'warn') icon = 'error_outline';
+  if (type === 'game') icon = 'stars';
   if (type === 'info') icon = 'info';
-  if (type === 'game') icon = 'stars'; 
-  const color = (type==='warn') ? '#ff5252' : (type==='game' ? '#fff' : (type==='info' ? '#29b6f6' : '#69f0ae'));
-  t.innerHTML = `<span class="material-icons-round" style="color:${color}">${icon}</span> ${msg}`;
-  c.appendChild(t); 
-  const ms = (durationMs!=null && isFinite(durationMs)) ? Number(durationMs) : (type === 'game' ? 3000 : 2500);
-  setTimeout(() => t.remove(), ms);
-  return t; 
+
+  const col = (type==='warn') ? '#ff5252' : (type==='game' ? '#fff' : (type==='info' ? '#90caf9' : '#69f0ae'));
+  t.innerHTML = `<span class="material-icons-round" style="color:${col}">${icon}</span> ${msg}`;
+  c.appendChild(t);
+  setTimeout(() => t.remove(), type === 'game' ? 3000 : 2500);
+  return t;
 }
-
-
-// --- V2.8.8 helpers: unified discount wording (85折 style) + promo hint toast ---
-const BOOT_TS = Date.now();
-
-function fmtZheFromPctOff(pctOff){
-  const off = Number(pctOff);
-  if(!isFinite(off)) return "";
-  let payPct = Math.round(100 - off);
-  if(!isFinite(payPct)) return "";
-  if(payPct < 0) payPct = 0;
-  if(payPct > 100) payPct = 100;
-  if(payPct % 10 === 0) return `${payPct/10}折`;
-  return `${payPct}折`;
-}
-
-function showPromoHint(msg){
-  try{ showToast(msg, 'info', 2800); }catch(e){}
-}
-
-function showInitBlockedToast(){
-  const waited = Math.max(1, Math.round((Date.now() - BOOT_TS)/1000));
-  showToast(`系統初始化中…已等待 ${waited} 秒`, 'info', 2800);
-}
-
-function setBootConfigState(state){
-  try{
-    document.body.classList.remove('cfg-loading','cfg-ready','cfg-error');
-    if(state === 'loading') document.body.classList.add('cfg-loading');
-    if(state === 'ready') document.body.classList.add('cfg-ready');
-    if(state === 'error') document.body.classList.add('cfg-error');
-  }catch(e){}
-}
-
-function renderSystemAnnouncement(){
-  try{
-    const slot = document.getElementById('systemAnnouncementSlot');
-    if(!slot) return;
-    const notes = (RULES && RULES.uiNotes) ? RULES.uiNotes : {};
-    const raw = (notes && notes['announce_between_rank_and_categories']) ? String(notes['announce_between_rank_and_categories']) : '';
-    const msg = String(raw||'').trim();
-    if(!msg){ slot.style.display='none'; slot.innerHTML=''; return; }
-    const safe = msg.split('\n').map(s => s.replace(/[<>]/g,'')).join('<br>');
-    slot.innerHTML = `<div class="sys-ann">${safe}</div>`;
-    slot.style.display='block';
-  }catch(e){}
-}
-
-// Determine tier badge kind for a category (order discount vs multi-tier)
-function getTierBadgeInfoByCategory(cat){
-  try{
-    const c = String(cat||'');
-    if(!c || !RULES || !Array.isArray(RULES.tiers)) return null;
-    const matches = RULES.tiers.filter(t => t && isFinite(t.pct) && t.pct > 0 && t.zone && c.includes(t.zone));
-    if(matches.length === 0) return null;
-    // choose the most specific zone (longest match)
-    const zones = [...new Set(matches.map(m => String(m.zone)))].sort((a,b)=>b.length-a.length);
-    const zone = zones[0];
-    const rules = RULES.tiers.filter(t => String(t.zone)===zone && isFinite(t.pct) && t.pct>0).sort((a,b)=>Number(a.min)-Number(b.min));
-    if(rules.length === 1 && Number(rules[0].min) <= 1) return { kind:'order', zone, rules };
-    return { kind:'tier', zone, rules };
-  }catch(e){ return null; }
-}
-
-function buildTierHintText(info){
-  if(!info || !Array.isArray(info.rules) || info.rules.length===0) return '';
-  if(info.kind === 'order'){
-    const zhe = fmtZheFromPctOff(info.rules[0].pct);
-    return zhe ? `訂單折扣：${zhe}` : '訂單折扣';
-  }
-  const parts = info.rules.map(r => {
-    const min = Number(r.min)||1;
-    const zhe = fmtZheFromPctOff(r.pct);
-    return `滿${min}件 ${zhe || ''}`.trim();
-  });
-  return `多件優惠：${parts.join('、')}`;
-}
-
 
 function animateFly(startEl) {
   const card = startEl.closest('.p-card') || startEl.closest('.r-card');
@@ -1656,8 +1810,6 @@ function highlightText(text, query) {
 }
 
 async function initApp() {
-  try{ setBootConfigState('loading'); }catch(e){}
-
   try {
     // V2 Sprint1: core datasets fetched in parallel (faster + consistent)
 const [pText, rText, rankText, gText] = await Promise.all([
@@ -1670,9 +1822,11 @@ const [pText, rText, rankText, gText] = await Promise.all([
 const pData = Papa.parse(pText, { header: true, skipEmptyLines: true }).data;
     PRODUCTS = pData.map((row, i) => {
       const pick = (k) => {
-        const kk = String(k||'').replace(/^\uFEFF/,'').trim().toLowerCase();
-        const key = Object.keys(row).find(key => String(key||'').replace(/^\uFEFF/,'').trim().toLowerCase() === kk);
-        return (key ? row[key] : "") || "";
+        const kk = String(k || "").replace(/^\uFEFF/, "").trim().toLowerCase();
+        const foundKey = Object.keys(row).find(key =>
+          String(key || "").replace(/^\uFEFF/, "").trim().toLowerCase() === kk
+        );
+        return (foundKey ? row[foundKey] : "") || "";
       };
       const code = String(pick("product_code")||"").trim();
       const name = String(pick("product_name")||"").trim();
@@ -1718,15 +1872,27 @@ const pData = Papa.parse(pText, { header: true, skipEmptyLines: true }).data;
     }
 
     const rData = Papa.parse(rText, { header: true, skipEmptyLines: true }).data;
-    RULES = { tiers: [], bogo: [], spend: [], bundle: [], series_gift: [], flat_price: [], eligibility: [], uiNotes: {}, freeShipThreshold: null };
+    RULES = { tiers: [], bogo: [], spend: [], bundle: [], series_gift: [], flat_price: [], eligibility: [] };
     rData.forEach(row => {
       const pick = (k) => {
-        const kk = String(k||'').replace(/^\uFEFF/,'').trim().toLowerCase();
-        const key = Object.keys(row).find(key => String(key||'').replace(/^\uFEFF/,'').trim().toLowerCase() === kk);
-        return (key ? row[key] : "") || "";
+        const kk = String(k || "").replace(/^\uFEFF/, "").trim().toLowerCase();
+        const foundKey = Object.keys(row).find(key =>
+          String(key || "").replace(/^\uFEFF/, "").trim().toLowerCase() === kk
+        );
+        return (foundKey ? row[foundKey] : "") || "";
       };
-      const type = pick("rule_type").toLowerCase();
-      if(type.includes("tier")) RULES.tiers.push({ zone: pick("zone").trim(), min: Number(pick("min_qty")), pct: Number(pick("percent_off")) });
+      const typeRaw = String(pick("rule_type") || "");
+      const type = typeRaw.toLowerCase().trim();
+      const isTierLike = (type === "tier" || type.startsWith("tier_") || type === "group_tier" || type.includes("group_tier"));
+      if(isTierLike) {
+        const zone = String(pick("zone") || "").trim();
+        const min = Number(pick("min_qty") || 0);
+        const pct = Number(pick("percent_off") || 0);
+        // Tier discounts: allow min_qty >= 1 (single-tier) and multi-tier.
+        if(zone && isFinite(min) && min >= 1 && isFinite(pct) && pct > 0) {
+          RULES.tiers.push({ zone, min, pct });
+        }
+      }
       else if(type.includes("bogo")) RULES.bogo.push({ code: pick("product_code"), buy: Number(pick("buy")), get: Number(pick("get")) });
       else if(type.includes("flat_price")) {
         const zone = pick("zone").trim();
@@ -1740,6 +1906,11 @@ const pData = Papa.parse(pText, { header: true, skipEmptyLines: true }).data;
         const minQty = Number(pick("requires_min_qty")||pick("requires_min_qty ")||pick("requires_min_qty\t")||1);
         if(zone) RULES.eligibility.push({ zone, requires, minQty: (Number.isNaN(minQty) ? 1 : minQty) });
       }
+      else if(type.includes("shipping_threshold")) {
+        const amt = Number(String(pick("threshold_amount") || "0").replace(/,/g, ""));
+        if(!Number.isNaN(amt) && isFinite(amt) && amt > 0) RULES.freeShipThreshold = amt;
+      }
+
       else if(type.includes("series_gift")) {
         const mRaw = String(pick("multiples") || "").trim().toUpperCase();
         const mult = (mRaw === "TRUE" || mRaw === "1" || mRaw === "YES");
@@ -1750,27 +1921,17 @@ const pData = Papa.parse(pText, { header: true, skipEmptyLines: true }).data;
         const mult = (mRaw === "TRUE" || mRaw === "1" || mRaw === "YES");
         RULES.spend.push({ scope: pick("threshold_scope"), prefix: pick("zone_prefix"), amt: Number(pick("threshold_amount")), gift: pick("gift_code"), qty: Number(pick("gift_qty")), mult });
       }
-
-      else if(type.includes("shipping_threshold")) {
-        const rawAmt = String(pick("threshold_amount")||"").trim().replace(/,/g,'');
-        const amt = Number(rawAmt);
-        if(isFinite(amt) && amt > 0) RULES.freeShipThreshold = amt;
-      }
-      else if(type.includes("ui_note")) {
-        const zone = String(pick("zone")||"").trim();
-        const txt = String(pick("ui_text")||"").trim();
-        if(zone && txt) RULES.uiNotes[zone] = txt;
-      }
-
-            else if(type.includes("bundle")) RULES.bundle.push({ code: pick("product_code"), price: Number(pick("unit_price")) });
+      else if(type.includes("bundle")) RULES.bundle.push({ code: pick("product_code"), price: Number(pick("unit_price")) });
     });
 if (gText) {
   const gData = Papa.parse(gText, { header: true, skipEmptyLines: true }).data;
   gData.forEach(row => {
       const pick = (k) => {
-        const kk = String(k||'').replace(/^\uFEFF/,'').trim().toLowerCase();
-        const key = Object.keys(row).find(key => String(key||'').replace(/^\uFEFF/,'').trim().toLowerCase() === kk);
-        return (key ? row[key] : "") || "";
+        const kk = String(k || "").replace(/^\uFEFF/, "").trim().toLowerCase();
+        const foundKey = Object.keys(row).find(key =>
+          String(key || "").replace(/^\uFEFF/, "").trim().toLowerCase() === kk
+        );
+        return (foundKey ? row[foundKey] : "") || "";
       };
       const code = pick("product_code");
       const url = pick("photos url");
@@ -1791,7 +1952,10 @@ if (rankText) {
 
 
     renderUI();
-    renderSystemAnnouncement();
+
+
+    bindPromoHintEvents();
+    try { ensureInitPill(); } catch(e) {}
 
 // V2 Sprint1: staged rendering (reduce perceived waiting)
 // Do NOT block the whole page on config fetch.
@@ -1809,6 +1973,9 @@ loadState();
 
 // Load dropdown config (departments / payments) in background.
 // Ordering stays strict: config not ready => cannot submit.
+// v2.8.3: show gentle init state while config loads
+try { setBootConfigState('loading'); } catch(e) {}
+
 loadConfigOptions().catch(()=>{});
 } catch(e) { alert("連線異常，請稍後重試。\n" + e.message); }
 }
@@ -1849,24 +2016,28 @@ function processRankings(csvText) {
 }
 
 function getRankingCategory(name, originalCat) {
-  const n = String(name||'').toLowerCase();
-  const c = String(originalCat||'').toLowerCase();
+  const n = String(name || "").toLowerCase();
+  const c = String(originalCat || "").toLowerCase();
 
-  // 清潔：避免用單字「洗」造成誤判，改採顯性關鍵字
-  const cleaningKeywords = ["易洗樂","洗潔","洗衣","洗碗","菜瓜布","皂","洗髮","沐浴","洗面","洗手"];
-  if (c.includes("清潔") || cleaningKeywords.some(kw => n.includes(String(kw).toLowerCase()))) return "cleaning";
+  // Cleaning: remove overly-broad single-char "洗", use explicit terms instead
+  if (
+    n.includes("易洗樂") || n.includes("洗潔") || n.includes("洗衣") || n.includes("洗碗") || n.includes("菜瓜布") ||
+    n.includes("洗髮") || n.includes("沐浴") || n.includes("洗面") || n.includes("洗手") ||
+    c.includes("清潔") || n.includes("皂")
+  ) return "cleaning";
 
-  // 美容：移除洗髮/沐浴，新增護髮/護手
+  // Beauty: remove 洗髮/沐浴, add 護髮/護手
   const beautyKeywords = ["vinata","面膜","精華","霜","露","乳液","潔顏","卸妝","美白","保濕","抗皺","潤","透","亮","膚","痘","護髮","護手"];
-  if (c.includes("美容") || c.includes("保養") || beautyKeywords.some(kw => n.includes(String(kw).toLowerCase()))) return "beauty";
+  if (c.includes("美容") || c.includes("保養") || beautyKeywords.some(k => n.includes(k))) return "beauty";
 
-  const healthKeywords = ["安可健","s11","益生菌","納豆","紅麴","魚油","鈣","葡萄糖胺","葉黃素","膠囊","錠","酵素"];
-  if (c.includes("保健") || c.includes("健康") || healthKeywords.some(kw => n.includes(String(kw).toLowerCase()))) return "health";
+  // Health: 保健 / 保健食品 / 保健飲品 (fallback by keywords)
+  const healthKeywords = ["益生菌","魚油","葉黃素","葡萄糖胺","膠原","胜肽","納豆","紅麴","q10","b群","維他命","維生素","酵母","啤酒酵母","精力湯"];
+  if (c.includes("保健") || healthKeywords.some(k => n.includes(k))) return "health";
 
-  return "other";
+  return "general";
 }
 
-function renderRankingfunction renderRanking(type) {
+function renderRanking(type) {
   const list = document.getElementById("rankList");
   list.innerHTML = "";
   const data = RANKINGS[type] || [];
@@ -2007,13 +2178,52 @@ function renderList() {
 }
 
 
+
+/* v2.8.7: Tier matching helpers (prefer longest matching zone to avoid overlap) */
+function getBestTierZoneForCategory(cat){
+  try{
+    if(!RULES || !Array.isArray(RULES.tiers) || !cat) return null;
+    const s = String(cat||"");
+    let best = null;
+    for(const r of RULES.tiers){
+      if(!r || !r.zone) continue;
+      const z = String(r.zone);
+      if(s.includes(z)){
+        if(!best || z.length > best.length) best = z;
+      }
+    }
+    return best;
+  }catch(e){ return null; }
+}
+function getTierRulesByZone(zone){
+  try{
+    if(!RULES || !Array.isArray(RULES.tiers) || !zone) return [];
+    return RULES.tiers
+      .filter(r => r && String(r.zone) === String(zone))
+      .map(r => ({ zone: String(r.zone), min: Number(r.min), pct: Number(r.pct) }))
+      .filter(r => isFinite(r.min) && r.min >= 1 && isFinite(r.pct) && r.pct > 0)
+      .sort((a,b)=>a.min-b.min);
+  }catch(e){ return []; }
+}
+function getTierBadgeLabelForProduct(p){
+  const zone = getBestTierZoneForCategory(p && p.category);
+  if(!zone) return "";
+  const rules = getTierRulesByZone(zone);
+  if(!rules.length) return "";
+  const isMulti = (rules.length > 1) || rules.some(r => r.min > 1);
+  return isMulti ? "多件優惠" : "訂單折扣";
+}
+
 /* v2.5: Price Range Pill (theoretical tier range from pricing_strategy) */
 function getTierDiscountRangeForProduct(p){
   try{
-    if(!p || !p.price || !RULES || !Array.isArray(RULES.tiers)) return null;
-    const matches = RULES.tiers.filter(t => t && !isNaN(t.pct) && t.pct > 0 && p.category && p.category.includes(t.zone));
-    if(matches.length === 0) return null;
-    const pcts = matches.map(x => Number(x.pct)).filter(x => isFinite(x));
+    if(!p || !p.price) return null;
+    const zone = getBestTierZoneForCategory(p.category);
+    if(!zone) return null;
+    const rules = getTierRulesByZone(zone);
+    if(!rules.length) return null;
+
+    const pcts = rules.map(x => Number(x.pct)).filter(x => isFinite(x));
     if(pcts.length === 0) return null;
     const minPct = Math.min(...pcts);
     const maxPct = Math.max(...pcts);
@@ -2025,7 +2235,7 @@ function getTierDiscountRangeForProduct(p){
     if(low > high){ const tmp = low; low = high; high = tmp; }
     if(low < 0) low = 0;
     if(high < 0) high = 0;
-    return { low, high, minPct, maxPct };
+    return { low, high, minPct, maxPct, zone, rules };
   } catch(e){
     return null;
   }
@@ -2041,15 +2251,11 @@ function createProductCard(p, highlightQuery) {
     const inCart = CART.find(x => x._id === p._id && !x.bundleSelection);
     const qty = inCart ? inCart.qty : 0;
     let badges = "";
-    if(p.category.includes("加價購")) badges += `<span class="badge bg-red promo-badge" data-promo="addon">加價購</span>`;
-    if(RULES.bogo.some(b => b.code === p.code)) badges += `<span class="badge bg-blue promo-badge" data-promo="bogo" data-code="${p.code}">買一送一</span>`;
-    if(p.name.includes("任選")) badges += `<span class="badge bg-gold promo-badge" data-promo="bundle_select">優惠組合</span>`;
-    (function(){
-    const info = getTierBadgeInfoByCategory(p.category);
-    if(!info) return;
-    if(info.kind === 'order') badges += `<span class="badge bg-purple promo-badge" data-promo="order_discount" data-zone="${String(info.zone).replace(/"/g,'&quot;')}">訂單折扣</span>`;
-    else badges += `<span class="badge bg-purple promo-badge" data-promo="tier" data-zone="${String(info.zone).replace(/"/g,'&quot;')}">多件優惠</span>`;
-  })();
+    if(p.category.includes("加價購")) badges += `<span class="badge bg-red promo-badge" role="button" tabindex="0" data-promo="addon" data-pid="${p._id}">加價購</span>`;
+    if(RULES.bogo.some(b => b.code === p.code)) badges += `<span class="badge bg-blue promo-badge" role="button" tabindex="0" data-promo="bogo" data-pid="${p._id}">買一送一</span>`;
+    if(p.name.includes("任選")) badges += `<span class="badge bg-gold promo-badge" role="button" tabindex="0" data-promo="bundle" data-pid="${p._id}">優惠組合</span>`;
+    const tierBadgeLabel = getTierBadgeLabelForProduct(p);
+    if(tierBadgeLabel) badges += `<span class="badge bg-purple promo-badge" role="button" tabindex="0" data-promo="tier" data-pid="${p._id}">${tierBadgeLabel}</span>`;
     let actionBtn = "";
     if(p.bundle.length >= 2 && p.name.includes("任選")) {
       const hasSel = SELECTED_BUNDLE.has(p._id);
@@ -2066,23 +2272,28 @@ function createProductCard(p, highlightQuery) {
     
     const card = document.createElement("div"); card.className = "p-card"; card.id = `p-${p._id}`;
     card.innerHTML = `<div class="p-img-box"><div class="badges">${badges}</div>${imgHtml}</div><div class="p-body"><div><div class="p-title">${displayName}</div><div class="p-code">${p.code}</div></div><div><div class="p-price-row">${(function(){
+      // Add-on: show suggested price + add-on flat price
       if(String(p.category||"").includes("加價購")){
         const fr = getFlatPriceRule(p.code, p.category);
         const ap = (fr && fr.unit > 0) ? Number(fr.unit).toLocaleString() : "";
         return '<span class="p-price strike">$' + p.price.toLocaleString() + '</span>' +
-               (ap ? ' <span class="p-price-pill" data-promo="addon_price"><span class="pill-label">加購</span> ' + ap + '</span>' : '');
-      } else {
-        // bundle (e.g., 美容超值組) show strike list + promo price
-        const bundleRule = (RULES && Array.isArray(RULES.bundle)) ? RULES.bundle.find(r => r && r.code === p.code && isFinite(r.price) && r.price > 0) : null;
-        if(bundleRule && isFinite(bundleRule.price) && bundleRule.price > 0) {
-          const bp = Number(bundleRule.price).toLocaleString();
-          return '<span class="p-price strike">$' + p.price.toLocaleString() + '</span>' +
-                 ' <span class="p-price-pill" data-promo="bundle_price" data-code="' + p.code + '"><span class="pill-label">優惠</span> ' + bp + '</span>';
-        }
-        const t = getTierRangeText(p);
-        return '<span class="p-price">$' + p.price.toLocaleString() + '</span>' +
-               (t ? ' <span class="p-price-pill" data-promo="tier_range" data-zone="' + (function(){ const _i = getTierBadgeInfoByCategory(p.category); return _i ? _i.zone : ''; })() + '"><span class="pill-label">折後</span> ' + t + '</span>' : '');
+               (ap ? ' <span class="p-price-pill promo-pill" role="button" tabindex="0" data-promo="addon_price" data-pid="'+p._id+'"><span class="pill-label">加購</span> ' + ap + '</span>' : '');
       }
+
+      // Beauty value sets: show suggested price (strike) + bundle promo price
+      if(String(p.category||"").includes("美容超值組")){
+        const br = (RULES && RULES.bundle) ? (RULES.bundle.find(b => String(b.code) === String(p.code)) || null) : null;
+        const bp = (br && isFinite(Number(br.price))) ? Number(br.price) : 0;
+        if(bp > 0 && bp < Number(p.price)){
+          return '<span class="p-price strike">$' + p.price.toLocaleString() + '</span>' +
+                 ' <span class="p-price-pill promo-pill" role="button" tabindex="0" data-promo="bundle_price" data-pid="'+p._id+'"><span class="pill-label">優惠</span> ' + bp.toLocaleString() + '</span>';
+        }
+      }
+
+      // Default: show suggested price + tier range pill (D方案)
+      const t = getTierRangeText(p);
+      return '<span class="p-price">$' + p.price.toLocaleString() + '</span>' +
+             (t ? ' <span class="p-price-pill promo-pill" role="button" tabindex="0" data-promo="tier_price" data-pid="'+p._id+'"><span class="pill-label">折後</span> ' + t + '</span>' : '');
     })()}</div>${actionBtn}<div class="stepper"><div class="s-btn ${qty===0?'hidden':''}" onclick="window.updateQty(this, ${p._id}, -1)">－</div><div class="s-val ${qty===0?'hidden':''}">${qty}</div><div class="s-btn add" onclick="window.updateQty(this, ${p._id}, 1)">＋</div></div></div></div>`;
     return card;
 }
@@ -2222,7 +2433,17 @@ window.updateCartItem = function(index, delta) {
     // Enforce add-on eligibility after any cart change
     const removedAddon = enforceAddonEligibility();
     if(removedAddon > 0) {
-        showToast("加價購商品已移除（未符合加購條件）", "warn");
+        try {
+    const z = (window.__LAST_REMOVED_ADDON_ZONES && window.__LAST_REMOVED_ADDON_ZONES[0]) ? window.__LAST_REMOVED_ADDON_ZONES[0] : null;
+    if(z){
+      const info2 = buildAddonHint(z);
+      showToast(`加價購商品已移除（未符合加購條件）。${info2.hint}`, "info");
+    } else {
+      showToast("加價購商品已移除（未符合加購條件）", "info");
+    }
+  } catch(e) {
+    try { showToast("加價購商品已移除（未符合加購條件）", "info"); } catch(_) {}
+  }
     }
 
     saveState();
@@ -2291,8 +2512,8 @@ function calcCart() {
   let warnings = [];
   let catCounts = {};
   CART.forEach(it => {
-    const matchedRule = RULES.tiers.find(r => it.category.includes(r.zone));
-    if(matchedRule) { const zone = matchedRule.zone; catCounts[zone] = (catCounts[zone] || 0) + it.qty; }
+    const zone = getBestTierZoneForCategory(it && it.category);
+    if(zone) { catCounts[zone] = (catCounts[zone] || 0) + Number(it.qty||0); }
   });
   const processedItems = CART.map(it => {
     const originalLine = it.price * it.qty;
@@ -2317,14 +2538,16 @@ function calcCart() {
       finalLine = bundleRule.price * it.qty;
       tags.push({ text: `現省 $${((it.price - bundleRule.price) * it.qty).toLocaleString()}`, cls: "save" });
     } else {
-      const matchedRule = RULES.tiers.find(r => it.category.includes(r.zone));
-      if(matchedRule) {
-         const zone = matchedRule.zone;
-         const tierRules = RULES.tiers.filter(r => r.zone === zone).sort((a,b) => b.min - a.min);
-         const tier = tierRules.find(t => catCounts[zone] >= t.min);
+      const zone = getBestTierZoneForCategory(it && it.category);
+      if(zone) {
+         const tierRules = getTierRulesByZone(zone).sort((a,b) => b.min - a.min);
+         const tier = tierRules.find(t => (catCounts[zone] || 0) >= t.min);
          if(tier) {
            finalLine = originalLine * ((100 - tier.pct) / 100);
-           tags.push({ text: `已享 ${fmtZheFromPctOff(tier.pct)}`, cls: "save" });
+           const payPct = Math.max(0, Math.round(100 - Number(tier.pct||0)));
+           const zhe = payPct / 10;
+           const zheText = (Number.isInteger(zhe) ? `${zhe}折` : `${payPct}%`);
+           tags.push({ text: `已享 ${zheText}`, cls: "save" });
          }
       }
     }
@@ -2646,7 +2869,8 @@ window.addEventListener("pageshow", () => {
 window.submitOrder = () => {
     // V2 Sprint1: strict mode — if config isn't ready, don't allow submission
     if(!CONFIG_READY) {
-        try { showInitBlockedToast(); } catch(e) { try { showToast('系統初始化中…請稍候', 'info', 2800); } catch(e2) {} }return;
+        try { showToast('系統設定載入中或失敗，請稍候或重整頁面再試。', 'warn'); } catch(e) {}
+        return;
     }
 const f = (id) => document.getElementById(id).value.trim(); 
     const nameEl = document.getElementById("fName");
@@ -2854,58 +3078,6 @@ document.getElementById("searchInp").addEventListener("input", renderList);
 window.onbeforeunload = (e) => { if(CART.length > 0) return "訂單尚未送出"; };
 
 initApp();
-
-// --- V2.8.8: Click-to-explain for promo badges/pills (non-intrusive) ---
-document.addEventListener('click', function promoHintClick(e){
-  const el = e.target.closest('.promo-badge, .p-price-pill, #shipFreeBadge');
-  if(!el) return;
-  // prevent interfering with +/- buttons etc.
-  if(e.target.closest('.s-btn')) return;
-
-  // Shipping badge
-  if(el.id === 'shipFreeBadge'){
-    const total = Number(document.getElementById("sumPay")?.innerText?.replace('$','').replace(/,/g,'')) || 0;
-    const thr = getFreeShipThreshold();
-    if(!thr) return;
-    if(total >= thr) return showPromoHint(`免運門檻：滿 ${Math.round(thr).toLocaleString()} 免運（已達標）`);
-    const diff = Math.max(0, Math.round(thr - total));
-    return showPromoHint(`免運門檻：滿 ${Math.round(thr).toLocaleString()} 免運；還差 ${diff.toLocaleString()}`);
-  }
-
-  const promo = el.dataset.promo || '';
-  if(promo === 'bogo'){
-    const code = el.dataset.code || '';
-    const r = (RULES && Array.isArray(RULES.bogo)) ? RULES.bogo.find(x => x && x.code === code) : null;
-    if(r) return showPromoHint(`買一送一：買${Number(r.buy)||1}送${Number(r.get)||1}`);
-    return showPromoHint('買一送一：依活動規則');
-  }
-  if(promo === 'tier' || promo === 'order_discount' || promo === 'tier_range'){
-    // If el has zone, use it; else infer by current product category not available -> fallback by zone
-    const zone = (el.dataset.zone || '').trim();
-    let info = null;
-    if(zone){
-      const rules = (RULES && Array.isArray(RULES.tiers)) ? RULES.tiers.filter(t => t && String(t.zone)===zone && isFinite(t.pct) && t.pct>0).sort((a,b)=>Number(a.min)-Number(b.min)) : [];
-      if(rules.length){
-        info = (rules.length===1 && Number(rules[0].min)<=1) ? {kind:'order', zone, rules} : {kind:'tier', zone, rules};
-      }
-    }
-    if(!info){
-      // last resort: try to infer from currently opened modal product
-      return;
-    }
-    return showPromoHint(buildTierHintText(info));
-  }
-  if(promo === 'bundle_select'){
-    return showPromoHint('優惠組合：依商品內容任選搭配');
-  }
-  if(promo === 'bundle_price'){
-    return showPromoHint('優惠價：以活動設定為準');
-  }
-  if(promo === 'addon' || promo === 'addon_price'){
-    return showPromoHint('加價購：需先選購指定主商品區商品才可加購');
-  }
-});
-
 </script>
 </body>
 </html>
