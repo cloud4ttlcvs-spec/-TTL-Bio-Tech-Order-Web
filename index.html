@@ -572,7 +572,7 @@ body.drawer-open { overflow:hidden; }
   position:fixed;
   top:0; right:0;
   height:100%;
-  width:min(420px, 92vw);
+  width:min(336px, 74vw);
   background:#fff;
   z-index: 9999;
   transform: translateX(102%);
@@ -1205,6 +1205,40 @@ window.closeWelcome = function() {
   setTimeout(() => el.style.display = 'none', 500);
 };
 
+
+// --- Back Guard (v2.8.9c): back closes drawers, then scroll-to-top, then prompt-to-exit ---
+let __EXIT_ARMED_AT = 0;
+function __pushBackGuard(){
+  try{ history.pushState({modal:'guard'}, null, ""); }catch(e){}
+}
+function __handleBackAtRoot(){
+  // If any modal/drawer is open, do nothing here (handled elsewhere)
+  const y = window.scrollY || document.documentElement.scrollTop || 0;
+  if(y > 30){
+    try{ window.scrollTo({top:0, behavior:'smooth'}); }catch(e){ window.scrollTo(0,0); }
+    __EXIT_ARMED_AT = 0;
+    // restore guard
+    setTimeout(__pushBackGuard, 0);
+    return;
+  }
+  const now = Date.now();
+  if(__EXIT_ARMED_AT && (now - __EXIT_ARMED_AT) < 1600){
+    __EXIT_ARMED_AT = 0;
+    // allow browser to exit (do not re-push guard)
+    return;
+  }
+  __EXIT_ARMED_AT = now;
+  showToast('再按一次返回即可離開', 'info', 2800);
+  setTimeout(__pushBackGuard, 0);
+}
+function __ensureBackGuardOnce(){
+  try{
+    if(window.__BACK_GUARD_SET) return;
+    window.__BACK_GUARD_SET = true;
+    __pushBackGuard();
+  }catch(e){}
+}
+
 window.safeOpenCart = function() {
   if(!CART || CART.length === 0) {
     showToast("購物車還是空的喔！趕快去選購吧", "warn");
@@ -1226,7 +1260,7 @@ window.closeCart = function() {
   document.getElementById("float-bar").classList.remove("hidden");
   cleanupUI(); 
   isCartOpen = false;
-  if(history.state && history.state.modal === 'cart') history.back();
+  if(history.state && history.state.modal === 'cart') window.__IGNORE_NEXT_POPSTATE = true; history.back();
 };
 
 window.switchRank = function(type) {
@@ -1340,7 +1374,7 @@ function createGiftItem(g, reached) {
 
 window.closeGiftList = function() {
     if(history.state && history.state.modal === 'gift') {
-        history.back();
+        window.__IGNORE_NEXT_POPSTATE = true; history.back();
     } else {
         document.getElementById("giftModal").classList.remove("open");
     }
@@ -1446,7 +1480,7 @@ window.showMilestoneCard = function() {
 
 window.closeMilestoneCard = function() {
     document.getElementById('milestone-overlay').classList.remove('open');
-    if(history.state && history.state.modal === 'milestone') history.back();
+    if(history.state && history.state.modal === 'milestone') window.__IGNORE_NEXT_POPSTATE = true; history.back();
 };
 
 window.minimizeMilestoneCard = function() {
@@ -1456,7 +1490,7 @@ window.minimizeMilestoneCard = function() {
         document.getElementById('milestone-overlay').classList.remove('open'); 
         cleanupUI();
         document.getElementById('gift-fab').style.display = 'flex'; 
-        if(history.state && history.state.modal === 'milestone') history.back();
+        if(history.state && history.state.modal === 'milestone') window.__IGNORE_NEXT_POPSTATE = true; history.back();
     }, 600);
 };
 
@@ -1723,19 +1757,25 @@ function openPromoMap(){
     overlay.style.display = 'block';
     drawer.classList.add('open');
 
-    overlay.onclick = () => closePromoMap();
+    window.__PROMO_MAP_OPEN = true;
+    try{ if(!(history.state && history.state.modal === 'promoMap')) history.pushState({modal:'promoMap'}, null, ""); }catch(e){}
+
+    overlay.onclick = () => closePromoMap(false);
     const closeBtn = document.getElementById('promoMapCloseBtn');
-    if(closeBtn) closeBtn.onclick = () => closePromoMap();
-  }catch(e){}
+    if(closeBtn) closeBtn.onclick = () => closePromoMap(false);
+    }catch(e){}
 }
 
-function closePromoMap(){
+function closePromoMap(fromPop){
+  if(fromPop===undefined) fromPop=false;
   try{
+    window.__PROMO_MAP_OPEN = false;
     const overlay = document.getElementById('promoMapOverlay');
     const drawer = document.getElementById('promoMapDrawer');
     if(overlay) overlay.style.display = 'none';
     if(drawer) drawer.classList.remove('open');
     document.body.classList.remove('drawer-open');
+    try{ if(!fromPop && history.state && history.state.modal === 'promoMap'){ window.__IGNORE_NEXT_POPSTATE = true; history.back(); } }catch(e){}
   }catch(e){}
 }
 
@@ -2722,9 +2762,11 @@ function refreshCart() {
 }
 
 window.openCart = () => { if(CART.length === 0) return; document.getElementById("drawer").classList.add("open"); document.getElementById("float-bar").classList.add("hidden"); isCartOpen = true; history.pushState({modal: 'cart'}, null, ""); };
-window.closeCart = () => { document.getElementById("drawer").classList.remove("open"); document.getElementById("float-bar").classList.remove("hidden"); cleanupUI(); isCartOpen = false; if(history.state && history.state.modal === 'cart') history.back(); };
+window.closeCart = () => { document.getElementById("drawer").classList.remove("open"); document.getElementById("float-bar").classList.remove("hidden"); cleanupUI(); isCartOpen = false; if(history.state && history.state.modal === 'cart') window.__IGNORE_NEXT_POPSTATE = true; history.back(); };
 
-window.onpopstate = (e) => { 
+window.onpopstate = (e) => {
+    if(window.__IGNORE_NEXT_POPSTATE){ window.__IGNORE_NEXT_POPSTATE = false; return; }
+ 
     // CRITICAL FIX: Always ensure body is clean when returning to root state
     if (!document.querySelector('.modal.open') && !document.getElementById('drawer').classList.contains('open') && !document.getElementById('milestone-overlay').classList.contains('open')) {
         cleanupUI();
@@ -2754,15 +2796,33 @@ window.onpopstate = (e) => {
     
     // Handle Receipt
     const rcModal = document.getElementById("receiptModal"); 
-    if(rcModal.classList.contains("open")) { return; } 
+    if(rcModal.classList.contains("open")) { return; }
+
+    // Handle PromoMap Drawer
+    const pmDrawer = document.getElementById('promoMapDrawer');
+    if(pmDrawer && pmDrawer.classList.contains('open')){
+        closePromoMap(true);
+        cleanupUI();
+        return;
+    }
+ 
     
     // Handle Cart Drawer
     if(isCartOpen) { 
         document.getElementById("drawer").classList.remove("open"); 
         document.getElementById("float-bar").classList.remove("hidden"); 
         cleanupUI(); // V26: Force Cleanup
-        isCartOpen = false; 
-    } 
+        isCartOpen = false;
+        return;
+    }
+
+    // Root Back Behavior: scroll-to-top first, then prompt-to-exit
+    if(!document.querySelector('.modal.open') &&
+       !document.getElementById('drawer').classList.contains('open') &&
+       !document.getElementById('milestone-overlay').classList.contains('open') &&
+       !document.getElementById('promoMapDrawer').classList.contains('open')){
+        __handleBackAtRoot();
+    }
 };
 window.onbeforeunload = (e) => { if(CART.length > 0) return "訂單尚未送出"; };
 document.getElementById("searchInp").addEventListener("input", renderList);
@@ -3118,6 +3178,7 @@ document.getElementById("searchInp").addEventListener("input", renderList);
 window.onbeforeunload = (e) => { if(CART.length > 0) return "訂單尚未送出"; };
 
 initApp();
+__ensureBackGuardOnce();
 
 // --- V2.8.8: Click-to-explain for promo badges/pills (non-intrusive) ---
 document.addEventListener('click', function promoHintClick(e){
@@ -3180,7 +3241,7 @@ document.addEventListener('click', function promoHintClick(e){
     <button type="button" class="pm-close" id="promoMapCloseBtn" aria-label="關閉">✕</button>
   </div>
   <div class="pm-body">
-    <div class="pm-sub">點分類可快速跳轉；優惠快覽可由規則表 ui_note / cat_hint|分類 進行覆蓋。</div>
+    <div class="pm-sub">點擊可快速跳轉</div>
     <div id="promoMapList" class="pm-list"></div>
   </div>
 </aside>
