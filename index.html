@@ -517,6 +517,129 @@ input:focus, select:focus { border-color: var(--primary); background: #fff; outl
 }
 .sys-ann .title{ font-weight: 800; margin-bottom: 4px; }
 
+/* --- V2.8.9: Promo Map (優惠地圖) entry + drawer --- */
+.sys-ann--row{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  flex-wrap:wrap;
+}
+.sys-ann-main{ flex: 1 1 200px; min-width: 180px; }
+.sys-ann-cta{
+  flex: 0 0 auto;
+  border: 1px solid rgba(0,137,123,0.35);
+  background: rgba(255,255,255,0.85);
+  color: #004d40;
+  border-radius: 999px;
+  padding: 8px 12px;
+  font-weight: 800;
+  font-size: 13px;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: transform .12s ease, box-shadow .18s ease, background .18s ease, border-color .18s ease;
+}
+.sys-ann-cta:active{ transform: translateY(1px); }
+.sys-ann-cta.pm-attn{
+  border-color: rgba(255,111,0,0.55);
+  background: linear-gradient(135deg, rgba(255,111,0,0.16), rgba(255,111,0,0.03));
+  box-shadow: 0 10px 24px rgba(255,111,0,0.18);
+  animation: pmShake 1.15s ease-in-out infinite, pmGlow 1.55s ease-in-out infinite;
+}
+@keyframes pmShake{
+  0%, 100%{ transform: translateX(0); }
+  12%{ transform: translateX(-2px); }
+  24%{ transform: translateX(2px); }
+  36%{ transform: translateX(-2px); }
+  48%{ transform: translateX(1px); }
+  60%{ transform: translateX(0); }
+}
+@keyframes pmGlow{
+  0%, 100%{ filter: drop-shadow(0 0 0 rgba(255,111,0,0)); }
+  50%{ filter: drop-shadow(0 0 8px rgba(255,111,0,0.35)); }
+}
+
+/* Drawer */
+body.drawer-open { overflow:hidden; }
+.pm-overlay{
+  position:fixed; inset:0;
+  background: rgba(0,0,0,0.30);
+  backdrop-filter: blur(2px);
+  z-index: 9998;
+  display:none;
+}
+.pm-drawer{
+  position:fixed;
+  top:0; right:0;
+  height:100%;
+  width:min(420px, 92vw);
+  background:#fff;
+  z-index: 9999;
+  transform: translateX(102%);
+  transition: transform .22s ease;
+  box-shadow: -18px 0 40px rgba(0,0,0,0.18);
+  border-left: 1px solid rgba(0,0,0,0.06);
+  display:flex;
+  flex-direction:column;
+}
+.pm-drawer.open{ transform: translateX(0); }
+.pm-header{
+  padding: 14px 14px 10px;
+  border-bottom: 1px solid rgba(0,0,0,0.06);
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+}
+.pm-title{
+  font-size: 16px;
+  font-weight: 900;
+  color: #0b4f49;
+  letter-spacing: .2px;
+}
+.pm-close{
+  border: none;
+  background: rgba(0,0,0,0.05);
+  border-radius: 12px;
+  padding: 8px 10px;
+  cursor:pointer;
+}
+.pm-body{
+  padding: 12px 14px 14px;
+  overflow:auto;
+}
+.pm-sub{
+  font-size: 12px;
+  color: #607d8b;
+  margin-bottom: 10px;
+  line-height: 1.35;
+}
+.pm-list{ display:flex; flex-direction:column; gap:10px; }
+.pm-item{
+  border: 1px solid rgba(0,0,0,0.06);
+  border-radius: 16px;
+  padding: 10px 12px;
+  box-shadow: 0 8px 18px rgba(0,0,0,0.04);
+  cursor:pointer;
+  transition: transform .12s ease, box-shadow .18s ease;
+}
+.pm-item:active{ transform: translateY(1px); }
+.pm-item:hover{ box-shadow: 0 10px 24px rgba(0,0,0,0.06); }
+.pm-item .row{ display:flex; align-items:flex-start; justify-content:space-between; gap:10px; }
+.pm-item .name{ font-weight: 900; color: #263238; }
+.pm-item .hint{ margin-top: 4px; font-size: 12px; color: #455a64; line-height: 1.35; }
+.pm-tags{ display:flex; gap:6px; flex-wrap:wrap; margin-top: 6px; }
+.pm-tag{
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(0,137,123,0.10);
+  color:#004d40;
+  border:1px solid rgba(0,137,123,0.18);
+}
+.pm-arrow{ color:#90a4ae; font-size: 18px; line-height:1; }
+
+
 /* --- V2.8.8: Promo badges/pills are clickable (subtle) --- */
 .promo-badge, .p-price-pill{ cursor: pointer; }
 .promo-badge:active, .p-price-pill:active{ transform: translateY(1px); }
@@ -1495,6 +1618,127 @@ function showPromoHint(msg){
   try{ showToast(msg, 'info', 2800); }catch(e){}
 }
 
+// --- V2.8.9: Promo Map (優惠地圖) Drawer ---
+function getCatHintOverride(catTitle){
+  try{
+    const t = String(catTitle||'').trim();
+    const notes = (RULES && RULES.uiNotes) ? RULES.uiNotes : {};
+    const keys = Object.keys(notes).filter(k => k.startsWith('cat_hint|'));
+    let bestKey = '';
+    let bestText = '';
+    keys.forEach(k => {
+      const suffix = String(k.split('|')[1]||'').trim();
+      if(!suffix) return;
+      if(t.includes(suffix) || suffix.includes(t)){
+        if(suffix.length > bestKey.length){
+          bestKey = suffix;
+          bestText = String(notes[k]||'').trim();
+        }
+      }
+    });
+    return bestText;
+  }catch(e){ return ''; }
+}
+
+function categoryUnlocksAddonByTitle(title){
+  try{
+    const t = String(title||'').trim();
+    if(!t || !RULES || !Array.isArray(RULES.eligibility)) return false;
+    for(const e of RULES.eligibility){
+      const reqs = splitMultiVals(e && e.requires ? e.requires : '');
+      for(const rz of reqs){
+        const dz = formatZoneDisplay(rz);
+        if(dz && (t.includes(dz) || dz.includes(t))) return true;
+        if(rz && (t.includes(rz) || String(rz).includes(t))) return true;
+      }
+    }
+    return false;
+  }catch(e){ return false; }
+}
+
+function buildPromoMapRowHint(title){
+  const override = getCatHintOverride(title);
+  if(override) return override;
+  const info = getTierBadgeInfoByCategory(title);
+  const base = buildTierHintText(info);
+  if(base) return base;
+  if(categoryUnlocksAddonByTitle(title)) return '可解鎖加購優惠';
+  return '';
+}
+
+function ensurePromoMapDom(){
+  const overlay = document.getElementById('promoMapOverlay');
+  const drawer = document.getElementById('promoMapDrawer');
+  return !!(overlay && drawer);
+}
+
+function buildPromoMapList(){
+  try{
+    const listEl = document.getElementById('promoMapList');
+    if(!listEl) return;
+    listEl.innerHTML = '';
+    const sections = Array.from(document.querySelectorAll('.cat-section'));
+    sections.forEach(sec => {
+      const titleEl = sec.querySelector('.cat-section-title');
+      const title = titleEl ? String(titleEl.innerText||'').trim() : '';
+      if(!title) return;
+      const hint = buildPromoMapRowHint(title);
+      const hasAddon = categoryUnlocksAddonByTitle(title);
+
+      const item = document.createElement('div');
+      item.className = 'pm-item';
+      item.setAttribute('data-target', sec.id || '');
+      item.innerHTML = `
+        <div class="row">
+          <div>
+            <div class="name">${title.replace(/[<>]/g,'')}</div>
+            ${hint ? `<div class="hint">${String(hint).replace(/[<>]/g,'')}</div>` : ``}
+            ${(hasAddon && (!hint || hint.indexOf('加購')===-1)) ? `<div class="pm-tags"><span class="pm-tag">可解鎖加購</span></div>` : ``}
+          </div>
+          <div class="pm-arrow">›</div>
+        </div>
+      `;
+      item.onclick = () => {
+        const id = item.getAttribute('data-target');
+        if(id){
+          const target = document.getElementById(id);
+          if(target){
+            try{ target.scrollIntoView({ behavior:'smooth', block:'start' }); }catch(e){}
+          }
+        }
+        closePromoMap();
+      };
+      listEl.appendChild(item);
+    });
+  }catch(e){}
+}
+
+function openPromoMap(){
+  try{
+    if(!ensurePromoMapDom()) return;
+    buildPromoMapList();
+    document.body.classList.add('drawer-open');
+    const overlay = document.getElementById('promoMapOverlay');
+    const drawer = document.getElementById('promoMapDrawer');
+    overlay.style.display = 'block';
+    drawer.classList.add('open');
+
+    overlay.onclick = () => closePromoMap();
+    const closeBtn = document.getElementById('promoMapCloseBtn');
+    if(closeBtn) closeBtn.onclick = () => closePromoMap();
+  }catch(e){}
+}
+
+function closePromoMap(){
+  try{
+    const overlay = document.getElementById('promoMapOverlay');
+    const drawer = document.getElementById('promoMapDrawer');
+    if(overlay) overlay.style.display = 'none';
+    if(drawer) drawer.classList.remove('open');
+    document.body.classList.remove('drawer-open');
+  }catch(e){}
+}
+
 function showInitBlockedToast(){
   const waited = Math.max(1, Math.round((Date.now() - BOOT_TS)/1000));
   showToast(`系統初始化中…已等待 ${waited} 秒`, 'info', 2800);
@@ -1516,12 +1760,32 @@ function renderSystemAnnouncement(){
     const notes = (RULES && RULES.uiNotes) ? RULES.uiNotes : {};
     const raw = (notes && notes['announce_between_rank_and_categories']) ? String(notes['announce_between_rank_and_categories']) : '';
     const msg = String(raw||'').trim();
-    if(!msg){ slot.style.display='none'; slot.innerHTML=''; return; }
-    const safe = msg.split('\n').map(s => s.replace(/[<>]/g,'')).join('<br>');
-    slot.innerHTML = `<div class="sys-ann">${safe}</div>`;
+    const safe = msg ? msg.split('\n').map(s => s.replace(/[<>]/g,'')).join('<br>') : '';
+    const seen = (function(){ try{ return localStorage.getItem('ttl_promo_map_seen')==='1'; }catch(e){ return false; } })();
+    const attnCls = seen ? '' : ' pm-attn';
+
+    // show slot if has message OR we still want CTA entry
     slot.style.display='block';
+    slot.innerHTML = `
+      <div class="sys-ann sys-ann--row">
+        ${safe ? `<div class="sys-ann-main">${safe}</div>` : `<div class="sys-ann-main"></div>`}
+        <button type="button" id="promoMapCtaBtn" class="sys-ann-cta${attnCls}">👉 查看優惠地圖 ›</button>
+      </div>
+    `;
+
+    const btn = document.getElementById('promoMapCtaBtn');
+    if(btn){
+      btn.onclick = (ev) => {
+        ev.preventDefault();
+        ev.stopPropagation();
+        try{ localStorage.setItem('ttl_promo_map_seen','1'); }catch(e){}
+        try{ btn.classList.remove('pm-attn'); }catch(e){}
+        try{ openPromoMap(); }catch(e){}
+      };
+    }
   }catch(e){}
 }
+
 
 // Determine tier badge kind for a category (order discount vs multi-tier)
 function getTierBadgeInfoByCategory(cat){
@@ -2907,5 +3171,19 @@ document.addEventListener('click', function promoHintClick(e){
 });
 
 </script>
+
+<!-- V2.8.9: Promo Map Drawer -->
+<div id="promoMapOverlay" class="pm-overlay"></div>
+<aside id="promoMapDrawer" class="pm-drawer" aria-hidden="true">
+  <div class="pm-header">
+    <div class="pm-title">優惠地圖</div>
+    <button type="button" class="pm-close" id="promoMapCloseBtn" aria-label="關閉">✕</button>
+  </div>
+  <div class="pm-body">
+    <div class="pm-sub">點分類可快速跳轉；優惠快覽可由規則表 ui_note / cat_hint|分類 進行覆蓋。</div>
+    <div id="promoMapList" class="pm-list"></div>
+  </div>
+</aside>
+
 </body>
 </html>
