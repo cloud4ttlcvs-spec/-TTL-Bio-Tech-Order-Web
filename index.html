@@ -191,7 +191,43 @@ main { padding: 12px; max-width: 900px; margin: 0 auto; margin-top: 10px; }
 
 /* --- General --- */
 .highlight { background-color: #fff176 !important; color: #212121 !important; font-weight: 900; border-radius: 2px; padding: 0 2px; }
-.cat-section-title { font-size: 18px; font-weight: 900; color: var(--primary); padding: 16px 8px 8px; margin-top: 0; margin-bottom: 8px; border-bottom: 2px solid var(--primary-light); scroll-margin-top: 135px; }
+.cat-section-title{
+  font-size: 18px;
+  font-weight: 900;
+  color: var(--primary);
+  padding: 16px 44px 8px 8px;
+  margin-top: 0;
+  margin-bottom: 8px;
+  border-bottom: 2px solid var(--primary-light);
+  scroll-margin-top: 135px;
+  position: relative;
+  cursor: pointer;
+  border-radius: 10px;
+  transition: background .15s ease, transform .12s ease;
+}
+.cat-section-title:hover{ background: rgba(0,137,123,0.06); }
+.cat-section-title:active{ transform: translateY(1px); }
+.cat-section-title::after{
+  content: 'i';
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-40%);
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Roboto', sans-serif;
+  font-weight: 900;
+  font-size: 12px;
+  color: #004d40;
+  background: rgba(224,242,241,0.90);
+  border: 1.6px solid rgba(0,137,123,0.55);
+  box-shadow: 0 6px 14px rgba(0,0,0,0.06);
+}
+
 
 /* --- V28 FIX: Overlay Flash Animation --- */
 .p-card { 
@@ -639,6 +675,58 @@ body.drawer-open { overflow:hidden; }
 }
 .pm-arrow{ color:#90a4ae; font-size: 18px; line-height:1; }
 
+
+/* --- V2.8.11: Promo Map styling (配色＋卡片層次) --- */
+.pm-overlay{
+  background: rgba(9,30,29,0.34);
+  backdrop-filter: blur(3px);
+}
+.pm-drawer{
+  background: linear-gradient(180deg, rgba(224,242,241,0.70) 0%, rgba(255,255,255,1) 160px);
+}
+.pm-header{
+  background: linear-gradient(135deg, rgba(0,137,123,0.20) 0%, rgba(255,111,0,0.10) 100%);
+  border-bottom: 1px solid rgba(0,0,0,0.05);
+}
+.pm-title{ color: #003b35; }
+.pm-close{
+  background: rgba(255,255,255,0.65);
+  border: 1px solid rgba(0,0,0,0.08);
+  box-shadow: 0 8px 18px rgba(0,0,0,0.08);
+}
+.pm-body{
+  background: linear-gradient(180deg, rgba(248,249,250,0.65), rgba(255,255,255,0));
+}
+.pm-sub{
+  padding: 10px 10px;
+  border-radius: 14px;
+  background: rgba(255,255,255,0.85);
+  border: 1px dashed rgba(0,137,123,0.22);
+  color: #335c5a;
+}
+.pm-item{
+  background: rgba(255,255,255,0.92);
+  position: relative;
+  padding-left: 18px;
+}
+.pm-item::before{
+  content: '';
+  position: absolute;
+  left: 10px;
+  top: 12px;
+  bottom: 12px;
+  width: 4px;
+  border-radius: 8px;
+  background: var(--pm-accent, rgba(0,137,123,0.22));
+}
+.pm-item[data-kind="order"]{ --pm-accent: rgba(0,137,123,0.85); }
+.pm-item[data-kind="tier"]{ --pm-accent: rgba(106,27,154,0.75); }
+.pm-item[data-kind="bogo"]{ --pm-accent: rgba(25,118,210,0.78); }
+.pm-item[data-kind="addon"]{ --pm-accent: rgba(216,67,21,0.78); }
+.pm-tag{
+  background: rgba(0,137,123,0.09);
+  border-color: rgba(0,137,123,0.20);
+}
 
 /* --- V2.8.8: Promo badges/pills are clickable (subtle) --- */
 .promo-badge, .p-price-pill{ cursor: pointer; }
@@ -1694,8 +1782,15 @@ function buildPromoMapList(){
       const hint = buildPromoMapRowHint(title);
       const hasAddon = categoryUnlocksAddonByTitle(title);
 
+      // styling hint kind for drawer (order/tier/bogo/addon)
+      const tierInfo = getTierBadgeInfoByCategory(title);
+      let kind = (tierInfo && tierInfo.kind) ? String(tierInfo.kind) : '';
+      if(!kind && String(title).includes('買一送一')) kind = 'bogo';
+      if(!kind && hasAddon) kind = 'addon';
+
       const item = document.createElement('div');
       item.className = 'pm-item';
+      item.setAttribute('data-kind', kind || 'plain');
       item.setAttribute('data-target', sec.id || '');
       item.innerHTML = `
         <div class="row">
@@ -3257,6 +3352,20 @@ document.addEventListener('click', function promoHintClick(e){
   if(promo === 'addon' || promo === 'addon_price'){
     return showPromoHint('加價購：需先選購指定主商品區商品才可加購');
   }
+});
+
+
+// --- V2.8.11: Category title click-to-explain (same as Promo Map hint) ---
+document.addEventListener('click', function catTitleHintClick(e){
+  const el = e.target.closest('.cat-section-title');
+  if(!el) return;
+  // ignore clicks when user is selecting text in inputs etc.
+  if(e.target.closest('input, textarea, select')) return;
+  const title = String(el.innerText||'').trim();
+  if(!title) return;
+  const hint = buildPromoMapRowHint(title);
+  if(hint) return showPromoHint(hint);
+  return showPromoHint('本分類目前無優惠訊息');
 });
 
 </script>
