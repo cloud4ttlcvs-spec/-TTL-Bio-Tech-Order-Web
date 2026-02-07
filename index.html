@@ -1631,15 +1631,8 @@ function createDualItem(g, isReached) {
     // Use the Grid Renderer, but maybe wrap it?
     let imgHtml = renderGiftImages(g.gift); 
     if(!imgHtml) imgHtml = '<div class="g-thumb" style="display:flex;align-items:center;justify-content:center;font-size:16px">🎁</div>';
-    
-          // Brand stripe by main category
-      let brand = 'health';
-      const t = String(title||'');
-      if(/保健/.test(t)) brand = 'health';
-      else if(/美容/.test(t)) brand = 'beauty';
-      else if(/清潔/.test(t)) brand = 'clean';
-      else if(/飲品/.test(t)) brand = 'drink';
-const item = document.createElement('div');
+
+    const item = document.createElement('div');
     item.className = `ms-dual-item ${isReached ? 'active' : ''}`;
     item.innerHTML = `
       <div class="ms-d-th">$${(g.amt).toLocaleString()}</div>
@@ -1821,8 +1814,17 @@ function applyUiThemeVars(){
 
   }catch(e){}
 }
+function escapeHtml(str){
+  return String(str||'').replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
 function showPromoHint(msg){
-  try{ showToast(msg, 'info', getPromoHintDurationMs()); }catch(e){}
+  try{
+    let s = String(msg||'');
+    // allow sheet-friendly literal \n
+    s = s.replace(/\\n/g, '\n');
+    s = escapeHtml(s).replace(/\r?\n/g, '<br>');
+    showToast(s, 'info', getPromoHintDurationMs());
+  }catch(e){}
 }
 // --- V2.8.9: Promo Map (優惠地圖) Drawer ---
 function getCatHintOverride(catTitle){
