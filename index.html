@@ -1205,40 +1205,6 @@ window.closeWelcome = function() {
   setTimeout(() => el.style.display = 'none', 500);
 };
 
-
-// --- Back Guard (v2.8.9c): back closes drawers, then scroll-to-top, then prompt-to-exit ---
-let __EXIT_ARMED_AT = 0;
-function __pushBackGuard(){
-  try{ history.pushState({modal:'guard'}, null, ""); }catch(e){}
-}
-function __handleBackAtRoot(){
-  // If any modal/drawer is open, do nothing here (handled elsewhere)
-  const y = window.scrollY || document.documentElement.scrollTop || 0;
-  if(y > 30){
-    try{ window.scrollTo({top:0, behavior:'smooth'}); }catch(e){ window.scrollTo(0,0); }
-    __EXIT_ARMED_AT = 0;
-    // restore guard
-    setTimeout(__pushBackGuard, 0);
-    return;
-  }
-  const now = Date.now();
-  if(__EXIT_ARMED_AT && (now - __EXIT_ARMED_AT) < 1600){
-    __EXIT_ARMED_AT = 0;
-    // allow browser to exit (do not re-push guard)
-    return;
-  }
-  __EXIT_ARMED_AT = now;
-  showToast('再按一次返回即可離開', 'info', 2800);
-  setTimeout(__pushBackGuard, 0);
-}
-function __ensureBackGuardOnce(){
-  try{
-    if(window.__BACK_GUARD_SET) return;
-    window.__BACK_GUARD_SET = true;
-    __pushBackGuard();
-  }catch(e){}
-}
-
 window.safeOpenCart = function() {
   if(!CART || CART.length === 0) {
     showToast("購物車還是空的喔！趕快去選購吧", "warn");
@@ -1260,7 +1226,7 @@ window.closeCart = function() {
   document.getElementById("float-bar").classList.remove("hidden");
   cleanupUI(); 
   isCartOpen = false;
-  if(history.state && history.state.modal === 'cart') window.__IGNORE_NEXT_POPSTATE = true; history.back();
+  if(history.state && history.state.modal === 'cart') history.back();
 };
 
 window.switchRank = function(type) {
@@ -1374,7 +1340,7 @@ function createGiftItem(g, reached) {
 
 window.closeGiftList = function() {
     if(history.state && history.state.modal === 'gift') {
-        window.__IGNORE_NEXT_POPSTATE = true; history.back();
+        history.back();
     } else {
         document.getElementById("giftModal").classList.remove("open");
     }
@@ -1480,7 +1446,7 @@ window.showMilestoneCard = function() {
 
 window.closeMilestoneCard = function() {
     document.getElementById('milestone-overlay').classList.remove('open');
-    if(history.state && history.state.modal === 'milestone') window.__IGNORE_NEXT_POPSTATE = true; history.back();
+    if(history.state && history.state.modal === 'milestone') history.back();
 };
 
 window.minimizeMilestoneCard = function() {
@@ -1490,7 +1456,7 @@ window.minimizeMilestoneCard = function() {
         document.getElementById('milestone-overlay').classList.remove('open'); 
         cleanupUI();
         document.getElementById('gift-fab').style.display = 'flex'; 
-        if(history.state && history.state.modal === 'milestone') window.__IGNORE_NEXT_POPSTATE = true; history.back();
+        if(history.state && history.state.modal === 'milestone') history.back();
     }, 600);
 };
 
@@ -1658,18 +1624,27 @@ function getCatHintOverride(catTitle){
     const t = String(catTitle||'').trim();
     const notes = (RULES && RULES.uiNotes) ? RULES.uiNotes : {};
     const keys = Object.keys(notes).filter(k => k.startsWith('cat_hint|'));
-    let bestKey = '';
-    let bestText = '';
-    keys.forEach(k => {
+
+    // 1) Exact match first (最高優先)
+    for(const k of keys){
       const suffix = String(k.split('|')[1]||'').trim();
-      if(!suffix) return;
-      if(t.includes(suffix) || suffix.includes(t)){
-        if(suffix.length > bestKey.length){
-          bestKey = suffix;
+      if(!suffix) continue;
+      if(t === suffix) return String(notes[k]||'').trim();
+    }
+
+    // 2) Fallback: allow parent hint to apply to sub-category (title includes suffix)
+    let bestSuffix = '';
+    let bestText = '';
+    for(const k of keys){
+      const suffix = String(k.split('|')[1]||'').trim();
+      if(!suffix) continue;
+      if(t.includes(suffix)){
+        if(suffix.length > bestSuffix.length){
+          bestSuffix = suffix;
           bestText = String(notes[k]||'').trim();
         }
       }
-    });
+    }
     return bestText;
   }catch(e){ return ''; }
 }
@@ -1757,26 +1732,82 @@ function openPromoMap(){
     overlay.style.display = 'block';
     drawer.classList.add('open');
 
-    window.__PROMO_MAP_OPEN = true;
-    try{ if(!(history.state && history.state.modal === 'promoMap')) history.pushState({modal:'promoMap'}, null, ""); }catch(e){}
-
-    overlay.onclick = () => closePromoMap(false);
+    
+    try{ history.pushState({modal:'promoMap'}, null, \"\"); }catch(e){}
+overlay.onclick = () => closePromoMap();
     const closeBtn = document.getElementById('promoMapCloseBtn');
-    if(closeBtn) closeBtn.onclick = () => closePromoMap(false);
-    }catch(e){}
+    if(closeBtn) closeBtn.onclick = () => closePromoMap();
+  }catch(e){}
 }
 
-function closePromoMap(fromPop){
-  if(fromPop===undefined) fromPop=false;
+function closePromoMap(opts){
+  const o = opts || {};
+  const skipHistory = !!o.skipHistory;
   try{
-    window.__PROMO_MAP_OPEN = false;
     const overlay = document.getElementById('promoMapOverlay');
     const drawer = document.getElementById('promoMapDrawer');
     if(overlay) overlay.style.display = 'none';
     if(drawer) drawer.classList.remove('open');
     document.body.classList.remove('drawer-open');
-    try{ if(!fromPop && history.state && history.state.modal === 'promoMap'){ window.__IGNORE_NEXT_POPSTATE = true; history.back(); } }catch(e){}
   }catch(e){}
+  try{
+    if(!skipHistory && history.state && history.state.modal === 'promoMap'){
+      history.back();
+    }
+  }catch(e){}
+}
+
+
+// --- Promo Map + Back Guard helpers ---
+let BACK_EXIT_ARMED_UNTIL = 0;
+
+function isPromoMapOpen(){
+  const d = document.getElementById('promoMapDrawer');
+  return !!(d && d.classList.contains('open'));
+}
+
+function initBackGuard(){
+  try{
+    const st = history.state || null;
+    if(st && (st.page === 'guard' || st.page === 'root')) return;
+    history.replaceState({page:'root'}, null, "");
+    history.pushState({page:'guard'}, null, "");
+  }catch(e){}
+}
+
+function armBackGuard(){
+  try{
+    const st = history.state || null;
+    if(st && st.page === 'guard') return;
+    history.pushState({page:'guard'}, null, "");
+  }catch(e){}
+}
+
+function handleRootBack(){
+  try{
+    // Step 1: if not at top, go top first
+    if(window.scrollY > 60){
+      window.scrollTo({top:0, behavior:'smooth'});
+      BACK_EXIT_ARMED_UNTIL = 0;
+      armBackGuard();
+      return;
+    }
+
+    // Step 2: at top, show exit hint then allow exit on next back
+    const now = Date.now();
+    if(now < BACK_EXIT_ARMED_UNTIL){
+      BACK_EXIT_ARMED_UNTIL = 0;
+      try{ window.onbeforeunload = null; }catch(e){}
+      history.back();
+      return;
+    }
+
+    showToast('再按一次返回即可離開', 'info', 2000);
+    BACK_EXIT_ARMED_UNTIL = now + 2200;
+    armBackGuard();
+  }catch(e){
+    try{ armBackGuard(); }catch(e2){}
+  }
 }
 
 function showInitBlockedToast(){
@@ -2762,16 +2793,25 @@ function refreshCart() {
 }
 
 window.openCart = () => { if(CART.length === 0) return; document.getElementById("drawer").classList.add("open"); document.getElementById("float-bar").classList.add("hidden"); isCartOpen = true; history.pushState({modal: 'cart'}, null, ""); };
-window.closeCart = () => { document.getElementById("drawer").classList.remove("open"); document.getElementById("float-bar").classList.remove("hidden"); cleanupUI(); isCartOpen = false; if(history.state && history.state.modal === 'cart') window.__IGNORE_NEXT_POPSTATE = true; history.back(); };
+window.closeCart = () => { document.getElementById("drawer").classList.remove("open"); document.getElementById("float-bar").classList.remove("hidden"); cleanupUI(); isCartOpen = false; if(history.state && history.state.modal === 'cart') history.back(); };
 
-window.onpopstate = (e) => {
-    if(window.__IGNORE_NEXT_POPSTATE){ window.__IGNORE_NEXT_POPSTATE = false; return; }
- 
+window.onpopstate = (e) => { 
     // CRITICAL FIX: Always ensure body is clean when returning to root state
-    if (!document.querySelector('.modal.open') && !document.getElementById('drawer').classList.contains('open') && !document.getElementById('milestone-overlay').classList.contains('open')) {
+    if (!document.querySelector('.modal.open') && 
+        !document.getElementById('drawer').classList.contains('open') && 
+        !document.getElementById('milestone-overlay').classList.contains('open') &&
+        !isPromoMapOpen()) {
         cleanupUI();
     }
-    
+
+    // Handle Promo Map Drawer (優惠地圖)
+    if(isPromoMapOpen()){
+        closePromoMap({skipHistory:true});
+        // keep guard so user doesn't leave app accidentally
+        armBackGuard();
+        return;
+    }
+
     // V25 FIX 1: Handle Milestone using DOM state
     const msOverlay = document.getElementById('milestone-overlay');
     if(msOverlay.classList.contains('open')) {
@@ -2780,7 +2820,7 @@ window.onpopstate = (e) => {
         if(!isCartOpen) cleanupUI();
         return;
     }
-    
+
     // V25 FIX 3: Handle Gift Modal correctly
     const giftModal = document.getElementById("giftModal"); 
     if(giftModal.classList.contains("open")) { 
@@ -2793,36 +2833,24 @@ window.onpopstate = (e) => {
         }
         return; 
     } 
-    
+
     // Handle Receipt
     const rcModal = document.getElementById("receiptModal"); 
-    if(rcModal.classList.contains("open")) { return; }
+    if(rcModal.classList.contains("open")) { return; } 
 
-    // Handle PromoMap Drawer
-    const pmDrawer = document.getElementById('promoMapDrawer');
-    if(pmDrawer && pmDrawer.classList.contains('open')){
-        closePromoMap(true);
-        cleanupUI();
-        return;
-    }
- 
-    
     // Handle Cart Drawer
     if(isCartOpen) { 
         document.getElementById("drawer").classList.remove("open"); 
         document.getElementById("float-bar").classList.remove("hidden"); 
         cleanupUI(); // V26: Force Cleanup
-        isCartOpen = false;
+        isCartOpen = false; 
         return;
-    }
+    } 
 
-    // Root Back Behavior: scroll-to-top first, then prompt-to-exit
-    if(!document.querySelector('.modal.open') &&
-       !document.getElementById('drawer').classList.contains('open') &&
-       !document.getElementById('milestone-overlay').classList.contains('open') &&
-       !document.getElementById('promoMapDrawer').classList.contains('open')){
-        __handleBackAtRoot();
-    }
+    // Root-level back behavior (主商品頁：先置頂→再提示→再離開)
+    const st = history.state || null;
+    if(st && st.page === 'guard') return;
+    handleRootBack();
 };
 window.onbeforeunload = (e) => { if(CART.length > 0) return "訂單尚未送出"; };
 document.getElementById("searchInp").addEventListener("input", renderList);
@@ -3178,7 +3206,7 @@ document.getElementById("searchInp").addEventListener("input", renderList);
 window.onbeforeunload = (e) => { if(CART.length > 0) return "訂單尚未送出"; };
 
 initApp();
-__ensureBackGuardOnce();
+try{ initBackGuard(); }catch(e){}
 
 // --- V2.8.8: Click-to-explain for promo badges/pills (non-intrusive) ---
 document.addEventListener('click', function promoHintClick(e){
