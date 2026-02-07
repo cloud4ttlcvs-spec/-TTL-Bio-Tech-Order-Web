@@ -363,6 +363,9 @@ header { position: sticky; top: 0; z-index: 1000; background: rgba(255,255,255,0
 .game-icon { transition: all 0.3s; font-size: 16px; }
 .game-hint { font-size: 11px; color: var(--accent); }
 
+
+/* V2.8.12: cart motivation text +20% */
+#gameMsg{ font-size: 1.2em; }
 .progress-wrap { height: 10px; width: 100%; background: #eee; border-radius: 5px; overflow: hidden; margin-top: 8px; }
 .progress-bar { height: 100%; width: 0%; background: linear-gradient(90deg, #ffca28, #ff6f00); border-radius: 5px; transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1); }
 .progress-bar.full { background: linear-gradient(90deg, #66bb6a, #43a047); }
@@ -376,6 +379,28 @@ header { position: sticky; top: 0; z-index: 1000; background: rgba(255,255,255,0
 .g-name { font-size: 14px; }
 .g-tag { font-size: 10px; background: #fff; padding: 2px 6px; border-radius: 4px; border: 1px solid #a5d6a7; color: #2e7d32; display: inline-block; margin-top: 4px; }
 
+
+/* V2.8.12: Gift list section title with current spend */
+.g-section-title{
+  display:flex; align-items:center; justify-content:space-between; gap:10px;
+  padding: 8px 10px; margin: 10px 0 4px;
+  border-radius: 12px;
+  background: rgba(96,125,139,0.08);
+  border: 1px solid rgba(96,125,139,0.16);
+  color: #37474f;
+  font-size: 13px;
+  font-weight: 900;
+}
+.g-section-title.beauty{
+  background: rgba(236,64,122,0.08);
+  border-color: rgba(236,64,122,0.16);
+}
+.g-section-amt{
+  font-size: 11px;
+  font-weight: 800;
+  color: #607d8b;
+  white-space: nowrap;
+}
 @keyframes shimmer { 0% { background-position: -468px 0; } 100% { background-position: 468px 0; } }
 .skeleton { background: #f6f7f8; background-image: linear-gradient(to right, #f6f7f8 0%, #edeef1 20%, #f6f7f8 40%, #f6f7f8 100%); background-repeat: no-repeat; background-size: 800px 104px; animation: shimmer 1s linear infinite forwards; border-radius: 8px; }
 .sk-card { height: 280px; border-radius: 16px; background: #fff; padding: 12px; margin-bottom: 12px; }
@@ -723,6 +748,12 @@ body.drawer-open { overflow:hidden; }
 .pm-item[data-kind="tier"]{ --pm-accent: rgba(106,27,154,0.75); }
 .pm-item[data-kind="bogo"]{ --pm-accent: rgba(25,118,210,0.78); }
 .pm-item[data-kind="addon"]{ --pm-accent: rgba(216,67,21,0.78); }
+
+/* V2.8.12: Promo Map 左側色條改為品牌色（依分類大類） */
+.pm-item[data-brand="beauty"]{ --pm-accent: rgba(236, 64, 122, 0.78); }   /* 粉 */
+.pm-item[data-brand="clean"]{  --pm-accent: rgba(102, 187, 106, 0.70); }  /* 粉綠 */
+.pm-item[data-brand="drink"]{  --pm-accent: rgba(255, 112, 67, 0.68); }   /* 粉橘 */
+.pm-item[data-brand="health"]{ --pm-accent: rgba(25, 118, 210, 0.78); }   /* 藍 */
 .pm-tag{
   background: rgba(0,137,123,0.09);
   border-color: rgba(0,137,123,0.20);
@@ -1336,7 +1367,7 @@ window.openGiftList = function() {
 
     // 1. Total Spend Section
     if (giftsAll.length > 0) {
-        grid.innerHTML += `<div class="g-section-title">全館滿額贈</div>`;
+        grid.innerHTML += `<div class="g-section-title"><span>全館滿額贈</span><span class="g-section-amt">目前：$${Math.round(currentTotal).toLocaleString()}</span></div>`;
         giftsAll.forEach(g => {
             const reached = currentTotal >= g.amt;
             grid.appendChild(createGiftItem(g, reached));
@@ -1345,7 +1376,7 @@ window.openGiftList = function() {
 
     // 2. Beauty Spend Section
     if (giftsBeauty.length > 0) {
-        grid.innerHTML += `<div class="g-section-title beauty">美容滿額贈</div>`;
+        grid.innerHTML += `<div class="g-section-title beauty"><span>美容滿額贈</span><span class="g-section-amt">目前：$${Math.round(currentBeauty).toLocaleString()}</span></div>`;
         giftsBeauty.forEach(g => {
             const reached = currentBeauty >= g.amt;
             grid.appendChild(createGiftItem(g, reached));
@@ -1592,7 +1623,14 @@ function createDualItem(g, isReached) {
     let imgHtml = renderGiftImages(g.gift); 
     if(!imgHtml) imgHtml = '<div class="g-thumb" style="display:flex;align-items:center;justify-content:center;font-size:16px">🎁</div>';
     
-    const item = document.createElement('div');
+          // Brand stripe by main category
+      let brand = 'health';
+      const t = String(title||'');
+      if(/保健/.test(t)) brand = 'health';
+      else if(/美容/.test(t)) brand = 'beauty';
+      else if(/清潔/.test(t)) brand = 'clean';
+      else if(/飲品/.test(t)) brand = 'drink';
+const item = document.createElement('div');
     item.className = `ms-dual-item ${isReached ? 'active' : ''}`;
     item.innerHTML = `
       <div class="ms-d-th">$${(g.amt).toLocaleString()}</div>
@@ -1791,6 +1829,7 @@ function buildPromoMapList(){
       const item = document.createElement('div');
       item.className = 'pm-item';
       item.setAttribute('data-kind', kind || 'plain');
+      item.setAttribute('data-brand', brand || 'health');
       item.setAttribute('data-target', sec.id || '');
       item.innerHTML = `
         <div class="row">
@@ -2866,7 +2905,9 @@ function refreshCart() {
   
   const next = RULES.spend.find(r => r.scope === "all" && r.amt > data.finalTotal);
   if(next) {
-    document.getElementById("gameMsg").innerText = `加油！再 $${(next.amt - data.finalTotal).toLocaleString()} 解鎖贈品`;
+    const diff = Math.max(0, (next.amt - data.finalTotal));
+  const diffInt = Math.ceil(diff);
+  document.getElementById("gameMsg").innerText = `加油！再 $${diffInt.toLocaleString()} 解鎖贈品`;
     document.getElementById("gameBar").style.width = ((data.finalTotal/next.amt)*100) + "%";
     document.getElementById("gameBar").classList.remove("full");
   } else {
