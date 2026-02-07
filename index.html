@@ -601,6 +601,15 @@ input:focus, select:focus { border-color: var(--primary); background: #fff; outl
   transition: transform .12s ease, box-shadow .18s ease, background .18s ease, border-color .18s ease;
 }
 .sys-ann-cta:active{ transform: translateY(1px); }
+
+.sys-ann-cta .cta-icon{
+  display:inline-block;
+  margin-right: 6px;
+  font-weight: 900;
+  color: var(--ann-icon-fg, #ff6f00);
+}
+.sys-ann-cta .cta-text{ display:inline-block; }
+
 .sys-ann-cta.pm-attn{
   border-color: rgba(255,111,0,0.55);
   background: linear-gradient(135deg, rgba(255,111,0,0.16), rgba(255,111,0,0.03));
@@ -750,10 +759,10 @@ body.drawer-open { overflow:hidden; }
 .pm-item[data-kind="addon"]{ --pm-accent: rgba(216,67,21,0.78); }
 
 /* V2.8.12: Promo Map 左側色條改為品牌色（依分類大類） */
-.pm-item[data-brand="beauty"]{ --pm-accent: rgba(236, 64, 122, 0.78); }   /* 粉 */
-.pm-item[data-brand="clean"]{  --pm-accent: rgba(102, 187, 106, 0.70); }  /* 粉綠 */
-.pm-item[data-brand="drink"]{  --pm-accent: rgba(255, 112, 67, 0.68); }   /* 粉橘 */
-.pm-item[data-brand="health"]{ --pm-accent: rgba(25, 118, 210, 0.78); }   /* 藍 */
+.pm-item[data-brand="beauty"]{ --pm-accent: var(--pm-accent-beauty, rgba(236, 64, 122, 0.78)); }   /* 粉 */
+.pm-item[data-brand="clean"]{  --pm-accent: var(--pm-accent-clean, rgba(102, 187, 106, 0.70)); }  /* 粉綠 */
+.pm-item[data-brand="drink"]{  --pm-accent: var(--pm-accent-drink, rgba(255, 112, 67, 0.68)); }   /* 粉橘 */
+.pm-item[data-brand="health"]{ --pm-accent: var(--pm-accent-health, rgba(25, 118, 210, 0.78)); }   /* 藍 */
 .pm-tag{
   background: rgba(0,137,123,0.09);
   border-color: rgba(0,137,123,0.20);
@@ -1740,10 +1749,81 @@ function fmtZheFromPctOff(pctOff){
   return `${payPct}折`;
 }
 
-function showPromoHint(msg){
-  try{ showToast(msg, 'info', 2800); }catch(e){}
+function uiGet(key, fallback=''){
+  try{
+    const k = String(key||'').trim();
+    if(!k || !RULES) return String(fallback||'');
+    const notes = RULES.uiNotes || {};
+    if(notes[k] != null && String(notes[k]).trim() !== '') return String(notes[k]).trim();
+    const alt = k.startsWith('ui|') ? k.replace(/^ui\|/,'') : ('ui|' + k);
+    if(notes[alt] != null && String(notes[alt]).trim() !== '') return String(notes[alt]).trim();
+    const cfg = RULES.uiCfg || {};
+    if(cfg[k] != null && String(cfg[k]).trim() !== '') return String(cfg[k]).trim();
+    if(cfg[alt] != null && String(cfg[alt]).trim() !== '') return String(cfg[alt]).trim();
+    return String(fallback||'');
+  }catch(e){ return String(fallback||''); }
 }
+function uiGetNumber(key, fallback){
+  const raw = uiGet(key, '');
+  const n = Number(String(raw).replace(/,/g,'').trim());
+  if(isFinite(n)) return n;
+  return fallback;
+}
+function getPromoHintDurationMs(){
+  let ms = uiGetNumber('ui|promo_hint_ms', NaN);
+  if(!isFinite(ms)) ms = uiGetNumber('promo_hint_ms', NaN);
+  if(!isFinite(ms)) {
+    const sec = uiGetNumber('ui|promo_hint_sec', NaN);
+    if(isFinite(sec)) ms = sec * 1000;
+  }
+  if(!isFinite(ms)) {
+    const sec = uiGetNumber('promo_hint_sec', NaN);
+    if(isFinite(sec)) ms = sec * 1000;
+  }
+  if(!isFinite(ms)) ms = 2800;
+  if(ms > 0 && ms <= 60) ms = ms * 1000;
+  ms = Math.max(1200, Math.min(8000, ms));
+  return Math.round(ms);
+}
+function getBadgeName(kind, fallback){
+  return uiGet(`badge_name|${kind}`, uiGet(`ui|badge_name|${kind}`, fallback));
+}
+function applyUiThemeVars(){
+  try{
+    const root = document.documentElement;
+    const acc = (RULES && RULES.uiAccent) ? RULES.uiAccent : {};
+    const brandMap = { beauty:'brand|beauty', clean:'brand|clean', drink:'brand|drink', health:'brand|health' };
+    const alphaMap = { beauty:0.78, clean:0.70, drink:0.68, health:0.78 };
 
+    function hexToRgba(hex, a){
+      const h = String(hex||'').trim();
+      const mm = h.match(/^#?([0-9a-fA-F]{6})$/);
+      if(!mm) return '';
+      const v = mm[1];
+      const r = parseInt(v.slice(0,2),16), g = parseInt(v.slice(2,4),16), b = parseInt(v.slice(4,6),16);
+      return `rgba(${r}, ${g}, ${b}, ${a})`;
+    }
+    Object.keys(brandMap).forEach(k=>{
+      const z = brandMap[k];
+      const c1 = acc[z]?.c1 || '';
+      const rgba = c1 ? (hexToRgba(c1, alphaMap[k] || 0.75) || c1) : '';
+      if(rgba) root.style.setProperty(`--pm-accent-${k}`, rgba);
+    });
+
+    const catInfo = acc['ui|cat_info_icon']?.c1 || acc['cat_info_icon']?.c1 || '';
+    if(catInfo){
+      root.style.setProperty('--cat-info-fg', catInfo);
+      root.style.setProperty('--cat-info-bg', hexToRgba(catInfo, 0.12) || 'rgba(224,242,241,0.90)');
+      root.style.setProperty('--cat-info-border', hexToRgba(catInfo, 0.35) || 'rgba(0,137,123,0.55)');
+    }
+    const annIcon = acc['ui|announce_icon']?.c1 || acc['announce_icon']?.c1 || acc['ui|promo_map_cta_icon']?.c1 || acc['promo_map_cta_icon']?.c1 || '';
+    if(annIcon) root.style.setProperty('--ann-icon-fg', annIcon);
+
+  }catch(e){}
+}
+function showPromoHint(msg){
+  try{ showToast(msg, 'info', getPromoHintDurationMs()); }catch(e){}
+}
 // --- V2.8.9: Promo Map (優惠地圖) Drawer ---
 function getCatHintOverride(catTitle){
   try{
@@ -1832,6 +1912,12 @@ function buildPromoMapList(){
       const hint = buildPromoMapRowHint(title);
       const hasAddon = categoryUnlocksAddonByTitle(title);
       const brand = detectPromoMapBrandByTitle(title);
+let catAccent = null;
+try{
+  const m2 = (RULES && RULES.uiCatStyle) ? RULES.uiCatStyle : {};
+  if(m2 && m2[title] && (m2[title].c1 || m2[title].c2)) catAccent = m2[title];
+}catch(e){}
+
 
       // styling hint kind for drawer (order/tier/bogo/addon)
       const tierInfo = getTierBadgeInfoByCategory(title);
@@ -1843,6 +1929,27 @@ function buildPromoMapList(){
       item.className = 'pm-item';
       item.setAttribute('data-kind', kind || 'plain');
       item.setAttribute('data-brand', brand || 'health');
+try{
+  const acc = (RULES && RULES.uiAccent) ? RULES.uiAccent : {};
+  function hexToRgba(hex, a){
+    const h = String(hex||'').trim();
+    const mm = h.match(/^#?([0-9a-fA-F]{6})$/);
+    if(!mm) return '';
+    const v = mm[1];
+    const r = parseInt(v.slice(0,2),16), g = parseInt(v.slice(2,4),16), b = parseInt(v.slice(4,6),16);
+    return `rgba(${r}, ${g}, ${b}, ${a})`;
+  }
+  let c1 = (catAccent && catAccent.c1) ? catAccent.c1 : '';
+  if(!c1){
+    const pal = acc[`brand|${brand}`];
+    c1 = pal ? (pal.c1 || '') : '';
+  }
+  if(c1){
+    const a = (brand === 'clean') ? 0.70 : (brand === 'drink') ? 0.68 : 0.78;
+    item.style.setProperty('--pm-accent', hexToRgba(c1, a) || c1);
+  }
+}catch(e){}
+
       item.setAttribute('data-target', sec.id || '');
       item.innerHTML = `
         <div class="row">
@@ -1987,12 +2094,21 @@ function renderSystemAnnouncement(){
     slot.innerHTML = `
       <div class="sys-ann sys-ann--row">
         ${safe ? `<div class="sys-ann-main">${safe}</div>` : `<div class="sys-ann-main"></div>`}
-        <button type="button" id="promoMapCtaBtn" class="sys-ann-cta${attnCls}">👉 查看優惠地圖 ›</button>
+        <button type="button" id="promoMapCtaBtn" class="sys-ann-cta${attnCls}"><span class="cta-icon">👉</span><span class="cta-text">查看優惠地圖 ›</span></button>
       </div>
     `;
 
     const btn = document.getElementById('promoMapCtaBtn');
     if(btn){
+try{
+  const iconEl = btn.querySelector('.cta-icon');
+  const textEl = btn.querySelector('.cta-text');
+  const iconTxt = uiGet('ui|promo_map_cta_icon', uiGet('promo_map_cta_icon','👉')) || '👉';
+  const labelTxt = uiGet('ui|promo_map_cta_text', uiGet('promo_map_cta_text','查看優惠地圖 ›')) || '查看優惠地圖 ›';
+  if(iconEl) iconEl.textContent = iconTxt;
+  if(textEl) textEl.textContent = labelTxt;
+}catch(e){}
+
       btn.onclick = (ev) => {
         ev.preventDefault();
         ev.stopPropagation();
@@ -2021,18 +2137,21 @@ function getTierBadgeInfoByCategory(cat){
   }catch(e){ return null; }
 }
 
+
 function buildTierHintText(info){
   if(!info || !Array.isArray(info.rules) || info.rules.length===0) return '';
+  const orderLabel = getBadgeName('order_discount','訂單折扣');
+  const tierLabel  = getBadgeName('tier','多件優惠');
   if(info.kind === 'order'){
     const zhe = fmtZheFromPctOff(info.rules[0].pct);
-    return zhe ? `訂單折扣：${zhe}` : '訂單折扣';
+    return zhe ? `${orderLabel}：${zhe}` : `${orderLabel}`;
   }
   const parts = info.rules.map(r => {
     const min = Number(r.min)||1;
     const zhe = fmtZheFromPctOff(r.pct);
     return `滿${min}件 ${zhe || ''}`.trim();
   });
-  return `多件優惠：${parts.join('、')}`;
+  return `${tierLabel}：${parts.join('、')}`;
 }
 
 
@@ -2200,7 +2319,7 @@ const pData = Papa.parse(pText, { header: true, skipEmptyLines: true }).data;
     }
 
     const rData = Papa.parse(rText, { header: true, skipEmptyLines: true }).data;
-    RULES = { tiers: [], bogo: [], spend: [], bundle: [], series_gift: [], flat_price: [], eligibility: [], uiNotes: {}, freeShipThreshold: null };
+    RULES = { tiers: [], bogo: [], spend: [], bundle: [], series_gift: [], flat_price: [], eligibility: [], uiNotes: {}, uiAccent: {}, uiCatStyle: {}, uiCfg: {}, freeShipThreshold: null };
     rData.forEach(row => {
       const pick = (k) => {
         const kk = String(k||'').replace(/^\uFEFF/,'').trim().toLowerCase();
@@ -2238,7 +2357,32 @@ const pData = Papa.parse(pText, { header: true, skipEmptyLines: true }).data;
         const amt = Number(rawAmt);
         if(isFinite(amt) && amt > 0) RULES.freeShipThreshold = amt;
       }
-      else if(type.includes("ui_note")) {
+      
+else if(type.includes("ui_accent")) {
+  const zone = String(pick("zone")||"").trim();
+  const c1 = String(pick("ui_accent")||"").trim();
+  const c2 = String(pick("ui_accent2")||"").trim();
+  if(zone && (c1 || c2)) RULES.uiAccent[zone] = { c1, c2 };
+}
+else if(type.includes("ui_cat_style")) {
+  // zone format: cat|<分類標題>
+  const zone = String(pick("zone")||"").trim();
+  const mm = zone.match(/^cat\|(.+)$/);
+  const catKey = mm ? String(mm[1]||'').trim() : zone.replace(/^cat\|/,'').trim();
+  const c1 = String(pick("ui_accent")||"").trim();
+  const c2 = String(pick("ui_accent2")||"").trim();
+  if(catKey && (c1 || c2)) RULES.uiCatStyle[catKey] = { c1, c2 };
+}
+else if(type.includes("ui_config")) {
+  const key = String(pick("zone")||"").trim();
+  const txt = String(pick("ui_text")||"").trim();
+  const rawAmt = String(pick("threshold_amount")||"").trim().replace(/,/g,'');
+  const amt = Number(rawAmt);
+  if(key){
+    RULES.uiCfg[key] = (txt ? txt : (isFinite(amt) ? amt : ""));
+  }
+}
+else if(type.includes("ui_note")) {
         const zone = String(pick("zone")||"").trim();
         const txt = String(pick("ui_text")||"").trim();
         if(zone && txt) RULES.uiNotes[zone] = txt;
@@ -2271,6 +2415,8 @@ if (rankText) {
   processRankings(rankText);
 }
 
+
+    try{ applyUiThemeVars(); }catch(e){}
 
     renderUI();
     renderSystemAnnouncement();
@@ -2522,15 +2668,23 @@ function getTierRangeText(p){
 function createProductCard(p, highlightQuery) {
     const inCart = CART.find(x => x._id === p._id && !x.bundleSelection);
     const qty = inCart ? inCart.qty : 0;
+
+// UI configurable badge names
+const L_addon = getBadgeName('addon','加價購');
+const L_bogo  = getBadgeName('bogo','買一送一');
+const L_bundleSel = getBadgeName('bundle_select','優惠組合');
+const L_order = getBadgeName('order_discount','訂單折扣');
+const L_tier  = getBadgeName('tier','多件優惠');
+
     let badges = "";
-    if(p.category.includes("加價購")) badges += `<span class="badge bg-red promo-badge" data-promo="addon">加價購</span>`;
-    if(RULES.bogo.some(b => b.code === p.code)) badges += `<span class="badge bg-blue promo-badge" data-promo="bogo" data-code="${p.code}">買一送一</span>`;
-    if(p.name.includes("任選")) badges += `<span class="badge bg-gold promo-badge" data-promo="bundle_select">優惠組合</span>`;
+    if(p.category.includes("加價購")) badges += `<span class="badge bg-red promo-badge" data-promo="addon">${L_addon}</span>`;
+    if(RULES.bogo.some(b => b.code === p.code)) badges += `<span class="badge bg-blue promo-badge" data-promo="bogo" data-code="${p.code}">${L_bogo}</span>`;
+    if(p.name.includes("任選")) badges += `<span class="badge bg-gold promo-badge" data-promo="bundle_select">${L_bundleSel}</span>`;
     (function(){
     const info = getTierBadgeInfoByCategory(p.category);
     if(!info) return;
-    if(info.kind === 'order') badges += `<span class="badge bg-purple promo-badge" data-promo="order_discount" data-zone="${String(info.zone).replace(/"/g,'&quot;')}">訂單折扣</span>`;
-    else badges += `<span class="badge bg-purple promo-badge" data-promo="tier" data-zone="${String(info.zone).replace(/"/g,'&quot;')}">多件優惠</span>`;
+    if(info.kind === 'order') badges += `<span class="badge bg-purple promo-badge" data-promo="order_discount" data-zone="${String(info.zone).replace(/"/g,'&quot;')}">${L_order}</span>`;
+    else badges += `<span class="badge bg-purple promo-badge" data-promo="tier" data-zone="${String(info.zone).replace(/"/g,'&quot;')}">${L_tier}</span>`;
   })();
     let actionBtn = "";
     if(p.bundle.length >= 2 && p.name.includes("任選")) {
@@ -3378,8 +3532,8 @@ document.addEventListener('click', function promoHintClick(e){
   if(promo === 'bogo'){
     const code = el.dataset.code || '';
     const r = (RULES && Array.isArray(RULES.bogo)) ? RULES.bogo.find(x => x && x.code === code) : null;
-    if(r) return showPromoHint(`買一送一：買${Number(r.buy)||1}送${Number(r.get)||1}`);
-    return showPromoHint('買一送一：依活動規則');
+    if(r) return showPromoHint(`${getBadgeName('bogo','買一送一')}：買${Number(r.buy)||1}送${Number(r.get)||1}`);
+    return showPromoHint(`${getBadgeName('bogo','買一送一')}：依活動規則`);
   }
   if(promo === 'tier' || promo === 'order_discount' || promo === 'tier_range'){
     // If el has zone, use it; else infer by current product category not available -> fallback by zone
@@ -3398,7 +3552,7 @@ document.addEventListener('click', function promoHintClick(e){
     return showPromoHint(buildTierHintText(info));
   }
   if(promo === 'bundle_select'){
-    return showPromoHint('優惠組合：依商品內容任選搭配');
+    return showPromoHint(`${getBadgeName('bundle_select','優惠組合')}：依商品內容任選搭配`);
   }
   if(promo === 'bundle_price'){
     return showPromoHint('優惠價：以活動設定為準');
@@ -3417,9 +3571,23 @@ document.addEventListener('click', function catTitleHintClick(e){
   if(e.target.closest('input, textarea, select')) return;
   const title = String(el.innerText||'').trim();
   if(!title) return;
-  const hint = buildPromoMapRowHint(title);
-  if(hint) return showPromoHint(hint);
-  return showPromoHint('本分類目前無優惠訊息');
+
+const hint = buildPromoMapRowHint(title);
+const tpl = uiGet('ui|cat_title_hint_tpl', uiGet('cat_title_hint_tpl',''));
+if(hint){
+  if(tpl){
+    const msg = String(tpl)
+      .replace(/\{cat\}/g, title)
+      .replace(/\{hint\}/g, hint);
+    return showPromoHint(msg || hint);
+  }
+  return showPromoHint(hint);
+}
+if(tpl){
+  const msg = String(tpl).replace(/\{cat\}/g, title).replace(/\{hint\}/g, '本分類目前無優惠訊息');
+  return showPromoHint(msg || '本分類目前無優惠訊息');
+}
+return showPromoHint('本分類目前無優惠訊息');
 });
 
 </script>
