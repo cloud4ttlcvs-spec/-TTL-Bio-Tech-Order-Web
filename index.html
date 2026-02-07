@@ -268,20 +268,20 @@ main { padding: 12px; max-width: 900px; margin: 0 auto; margin-top: 10px; }
 .p-code-chip{
   position: absolute;
   top: -10px;
-  left: 12px;
+  left: 11px; /* 微調往左 1px */
   z-index: 3;
-  font-size: 11px;
-  font-weight: 900;
+  font-size: 10px; /* 字體縮小 1px */
+  font-weight: 800;
   letter-spacing: 0.2px;
-  color: #37474f;
-  background: rgba(236,239,241,0.95);
-  border: 1px solid rgba(96,125,139,0.25);
-  padding: 3px 8px;
-  border-radius: 999px;
-  box-shadow: 0 6px 16px rgba(0,0,0,0.06);
+  color: #b0bec5; /* 比刪除線(#90a4ae)更淡 */
+  background: transparent; /* 去背：無底色 */
+  border: none; /* 去背：無邊框 */
+  padding: 0;
+  border-radius: 0;
+  box-shadow: none;
   pointer-events: none;
-  backdrop-filter: blur(4px);
 }
+
 
 .p-pill-row{ margin-top: 6px; }
 
