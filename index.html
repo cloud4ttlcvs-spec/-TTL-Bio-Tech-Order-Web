@@ -1733,7 +1733,7 @@ function openPromoMap(){
     drawer.classList.add('open');
 
     
-    try{ history.pushState({modal:'promoMap'}, null, \"\"); }catch(e){}
+    try{ history.pushState({modal:'promoMap'}, null, ""); }catch(e){}
 overlay.onclick = () => closePromoMap();
     const closeBtn = document.getElementById('promoMapCloseBtn');
     if(closeBtn) closeBtn.onclick = () => closePromoMap();
