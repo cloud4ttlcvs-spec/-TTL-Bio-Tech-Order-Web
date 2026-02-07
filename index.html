@@ -17,6 +17,8 @@
   --border: #eceff1; --header-height: 115px;
   --shadow-card: 0 4px 20px rgba(0,0,0,0.04);
   --safe-bottom: env(safe-area-inset-bottom, 20px);
+  --price-size: 17px;
+  --price-size-lg: calc(var(--price-size) + 2px);
 }
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; user-select: none; }
 body {
@@ -266,7 +268,7 @@ main { padding: 12px; max-width: 900px; margin: 0 auto; margin-top: 10px; }
 .p-price-row { display: flex; align-items: baseline; gap: 6px; margin-top: auto;
 justify-content: space-between;
 }
-.p-price { font-size: 17px; font-weight: 800; color: #263238; }
+.p-price { font-size: var(--price-size-lg); font-weight: 800; color: #263238; }
 .p-price.strike { font-weight: 600; color: #90a4ae; text-decoration: line-through; }
 
 
@@ -288,6 +290,26 @@ justify-content: space-between;
   font-weight:800;
   margin-right:4px;
 }
+
+
+
+.p-price-pill{ display: inline-flex; align-items: baseline; }
+
+.p-price-pill .pill-value{
+  font-size: var(--price-size);
+  font-weight: 900;
+  line-height: 1;
+}
+
+.p-buy-row{
+  display: flex;
+  align-items: center;
+  justify-content: space-between; /* pill 左、stepper 右 */
+  gap: 10px;
+  margin-top: 10px;
+}
+.p-buy-row.no-pill{ justify-content: flex-end; }
+.p-buy-row .stepper{ margin-top: 0 !important; }
 
 .stepper { display: flex; align-items: center; justify-content: flex-end; gap: 8px; margin-top: 10px; }
 .s-btn { 
@@ -2703,25 +2725,32 @@ const L_tier  = getBadgeName('tier','多件優惠');
     if (highlightQuery) { displayName = highlightText(p.name, highlightQuery); }
     
     const card = document.createElement("div"); card.className = "p-card"; card.id = `p-${p._id}`;
-    card.innerHTML = `<div class="p-img-box"><div class="badges">${badges}</div>${imgHtml}</div><div class="p-body"><div><div class="p-title">${displayName}</div><div class="p-code">${p.code}</div></div><div><div class="p-price-row">${(function(){
+    const pricePack = (function(){
+      let priceHtml = '';
+      let pillHtml = '';
       if(String(p.category||"").includes("加價購")){
         const fr = getFlatPriceRule(p.code, p.category);
         const ap = (fr && fr.unit > 0) ? Number(fr.unit).toLocaleString() : "";
-        return '<span class="p-price strike">$' + p.price.toLocaleString() + '</span>' +
-               (ap ? ' <span class="p-price-pill" data-promo="addon_price"><span class="pill-label">加購</span> ' + ap + '</span>' : '');
+        priceHtml = '<span class="p-price strike">$' + p.price.toLocaleString() + '</span>';
+        if(ap) pillHtml = '<span class="p-price-pill" data-promo="addon_price"><span class="pill-label">加購</span> <span class="pill-value">' + ap + '</span></span>';
+        return { priceHtml, pillHtml };
       } else {
         // bundle (e.g., 美容超值組) show strike list + promo price
         const bundleRule = (RULES && Array.isArray(RULES.bundle)) ? RULES.bundle.find(r => r && r.code === p.code && isFinite(r.price) && r.price > 0) : null;
         if(bundleRule && isFinite(bundleRule.price) && bundleRule.price > 0) {
           const bp = Number(bundleRule.price).toLocaleString();
-          return '<span class="p-price strike">$' + p.price.toLocaleString() + '</span>' +
-                 ' <span class="p-price-pill" data-promo="bundle_price" data-code="' + p.code + '"><span class="pill-label">優惠</span> ' + bp + '</span>';
+          priceHtml = '<span class="p-price strike">$' + p.price.toLocaleString() + '</span>';
+          pillHtml = '<span class="p-price-pill" data-promo="bundle_price" data-code="' + p.code + '"><span class="pill-label">優惠</span> <span class="pill-value">' + bp + '</span></span>';
+          return { priceHtml, pillHtml };
         }
         const t = getTierRangeText(p);
-        return '<span class="p-price">$' + p.price.toLocaleString() + '</span>' +
-               (t ? ' <span class="p-price-pill" data-promo="tier_range" data-zone="' + (function(){ const _i = getTierBadgeInfoByCategory(p.category); return _i ? _i.zone : ''; })() + '"><span class="pill-label">折後</span> ' + t + '</span>' : '');
+        priceHtml = '<span class="p-price">$' + p.price.toLocaleString() + '</span>';
+        if(t) pillHtml = '<span class="p-price-pill" data-promo="tier_range" data-zone="' + (function(){ const _i = getTierBadgeInfoByCategory(p.category); return _i ? String(_i.zone||"").replace(/"/g,'&quot;') : ''; })() + '"><span class="pill-label">折後</span> <span class="pill-value">' + t + '</span></span>';
+        return { priceHtml, pillHtml };
       }
-    })()}</div>${actionBtn}<div class="stepper"><div class="s-btn ${qty===0?'hidden':''}" onclick="window.updateQty(this, ${p._id}, -1)">－</div><div class="s-val ${qty===0?'hidden':''}">${qty}</div><div class="s-btn add" onclick="window.updateQty(this, ${p._id}, 1)">＋</div></div></div></div>`;
+    })();
+    const buyRowClass = "p-buy-row" + (pricePack.pillHtml ? "" : " no-pill");
+    card.innerHTML = `<div class="p-img-box"><div class="badges">${badges}</div>${imgHtml}</div><div class="p-body"><div><div class="p-title">${displayName}</div><div class="p-code">${p.code}</div></div><div><div class="p-price-row">${pricePack.priceHtml}</div>${actionBtn}<div class="${buyRowClass}">${pricePack.pillHtml || ''}<div class="stepper"><div class="s-btn ${qty===0?'hidden':''}" onclick="window.updateQty(this, ${p._id}, -1)">－</div><div class="s-val ${qty===0?'hidden':''}">${qty}</div><div class="s-btn add" onclick="window.updateQty(this, ${p._id}, 1)">＋</div></div></div></div></div>`;
     return card;
 }
 
