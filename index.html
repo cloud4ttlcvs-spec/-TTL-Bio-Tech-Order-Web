@@ -1775,6 +1775,18 @@ function getCatHintOverride(catTitle){
   }catch(e){ return ''; }
 }
 
+function detectPromoMapBrandByTitle(title){
+  const t = String(title||'').trim();
+  if(!t) return 'health';
+  // Drink has priority (so '保健飲品' 走飲品色)
+  if(t.includes('飲品') || t.includes('麥汁') || t.includes('黑麥') || t.includes('啤酒') && t.includes('飲')) return 'drink';
+  if(t.includes('美容')) return 'beauty';
+  if(t.includes('清潔')) return 'clean';
+  if(t.includes('保健')) return 'health';
+  return 'health';
+}
+
+
 function categoryUnlocksAddonByTitle(title){
   try{
     const t = String(title||'').trim();
@@ -1819,6 +1831,7 @@ function buildPromoMapList(){
       if(!title) return;
       const hint = buildPromoMapRowHint(title);
       const hasAddon = categoryUnlocksAddonByTitle(title);
+      const brand = detectPromoMapBrandByTitle(title);
 
       // styling hint kind for drawer (order/tier/bogo/addon)
       const tierInfo = getTierBadgeInfoByCategory(title);
