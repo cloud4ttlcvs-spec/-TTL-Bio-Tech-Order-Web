@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"/>
-<title>生技展訂購系統 V29（v2.8 加價購導引＋宅配免運提示）</title>
+<title>生技展訂購系統 v29</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&family=Roboto:wght@500;700;900&display=swap" rel="stylesheet">
 <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
@@ -17,8 +17,6 @@
   --border: #eceff1; --header-height: 115px;
   --shadow-card: 0 4px 20px rgba(0,0,0,0.04);
   --safe-bottom: env(safe-area-inset-bottom, 20px);
-  --price-size: 17px;
-  --price-size-lg: calc(var(--price-size) + 2px);
 }
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; user-select: none; }
 body {
@@ -255,6 +253,23 @@ main { padding: 12px; max-width: 900px; margin: 0 auto; margin-top: 10px; }
 .p-card:active { transform: scale(0.97); }
 .p-no-img { font-size: 12px; color: #b0bec5; display: flex; flex-direction: column; align-items: center; }
 .badges { position: absolute; top: 8px; left: 8px; display: flex; flex-direction: column; gap: 4px; z-index: 2; align-items: flex-start; }
+
+.p-new-badge{
+  position:absolute; right:8px; bottom:8px;
+  padding:4px 9px;
+  border-radius:999px;
+  font-weight:900;
+  font-size:11px;
+  letter-spacing:.08em;
+  color: var(--nbt, #fff);
+  background: linear-gradient(135deg, var(--nb1, #ff4d8d), var(--nb2, #ff8fb3));
+  border: 1px solid rgba(255,255,255,.55);
+  box-shadow: 0 10px 22px rgba(0,0,0,.12);
+  backdrop-filter: blur(6px);
+  pointer-events:none;
+  user-select:none;
+  z-index:3;
+}
 .badge { font-size: 10px; padding: 4px 8px; border-radius: 6px; color: #fff; font-weight: 700; box-shadow: 0 2px 6px rgba(0,0,0,0.2); letter-spacing: 0.5px; backdrop-filter: blur(4px); }
 .bg-red { background: rgba(239, 83, 80, 0.95); }
 .bg-blue { background: rgba(66, 165, 245, 0.95); }
@@ -262,31 +277,13 @@ main { padding: 12px; max-width: 900px; margin: 0 auto; margin-top: 10px; }
 .bg-purple { background: rgba(171, 71, 188, 0.95); }
 .bg-teal { background: #26a69a; }
 
-.p-body { padding: 12px; flex: 1; display: flex; flex-direction: column; justify-content: space-between; position: relative; }
+.p-body { padding: 12px; flex: 1; display: flex; flex-direction: column; justify-content: space-between; }
 .p-title { font-size: 14px; font-weight: 700; line-height: 1.4; color: #37474f; margin-bottom: 4px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; height: 40px; }
 .p-code { font-size: 11px; color: #cfd8dc; margin-bottom: 8px; }
-.p-code-chip{
-  position: absolute;
-  top: -10px;
-  left: 11px; /* 微調往左 1px */
-  z-index: 3;
-  font-size: 10px; /* 字體縮小 1px */
-  font-weight: 800;
-  letter-spacing: 0.2px;
-  color: #b0bec5; /* 比刪除線(#90a4ae)更淡 */
-  background: transparent; /* 去背：無底色 */
-  border: none; /* 去背：無邊框 */
-  padding: 0;
-  border-radius: 0;
-  box-shadow: none;
-  pointer-events: none;
+.p-price-row { display: flex; align-items: baseline; gap: 6px; margin-top: auto;
+justify-content: space-between;
 }
-
-
-.p-pill-row{ margin-top: 6px; }
-
-.p-price-row { display: flex; align-items: baseline; gap: 6px; margin-top: 2px; justify-content: flex-start; }
-.p-price { font-size: var(--price-size-lg); font-weight: 800; color: #263238; }
+.p-price { font-size: 17px; font-weight: 800; color: #263238; }
 .p-price.strike { font-weight: 600; color: #90a4ae; text-decoration: line-through; }
 
 
@@ -308,26 +305,6 @@ main { padding: 12px; max-width: 900px; margin: 0 auto; margin-top: 10px; }
   font-weight:800;
   margin-right:4px;
 }
-
-
-
-.p-price-pill{ display: inline-flex; align-items: baseline; }
-
-.p-price-pill .pill-value{
-  font-size: var(--price-size);
-  font-weight: 900;
-  line-height: 1;
-}
-
-.p-buy-row{
-  display: flex;
-  align-items: center;
-  justify-content: flex-end; /* stepper 永遠靠右，避免擠壓 */
-  gap: 10px;
-  margin-top: 10px;
-}
-.p-buy-row.no-pill{ justify-content: flex-end; }
-.p-buy-row .stepper{ margin-top: 0 !important; }
 
 .stepper { display: flex; align-items: center; justify-content: flex-end; gap: 8px; margin-top: 10px; }
 .s-btn { 
@@ -1246,6 +1223,15 @@ function splitMultiVals(s) {
     .filter(Boolean);
 }
 
+function toBool(v){
+  const s = String(v ?? '').trim().toLowerCase();
+  if(!s) return false;
+  if(s === 'true' || s === '1' || s === 'y' || s === 'yes') return true;
+  if(s.includes('是') || s.includes('true')) return true;
+  return false;
+}
+
+
 function getFlatPriceRule(code, zoneText) {
   if(!RULES || !RULES.flat_price) return null;
   const z = String(zoneText||"");
@@ -1821,6 +1807,32 @@ function getPromoHintDurationMs(){
 function getBadgeName(kind, fallback){
   return uiGet(`badge_name|${kind}`, uiGet(`ui|badge_name|${kind}`, fallback));
 }
+
+function getAccentPair(zone){
+  try{
+    const acc = (RULES && RULES.uiAccent) ? RULES.uiAccent : {};
+    const k = String(zone||'').trim();
+    if(!k) return null;
+    if(acc[k]) return acc[k];
+    const alt = k.startsWith('ui|') ? k.replace(/^ui\|/,'') : ('ui|' + k);
+    if(acc[alt]) return acc[alt];
+    return null;
+  }catch(e){ return null; }
+}
+
+function getNewBadgeHtml(p){
+  try{
+    if(!p || !p.isNew) return '';
+    const label = escapeHtml(getBadgeName('new','NEW'));
+    const bg = getAccentPair('ui|new_badge') || getAccentPair('new_badge');
+    const tx = getAccentPair('ui|new_badge_text') || getAccentPair('new_badge_text');
+    const c1 = (bg && bg.c1) ? bg.c1 : '#ff4d8d';
+    const c2 = (bg && bg.c2) ? bg.c2 : (bg && bg.c1 ? bg.c1 : '#ff8fb3');
+    const tc = (tx && tx.c1) ? tx.c1 : '#ffffff';
+    const style = `--nb1:${c1};--nb2:${c2};--nbt:${tc};`;
+    return `<div class="p-new-badge" style="${style}">${label}</div>`;
+  }catch(e){ return '<div class="p-new-badge">NEW</div>'; }
+}
 function applyUiThemeVars(){
   try{
     const root = document.documentElement;
@@ -2279,6 +2291,27 @@ function jumpToProduct(pid) {
     document.getElementById("clearSearch").style.display = 'none'; 
     renderList(); 
   }
+
+function jumpToProductFromRanking(p){
+  try{
+    if(p && p.isHidden && p.groupCode){
+      const g = String(p.groupCode||'').trim();
+      if(g){
+        const gp = PRODUCT_MAP ? PRODUCT_MAP.get(g) : null;
+        if(gp && gp._id != null){
+          showPromoHint(`此品項以組合販售，已帶您前往商品組：${g}`);
+          jumpToProduct(gp._id);
+          return;
+        }
+        showPromoHint(`此品項以組合販售，請前往商品組：${g}`);
+        scrollToSection('cat-all');
+        return;
+      }
+    }
+  }catch(e){}
+  try{ if(p && p._id != null) jumpToProduct(p._id); }catch(e){}
+}
+
   setTimeout(() => {
     const el = document.getElementById(`p-${pid}`);
     if(el) {
@@ -2322,6 +2355,12 @@ const pData = Papa.parse(pText, { header: true, skipEmptyLines: true }).data;
       if(!code || !name) return null;
       const isGift = String(pick("is_gift")||"").toLowerCase();
 
+      const isNew = toBool(pick("is_new"));
+      const isHidden = toBool(pick("is_hidden"));
+      const groupCode = String(pick("group_code")||"").trim();
+      // NOTE: is_hidden_pp intentionally ignored (shared sheet for another platform)
+
+
       let bundle = [];
       for(let k=1; k<=4; k++) {
         let sn = String(pick(`spec_${k}`)||"").trim();
@@ -2340,7 +2379,8 @@ const pData = Papa.parse(pText, { header: true, skipEmptyLines: true }).data;
       }
       const p = {
         _id: i, code: code, name: name, category: pick("category").trim(),
-        price: Number((pick("list_price")||"0").replace(/,/g,'')), spec: pick("spec"), photo: pick("photos url"), bundle: bundle
+        price: Number((pick("list_price")||"0").replace(/,/g,'')), spec: pick("spec"), photo: pick("photos url"), bundle: bundle,
+        isNew: isNew, isHidden: isHidden, groupCode: groupCode
       };
       if(p.code) PRODUCT_MAP.set(p.code, p);
       
@@ -2544,7 +2584,7 @@ function renderRanking(type) {
     const card = document.createElement("div");
     card.className = "r-card";
     card.dataset.rank = idx + 1; 
-    card.onclick = () => jumpToProduct(p._id);
+    card.onclick = () => jumpToProductFromRanking(p);
     let imgHtml = `<div class="p-no-img" style="height:100%;justify-content:center;font-size:10px">無圖</div>`;
     if(p.photo && p.photo.length > 5) imgHtml = `<img src="${p.photo}" class="r-img" loading="lazy">`;
     card.innerHTML = `<div class="r-img-wrap"><div class="r-badge">${idx + 1}</div><div class="r-sold-tag">售${p.sold.toLocaleString()}件</div>${imgHtml}</div><div class="r-name">${p.name}</div>`;
@@ -2560,7 +2600,7 @@ function switchRank(type) {
 
 function renderUI() {
   const nav = document.getElementById("catNav");
-  let rawCats = [...new Set(PRODUCTS.map(p => p.category))].filter(Boolean);
+  let rawCats = [...new Set(PRODUCTS.filter(p => !p.isHidden).map(p => p.category))].filter(Boolean);
   const cleaningBase = "清潔用品";
   const hasCleaning = rawCats.some(c => c.includes(cleaningBase));
   if(hasCleaning) {
@@ -2636,7 +2676,7 @@ function renderList() {
   
   if (q) {
     if(sectionObserver) sectionObserver.disconnect();
-    const filtered = PRODUCTS.filter(p => p.name.toLowerCase().includes(q) || p.code.toLowerCase().includes(q));
+    const filtered = PRODUCTS.filter(p => !p.isHidden && (p.name.toLowerCase().includes(q) || p.code.toLowerCase().includes(q)));
     document.getElementById("empty-state").style.display = filtered.length === 0 ? "block" : "none";
     const container = document.createElement("div");
     container.className = "grid-layout";
@@ -2651,6 +2691,7 @@ function renderList() {
 
     categories.forEach(cat => {
         const catProducts = PRODUCTS.filter(p => {
+            if(p.isHidden) return false;
             if (cat.includes("清潔-")) {
                 if (!p.category.includes("清潔")) return false;
                 if (cat === "清潔-洗潔" && !p.name.includes("洗潔")) return false;
@@ -2743,33 +2784,25 @@ const L_tier  = getBadgeName('tier','多件優惠');
     if (highlightQuery) { displayName = highlightText(p.name, highlightQuery); }
     
     const card = document.createElement("div"); card.className = "p-card"; card.id = `p-${p._id}`;
-    const pricePack = (function(){
-      let priceHtml = '';
-      let pillHtml = '';
+    card.innerHTML = `<div class="p-img-box"><div class="badges">${badges}</div>${getNewBadgeHtml(p)}${imgHtml}</div><div class="p-body"><div><div class="p-title">${displayName}</div><div class="p-code">${p.code}</div></div><div><div class="p-price-row">${(function(){
       if(String(p.category||"").includes("加價購")){
         const fr = getFlatPriceRule(p.code, p.category);
         const ap = (fr && fr.unit > 0) ? Number(fr.unit).toLocaleString() : "";
-        priceHtml = '<span class="p-price strike">$' + p.price.toLocaleString() + '</span>';
-        if(ap) pillHtml = '<span class="p-price-pill" data-promo="addon_price"><span class="pill-label">加購</span> <span class="pill-value">' + ap + '</span></span>';
-        return { priceHtml, pillHtml };
+        return '<span class="p-price strike">$' + p.price.toLocaleString() + '</span>' +
+               (ap ? ' <span class="p-price-pill" data-promo="addon_price"><span class="pill-label">加購</span> ' + ap + '</span>' : '');
       } else {
         // bundle (e.g., 美容超值組) show strike list + promo price
         const bundleRule = (RULES && Array.isArray(RULES.bundle)) ? RULES.bundle.find(r => r && r.code === p.code && isFinite(r.price) && r.price > 0) : null;
         if(bundleRule && isFinite(bundleRule.price) && bundleRule.price > 0) {
           const bp = Number(bundleRule.price).toLocaleString();
-          priceHtml = '<span class="p-price strike">$' + p.price.toLocaleString() + '</span>';
-          pillHtml = '<span class="p-price-pill" data-promo="bundle_price" data-code="' + p.code + '"><span class="pill-label">優惠</span> <span class="pill-value">' + bp + '</span></span>';
-          return { priceHtml, pillHtml };
+          return '<span class="p-price strike">$' + p.price.toLocaleString() + '</span>' +
+                 ' <span class="p-price-pill" data-promo="bundle_price" data-code="' + p.code + '"><span class="pill-label">優惠</span> ' + bp + '</span>';
         }
         const t = getTierRangeText(p);
-        priceHtml = '<span class="p-price">$' + p.price.toLocaleString() + '</span>';
-        if(t) pillHtml = '<span class="p-price-pill" data-promo="tier_range" data-zone="' + (function(){ const _i = getTierBadgeInfoByCategory(p.category); return _i ? String(_i.zone||"").replace(/"/g,'&quot;') : ''; })() + '"><span class="pill-label">折後</span> <span class="pill-value">' + t + '</span></span>';
-        return { priceHtml, pillHtml };
+        return '<span class="p-price">$' + p.price.toLocaleString() + '</span>' +
+               (t ? ' <span class="p-price-pill" data-promo="tier_range" data-zone="' + (function(){ const _i = getTierBadgeInfoByCategory(p.category); return _i ? _i.zone : ''; })() + '"><span class="pill-label">折後</span> ' + t + '</span>' : '');
       }
-    })();
-        const codeChipHtml = (p.code && String(p.code).trim()) ? `<div class="p-code-chip">${escapeHtml(p.code)}</div>` : '';
-    const pillRowHtml = pricePack.pillHtml ? `<div class="p-pill-row">${pricePack.pillHtml}</div>` : '';
-    card.innerHTML = `<div class="p-img-box"><div class="badges">${badges}</div>${imgHtml}</div><div class="p-body">${codeChipHtml}<div><div class="p-title">${displayName}</div><div class="p-price-row">${pricePack.priceHtml}</div>${pillRowHtml}${actionBtn}<div class="p-buy-row no-pill"><div class="stepper"><div class="s-btn ${qty===0?'hidden':''}" onclick="window.updateQty(this, ${p._id}, -1)">－</div><div class="s-val ${qty===0?'hidden':''}">${qty}</div><div class="s-btn add" onclick="window.updateQty(this, ${p._id}, 1)">＋</div></div></div></div></div>`;
+    })()}</div>${actionBtn}<div class="stepper"><div class="s-btn ${qty===0?'hidden':''}" onclick="window.updateQty(this, ${p._id}, -1)">－</div><div class="s-val ${qty===0?'hidden':''}">${qty}</div><div class="s-btn add" onclick="window.updateQty(this, ${p._id}, 1)">＋</div></div></div></div>`;
     return card;
 }
 
