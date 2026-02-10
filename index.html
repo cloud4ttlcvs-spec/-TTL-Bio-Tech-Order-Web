@@ -189,6 +189,59 @@ main { padding: 12px; max-width: 900px; margin: 0 auto; margin-top: 10px; }
 .ms-summary-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; border-radius: 8px; margin-bottom: 6px; font-size: 13px; font-weight: 700; }
 .ms-sum-all { background: #fff8e1; color: var(--accent); }
 .ms-sum-beauty { background: #fce4ec; color: var(--beauty); }
+
+/* 全站/美容視覺區隔：徽章＋摘要 */
+.ms-summary-row{
+  gap: 10px;
+  align-items: flex-start;
+}
+.ms-sum-left{
+  display:flex;
+  align-items:flex-start;
+  gap:10px;
+  min-width: 0;
+}
+.ms-badge{
+  font-size: 10px;
+  font-weight: 900;
+  padding: 4px 8px;
+  border-radius: 999px;
+  line-height: 1;
+  border: 1px solid transparent;
+  letter-spacing: .2px;
+  flex: 0 0 auto;
+}
+.ms-badge-all{
+  background: rgba(230,81,0,0.12);
+  border-color: rgba(230,81,0,0.22);
+  color:#b54a00;
+}
+.ms-badge-beauty{
+  background: rgba(216,27,96,0.10);
+  border-color: rgba(216,27,96,0.20);
+  color:#ad1457;
+}
+.ms-sum-text{ display:flex; flex-direction:column; gap:2px; min-width:0; }
+.ms-sum-title{ font-size: 13px; font-weight: 900; line-height:1.1; }
+.ms-sum-sub{ font-size: 11px; font-weight: 700; color:#607d8b; line-height:1.2; }
+#ms-val-all, #ms-val-beauty{ font-size: 14px; font-weight: 900; line-height:1; padding-top: 2px; }
+
+/* 兩條軌道底色（不影響上下滑動，只強化辨識） */
+.ms-track-col{
+  padding: 8px 6px 10px;
+  border-radius: 14px;
+  border: 1px solid rgba(0,0,0,0.05);
+  background: rgba(255,255,255,0.70);
+}
+.ms-track-col.all{
+  background: rgba(255,243,224,0.55);
+  border-color: rgba(230,81,0,0.10);
+}
+.ms-track-col.beauty{
+  background: rgba(252,228,236,0.55);
+  border-color: rgba(216,27,96,0.10);
+}
+.ms-track-col.all .ms-track-title{ color: var(--accent); }
 .ms-dual-body { flex: 1; overflow-y: auto; overflow-x: hidden; padding: 8px; display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 6px; background: #fafafa; overscroll-behavior: contain; }
 .ms-track-col { display: flex; flex-direction: column; gap: 10px; position: relative; min-width: 0; }
 .ms-track-title { text-align: center; font-size: 12px; color: #90a4ae; font-weight: 700; margin-bottom: 4px; }
@@ -908,12 +961,69 @@ body.drawer-open { overflow:hidden; }
   cursor:pointer;
   line-height:1;
 }
-.pm-scope-btn.active{
+.pm-scope-btn[data-scope="all"].active{
   background: rgba(230,81,0,0.14);
   border-color: rgba(230,81,0,0.24);
   color:#b54a00;
 }
+.pm-scope-btn[data-scope="zone_prefix"].active{
+  background: rgba(216,27,96,0.12);
+  border-color: rgba(216,27,96,0.22);
+  color:#ad1457;
+}
 .pm-scope-btn:active{ transform: translateY(1px); }
+
+/* 贈品門檻（全區/美容）視覺區隔：徽章 + 摘要 */
+.pm-gift-header{
+  border: 1px solid rgba(0,0,0,0.06);
+  border-radius: 16px;
+  padding: 10px 12px;
+  background: rgba(255,255,255,0.86);
+  box-shadow: 0 10px 20px rgba(0,0,0,0.04);
+  margin-top: 10px;
+}
+.pm-gh-top{ display:flex; align-items:flex-start; gap:10px; }
+.pm-badge{
+  font-size: 10px;
+  font-weight: 900;
+  padding: 4px 8px;
+  border-radius: 999px;
+  line-height: 1;
+  border: 1px solid transparent;
+  letter-spacing: .2px;
+  flex: 0 0 auto;
+}
+.pm-badge-all{
+  background: rgba(230,81,0,0.12);
+  border-color: rgba(230,81,0,0.22);
+  color:#b54a00;
+}
+.pm-badge-beauty{
+  background: rgba(216,27,96,0.10);
+  border-color: rgba(216,27,96,0.20);
+  color:#ad1457;
+}
+.pm-gh-text{ display:flex; flex-direction:column; gap:2px; min-width:0; }
+.pm-gh-title{ font-weight: 900; font-size: 13px; color:#263238; line-height:1.15; }
+.pm-gh-sub{ font-weight: 700; font-size: 11px; color:#607d8b; line-height:1.2; }
+
+#promoMapPaneGifts.scope-all .pm-gift-header{ background: rgba(255,243,224,0.70); }
+#promoMapPaneGifts.scope-beauty .pm-gift-header{ background: rgba(252,228,236,0.70); }
+
+/* 贈品門檻清單卡：色帶＋標籤配色 */
+.pm-gift-item{ position: relative; overflow: hidden; }
+.pm-gift-item.pm-gift-all{ border-left: 4px solid rgba(230,81,0,0.55); }
+.pm-gift-item.pm-gift-beauty{ border-left: 4px solid rgba(216,27,96,0.45); }
+.pm-gift-item.pm-gift-all .pm-gift-amt{
+  background: rgba(230,81,0,0.10);
+  border-color: rgba(230,81,0,0.18);
+  color:#b54a00;
+}
+.pm-gift-item.pm-gift-beauty .pm-gift-amt{
+  background: rgba(216,27,96,0.10);
+  border-color: rgba(216,27,96,0.18);
+  color:#ad1457;
+}
 
 .pm-gift-list{ display:flex; flex-direction:column; gap:10px; }
 .pm-gift-item{
@@ -1064,8 +1174,26 @@ body.cfg-error .btn-bundle{
     <div class="ms-header">
        <button class="ms-close" onclick="closeMilestoneCard()" aria-label="關閉"><span class="material-icons-round">close</span></button>
        <div class="ms-title-v">🎁 滿額贈進度</div>
-       <div class="ms-summary-row ms-sum-all"><div>全站滿額</div><div id="ms-val-all">$0</div></div>
-       <div class="ms-summary-row ms-sum-beauty"><div>美容滿額</div><div id="ms-val-beauty">$0</div></div>
+       <div class="ms-summary-row ms-sum-all">
+         <div class="ms-sum-left">
+           <span class="ms-badge ms-badge-all">ALL</span>
+           <div class="ms-sum-text">
+             <div class="ms-sum-title">全站滿額</div>
+             <div class="ms-sum-sub">全站商品合併計算</div>
+           </div>
+         </div>
+         <div id="ms-val-all">$0</div>
+       </div>
+       <div class="ms-summary-row ms-sum-beauty">
+         <div class="ms-sum-left">
+           <span class="ms-badge ms-badge-beauty">BEAUTY</span>
+           <div class="ms-sum-text">
+             <div class="ms-sum-title">美容滿額</div>
+             <div class="ms-sum-sub">僅美容區商品累計</div>
+           </div>
+         </div>
+         <div id="ms-val-beauty">$0</div>
+       </div><div id="ms-val-beauty">$0</div></div>
     </div>
     <div class="ms-dual-body" id="msNodes"></div>
   </div>
@@ -1861,7 +1989,7 @@ function renderMilestoneContent() {
     container.innerHTML = '';
 
     const leftCol = document.createElement('div');
-    leftCol.className = 'ms-track-col';
+    leftCol.className = 'ms-track-col all';
     leftCol.innerHTML = '<div class="ms-track-title">全站滿額</div>';
 
     const rightCol = document.createElement('div');
@@ -2326,7 +2454,7 @@ function buildPromoGiftList(scope){
     }
     gifts.forEach(g => {
       const item = document.createElement('div');
-      item.className = 'pm-gift-item';
+      item.className = `pm-gift-item ${scope === 'zone_prefix' ? 'pm-gift-beauty' : 'pm-gift-all'}`;
       const amt = Number(g.amt||0);
       const gName = pmFormatGiftName(g.gift);
       let imgHtml = '';
@@ -2347,6 +2475,31 @@ function buildPromoGiftList(scope){
   }catch(e){}
 }
 
+function updatePromoGiftHeader(sc){
+  try{
+    const header = document.getElementById('pmGiftHeader');
+    if(!header) return;
+
+    const isBeauty = (sc === 'zone_prefix');
+    header.classList.toggle('pm-gh-all', !isBeauty);
+    header.classList.toggle('pm-gh-beauty', isBeauty);
+
+    const badge = header.querySelector('.pm-badge');
+    const title = header.querySelector('.pm-gh-title');
+    const sub = header.querySelector('.pm-gh-sub');
+
+    if(isBeauty){
+      if(badge){ badge.classList.remove('pm-badge-all'); badge.classList.add('pm-badge-beauty'); badge.textContent = 'BEAUTY'; }
+      if(title) title.textContent = '美容區滿額贈';
+      if(sub) sub.textContent = '僅美容區商品累計';
+    }else{
+      if(badge){ badge.classList.remove('pm-badge-beauty'); badge.classList.add('pm-badge-all'); badge.textContent = 'ALL'; }
+      if(title) title.textContent = '全區滿額贈';
+      if(sub) sub.textContent = '全站商品合併計算';
+    }
+  }catch(e){}
+}
+
 function setPromoGiftScope(scope, opts){
   const o = opts || {};
   const sc = (scope === 'zone_prefix') ? 'zone_prefix' : 'all';
@@ -2357,6 +2510,22 @@ function setPromoGiftScope(scope, opts){
     b.setAttribute('aria-selected', isOn ? 'true' : 'false');
   });
   if(!o.skipSave) pmLsSet('ttl_pm_gift_scope', sc);
+
+  // 視覺區隔（全區 / 美容）
+  try{
+    const pane = document.getElementById('promoMapPaneGifts');
+    const list = document.getElementById('promoGiftList');
+    if(pane){
+      pane.classList.toggle('scope-all', sc === 'all');
+      pane.classList.toggle('scope-beauty', sc === 'zone_prefix');
+    }
+    if(list){
+      list.classList.toggle('scope-all', sc === 'all');
+      list.classList.toggle('scope-beauty', sc === 'zone_prefix');
+    }
+  }catch(e){}
+
+  updatePromoGiftHeader(sc);
   buildPromoGiftList(sc);
 }
 
@@ -4085,6 +4254,15 @@ return showPromoHint('本分類目前無優惠訊息');
 
     <div id="promoMapPaneGifts" class="pm-pane" style="display:none">
       <div class="pm-sub">查看各階滿額贈品</div>
+      <div id="pmGiftHeader" class="pm-gift-header pm-gh-all" aria-label="贈品門檻摘要">
+        <div class="pm-gh-top">
+          <span class="pm-badge pm-badge-all">ALL</span>
+          <div class="pm-gh-text">
+            <div class="pm-gh-title">全區滿額贈</div>
+            <div class="pm-gh-sub">全站商品合併計算</div>
+          </div>
+        </div>
+      </div>
       <div class="pm-scope" role="tablist" aria-label="贈品範圍">
         <button type="button" class="pm-scope-btn active" data-scope="all" role="tab" aria-selected="true">全區</button>
         <button type="button" class="pm-scope-btn" data-scope="zone_prefix" role="tab" aria-selected="false">美容</button>
