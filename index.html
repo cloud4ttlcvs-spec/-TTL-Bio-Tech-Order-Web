@@ -180,6 +180,51 @@ main { padding: 12px; max-width: 900px; margin: 0 auto; margin-top: 10px; }
 .ms-dual-item { background: #fff; border: 1px solid #eee; border-radius: 12px; padding: 10px; display: flex; flex-direction: column; align-items: center; gap: 6px; opacity: 0.5; transition: 0.3s; text-align: center; }
 .ms-dual-item.active { opacity: 1; border-color: var(--accent); box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
 .ms-track-col.beauty .ms-dual-item.active { border-color: var(--beauty); }
+
+/* --- V29: Milestone '下一門檻差額' 標籤 + 動效（3.1秒） --- */
+.ms-dual-item{ position: relative; }
+.ms-dual-item.next{
+  opacity: 1;
+  border-color: rgba(230,81,0,0.26);
+  box-shadow: 0 10px 22px rgba(230,81,0,0.10);
+}
+.ms-tag{
+  position:absolute;
+  top: 8px; left: 8px;
+  font-size: 11px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: rgba(255,111,0,0.16);
+  color: #e65100;
+  border: 1px solid rgba(230,81,0,0.26);
+  font-weight: 900;
+  letter-spacing: .2px;
+  pointer-events:none;
+  transform-origin: center;
+  box-shadow: 0 0 0 rgba(230,81,0,0);
+}
+.ms-tag.done{
+  background: rgba(0,137,123,0.14);
+  color:#00695c;
+  border-color: rgba(0,137,123,0.22);
+  box-shadow: none;
+}
+.ms-tag.flash{
+  animation: msTagGlow .95s ease-in-out infinite, msTagShake .42s ease-in-out infinite;
+}
+@keyframes msTagGlow{
+  0%{ box-shadow: 0 0 0 rgba(230,81,0,0); filter: saturate(1); }
+  50%{ box-shadow: 0 10px 26px rgba(230,81,0,0.25); filter: saturate(1.35); }
+  100%{ box-shadow: 0 0 0 rgba(230,81,0,0); filter: saturate(1); }
+}
+@keyframes msTagShake{
+  0%{ transform: translate(0,0) rotate(0deg); }
+  20%{ transform: translate(0.5px,-0.5px) rotate(-1deg); }
+  50%{ transform: translate(-0.5px,0.5px) rotate(1deg); }
+  80%{ transform: translate(0.5px,0.2px) rotate(-0.5deg); }
+  100%{ transform: translate(0,0) rotate(0deg); }
+}
+
 .ms-d-name { font-size: 11px; color: #37474f; line-height: 1.3; height: auto; min-height: 2.6em; overflow: visible; }
 .ms-d-th { font-size: 10px; color: #fff; background: #bdbdbd; padding: 2px 6px; border-radius: 10px; font-weight: 700; }
 .ms-dual-item.active .ms-d-th { background: var(--accent); }
@@ -763,6 +808,84 @@ body.drawer-open { overflow:hidden; }
   border:1px solid rgba(0,137,123,0.18);
 }
 .pm-arrow{ color:#90a4ae; font-size: 18px; line-height:1; }
+
+
+/* --- V29: Promo Map Tabs (優惠分類 / 贈品門檻) --- */
+.pm-head-left{ display:flex; align-items:center; gap:10px; min-width:0; }
+.pm-tabs{
+  display:flex; align-items:center;
+  padding: 3px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.58);
+  border: 1px solid rgba(0,0,0,0.08);
+  box-shadow: 0 10px 22px rgba(0,0,0,0.08);
+}
+.pm-tab{
+  border:0; background:transparent;
+  padding: 7px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 900;
+  color:#335c5a;
+  cursor:pointer;
+  white-space:nowrap;
+  line-height:1;
+}
+.pm-tab.active{
+  background: rgba(0,137,123,0.22);
+  color:#003b35;
+}
+.pm-tab:active{ transform: translateY(1px); }
+
+.pm-pane{ min-height: 1px; }
+
+.pm-scope{ display:flex; gap:8px; margin: 10px 2px 12px; }
+.pm-scope-btn{
+  border:1px solid rgba(0,0,0,0.08);
+  background: rgba(255,255,255,0.80);
+  border-radius: 999px;
+  padding: 7px 10px;
+  font-size: 12px;
+  font-weight: 900;
+  color:#335c5a;
+  cursor:pointer;
+  line-height:1;
+}
+.pm-scope-btn.active{
+  background: rgba(230,81,0,0.14);
+  border-color: rgba(230,81,0,0.24);
+  color:#b54a00;
+}
+.pm-scope-btn:active{ transform: translateY(1px); }
+
+.pm-gift-list{ display:flex; flex-direction:column; gap:10px; }
+.pm-gift-item{
+  border: 1px solid rgba(0,0,0,0.06);
+  border-radius: 16px;
+  padding: 10px 12px;
+  background: rgba(255,255,255,0.92);
+  box-shadow: 0 8px 18px rgba(0,0,0,0.04);
+}
+.pm-gift-item .top{ display:flex; align-items:center; justify-content:space-between; gap:10px; }
+.pm-gift-item .amt{
+  font-weight: 900;
+  font-size: 12px;
+  color:#263238;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: rgba(0,137,123,0.10);
+  border: 1px solid rgba(0,137,123,0.16);
+}
+.pm-gift-item .name{ margin-top: 6px; font-weight: 900; font-size: 12px; color:#37474f; line-height:1.25; }
+.pm-empty{
+  padding: 12px 12px;
+  border-radius: 14px;
+  border: 1px dashed rgba(0,0,0,0.12);
+  background: rgba(255,255,255,0.75);
+  color:#607d8b;
+  font-size: 12px;
+  line-height: 1.35;
+}
 
 
 /* --- V2.8.11: Promo Map styling (配色＋卡片層次) --- */
@@ -1647,52 +1770,100 @@ function renderMilestoneContent() {
     const data = calcCart();
     const currentTotal = data.finalTotal;
     const currentBeauty = data.beautyTotal;
-    
+
     document.getElementById('ms-val-all').innerText = `$${Math.round(Number(currentTotal)||0).toLocaleString()}`;
     document.getElementById('ms-val-beauty').innerText = `$${Math.round(Number(currentBeauty)||0).toLocaleString()}`;
 
     const giftsAll = RULES.spend.filter(r => r.scope === 'all').sort((a,b) => a.amt - b.amt);
     const giftsBeauty = RULES.spend.filter(r => r.scope === 'zone_prefix').sort((a,b) => a.amt - b.amt);
 
+    const nextAll = giftsAll.find(x => Number(currentTotal||0) < Number(x.amt||0));
+    const nextBeauty = giftsBeauty.find(x => Number(currentBeauty||0) < Number(x.amt||0));
+    const nextAllAmt = nextAll ? Number(nextAll.amt||0) : null;
+    const nextBeautyAmt = nextBeauty ? Number(nextBeauty.amt||0) : null;
+
+    const allDone = (nextAllAmt === null && giftsAll.length > 0);
+    const beautyDone = (nextBeautyAmt === null && giftsBeauty.length > 0);
+
     const container = document.getElementById('msNodes');
     container.innerHTML = '';
-    
+
     const leftCol = document.createElement('div');
     leftCol.className = 'ms-track-col';
     leftCol.innerHTML = '<div class="ms-track-title">全站滿額</div>';
-    
+
     const rightCol = document.createElement('div');
     rightCol.className = 'ms-track-col beauty';
     rightCol.innerHTML = '<div class="ms-track-title" style="color:var(--beauty)">美容滿額</div>';
-    
-    giftsAll.forEach(g => {
-        const isReached = currentTotal >= g.amt;
-        leftCol.appendChild(createDualItem(g, isReached));
+
+    giftsAll.forEach((g, idx) => {
+        const isReached = Number(currentTotal||0) >= Number(g.amt||0);
+        const isNext = (!isReached && nextAllAmt !== null && Number(g.amt||0) === nextAllAmt);
+        const isDoneTag = (allDone && idx === giftsAll.length - 1);
+        const diff = isNext ? Math.max(0, Math.ceil(nextAllAmt - Number(currentTotal||0))) : 0;
+
+        leftCol.appendChild(createDualItem(g, isReached, {
+          isNext: isNext || isDoneTag,
+          diff,
+          tagText: isDoneTag ? '已達最高門檻 🎉' : '',
+          flash: isDoneTag ? false : true,
+          kind: isDoneTag ? 'done' : 'next'
+        }));
     });
-    
-    giftsBeauty.forEach(g => {
-        const isReached = currentBeauty >= g.amt;
-        rightCol.appendChild(createDualItem(g, isReached));
+
+    giftsBeauty.forEach((g, idx) => {
+        const isReached = Number(currentBeauty||0) >= Number(g.amt||0);
+        const isNext = (!isReached && nextBeautyAmt !== null && Number(g.amt||0) === nextBeautyAmt);
+        const isDoneTag = (beautyDone && idx === giftsBeauty.length - 1);
+        const diff = isNext ? Math.max(0, Math.ceil(nextBeautyAmt - Number(currentBeauty||0))) : 0;
+
+        rightCol.appendChild(createDualItem(g, isReached, {
+          isNext: isNext || isDoneTag,
+          diff,
+          tagText: isDoneTag ? '已達最高門檻 🎉' : '',
+          flash: isDoneTag ? false : true,
+          kind: isDoneTag ? 'done' : 'next'
+        }));
     });
-    
+
     container.appendChild(leftCol);
     container.appendChild(rightCol);
+
+    // 動效：每次更新閃 3.1 秒（只針對「下一門檻」標籤）
+    try{
+      if(window.__msTagTimer) clearTimeout(window.__msTagTimer);
+      const tags = Array.from(container.querySelectorAll('.ms-tag.flash'));
+      window.__msTagTimer = setTimeout(() => {
+        try{ tags.forEach(t => t.classList.remove('flash')); }catch(e){}
+      }, 3100);
+    }catch(e){}
 }
 
-function createDualItem(g, isReached) {
+function createDualItem(g, isReached, opts) {
+    const o = opts || {};
     let gName = (PRODUCT_MAP.get(g.gift) || {}).name || g.gift;
-    gName = gName.replace(/^(贈品|贈|Gift)[:\s|｜_]*/i, "");
-    
-    // Use the Grid Renderer, but maybe wrap it?
-    let imgHtml = renderGiftImages(g.gift); 
+    gName = String(gName||'').replace(/^(贈品|贈|Gift)[:\s|｜_]*/i, "");
+
+    let imgHtml = '';
+    try{ imgHtml = renderGiftImages(g.gift); }catch(e){}
     if(!imgHtml) imgHtml = '<div class="g-thumb" style="display:flex;align-items:center;justify-content:center;font-size:16px">🎁</div>';
 
+    const isNext = !!o.isNext;
+    const diff = Math.max(0, Number(o.diff||0));
+    const tagText = (o.tagText && String(o.tagText).trim()) ? String(o.tagText).trim() : (isNext ? `還差 NT$${Math.round(diff).toLocaleString()}` : '');
+    const wantFlash = (o.flash === false) ? false : true;
+    const kind = (o.kind === 'done') ? 'done' : 'next';
+    const tagClass = `ms-tag ${kind === 'done' ? 'done' : ''} ${(!wantFlash || kind==='done') ? '' : 'flash'}`.trim();
+
+    const tagHtml = (tagText && isNext) ? `<div class="${tagClass}">${String(tagText).replace(/[<>]/g,'')}</div>` : ``;
+
     const item = document.createElement('div');
-    item.className = `ms-dual-item ${isReached ? 'active' : ''}`;
+    item.className = `ms-dual-item ${isReached ? 'active' : ''} ${isNext ? 'next' : ''}`;
     item.innerHTML = `
-      <div class="ms-d-th">$${(g.amt).toLocaleString()}</div>
+      ${tagHtml}
+      <div class="ms-d-th">$${(Number(g.amt)||0).toLocaleString()}</div>
       ${imgHtml}
-      <div class="ms-d-name">${gName}</div>
+      <div class="ms-d-name">${String(gName||'').replace(/[<>]/g,'')}</div>
     `;
     return item;
 }
@@ -2047,10 +2218,115 @@ try{
   }catch(e){}
 }
 
+/* --- V29: Promo Map '贈品門檻' 分頁 --- */
+function pmLsGet(key, defVal){
+  try{
+    const v = localStorage.getItem(key);
+    return (v === null || v === undefined || v === '') ? defVal : v;
+  }catch(e){ return defVal; }
+}
+function pmLsSet(key, val){
+  try{ localStorage.setItem(key, String(val)); }catch(e){}
+}
+function pmFormatGiftName(gift){
+  try{
+    let gName = (PRODUCT_MAP.get(gift) || {}).name || gift;
+    gName = String(gName||'').replace(/^(贈品|贈|Gift)[:\s|｜_]*/i, "");
+    return gName;
+  }catch(e){ return String(gift||''); }
+}
+
+function buildPromoGiftList(scope){
+  try{
+    const listEl = document.getElementById('promoGiftList');
+    if(!listEl) return;
+    listEl.innerHTML = '';
+    const gifts = (RULES && Array.isArray(RULES.spend)) ? RULES.spend.filter(r => r && r.scope === scope).sort((a,b)=> (a.amt||0)-(b.amt||0)) : [];
+    if(!gifts.length){
+      listEl.innerHTML = '<div class="pm-empty">目前沒有可顯示的贈品門檻</div>';
+      return;
+    }
+    gifts.forEach(g => {
+      const item = document.createElement('div');
+      item.className = 'pm-gift-item';
+      const amt = Number(g.amt||0);
+      const gName = pmFormatGiftName(g.gift);
+      let imgHtml = '';
+      try{ imgHtml = renderGiftImages(g.gift) || ''; }catch(e){}
+      if(!imgHtml) imgHtml = '<div class="g-thumb" style="display:flex;align-items:center;justify-content:center;font-size:16px">🎁</div>';
+
+      item.innerHTML = `
+        <div class="top">
+          <div class="amt">$${Math.round(amt).toLocaleString()}</div>
+        </div>
+        ${imgHtml}
+        <div class="name">${String(gName||'').replace(/[<>]/g,'')}</div>
+      `;
+      listEl.appendChild(item);
+    });
+  }catch(e){}
+}
+
+function setPromoGiftScope(scope, opts){
+  const o = opts || {};
+  const sc = (scope === 'zone_prefix') ? 'zone_prefix' : 'all';
+  const btns = Array.from(document.querySelectorAll('#promoMapPaneGifts .pm-scope-btn'));
+  btns.forEach(b=>{
+    const isOn = (String(b.getAttribute('data-scope')) === sc);
+    b.classList.toggle('active', isOn);
+    b.setAttribute('aria-selected', isOn ? 'true' : 'false');
+  });
+  if(!o.skipSave) pmLsSet('ttl_pm_gift_scope', sc);
+  buildPromoGiftList(sc);
+}
+
+function setPromoMapTab(tab, opts){
+  const o = opts || {};
+  const t = (tab === 'gifts') ? 'gifts' : 'nav';
+  const navBtn = document.getElementById('pmTabNav');
+  const giftsBtn = document.getElementById('pmTabGifts');
+  const paneNav = document.getElementById('promoMapPaneNav');
+  const paneGifts = document.getElementById('promoMapPaneGifts');
+  if(navBtn){ navBtn.classList.toggle('active', t==='nav'); navBtn.setAttribute('aria-selected', t==='nav' ? 'true' : 'false'); }
+  if(giftsBtn){ giftsBtn.classList.toggle('active', t==='gifts'); giftsBtn.setAttribute('aria-selected', t==='gifts' ? 'true' : 'false'); }
+  if(paneNav) paneNav.style.display = (t==='nav') ? 'block' : 'none';
+  if(paneGifts) paneGifts.style.display = (t==='gifts') ? 'block' : 'none';
+  if(!o.skipSave) pmLsSet('ttl_pm_tab', t);
+
+  if(t==='nav'){
+    buildPromoMapList();
+  }else{
+    const scope = pmLsGet('ttl_pm_gift_scope', 'all');
+    setPromoGiftScope(scope, {skipSave:true});
+  }
+}
+
+function initPromoMapTabsOnce(){
+  try{
+    const drawer = document.getElementById('promoMapDrawer');
+    if(!drawer) return;
+    if(drawer.dataset.pmTabsInited === '1') return;
+
+    const navBtn = document.getElementById('pmTabNav');
+    const giftsBtn = document.getElementById('pmTabGifts');
+    if(navBtn) navBtn.onclick = () => setPromoMapTab('nav');
+    if(giftsBtn) giftsBtn.onclick = () => setPromoMapTab('gifts');
+
+    const scopeBtns = Array.from(document.querySelectorAll('#promoMapPaneGifts .pm-scope-btn'));
+    scopeBtns.forEach(b=>{
+      b.onclick = () => setPromoGiftScope(b.getAttribute('data-scope'));
+    });
+
+    drawer.dataset.pmTabsInited = '1';
+  }catch(e){}
+}
+
 function openPromoMap(){
   try{
     if(!ensurePromoMapDom()) return;
-    buildPromoMapList();
+    initPromoMapTabsOnce();
+    const prefTab = pmLsGet('ttl_pm_tab','nav');
+    setPromoMapTab(prefTab, {skipSave:true});
     document.body.classList.add('drawer-open');
     const overlay = document.getElementById('promoMapOverlay');
     const drawer = document.getElementById('promoMapDrawer');
@@ -3712,12 +3988,29 @@ return showPromoHint('本分類目前無優惠訊息');
 <div id="promoMapOverlay" class="pm-overlay"></div>
 <aside id="promoMapDrawer" class="pm-drawer" aria-hidden="true">
   <div class="pm-header">
-    <div class="pm-title">優惠地圖</div>
+    <div class="pm-head-left">
+      <div class="pm-title">優惠地圖</div>
+      <div class="pm-tabs" role="tablist" aria-label="優惠地圖切換">
+        <button type="button" class="pm-tab active" id="pmTabNav" data-tab="nav" role="tab" aria-selected="true">優惠分類</button>
+        <button type="button" class="pm-tab" id="pmTabGifts" data-tab="gifts" role="tab" aria-selected="false">贈品門檻</button>
+      </div>
+    </div>
     <button type="button" class="pm-close" id="promoMapCloseBtn" aria-label="關閉">✕</button>
   </div>
   <div class="pm-body">
-    <div class="pm-sub">點擊可快速跳轉</div>
-    <div id="promoMapList" class="pm-list"></div>
+    <div id="promoMapPaneNav" class="pm-pane">
+      <div class="pm-sub">點擊可快速跳轉</div>
+      <div id="promoMapList" class="pm-list"></div>
+    </div>
+
+    <div id="promoMapPaneGifts" class="pm-pane" style="display:none">
+      <div class="pm-sub">查看各階滿額贈品</div>
+      <div class="pm-scope" role="tablist" aria-label="贈品範圍">
+        <button type="button" class="pm-scope-btn active" data-scope="all" role="tab" aria-selected="true">全區</button>
+        <button type="button" class="pm-scope-btn" data-scope="zone_prefix" role="tab" aria-selected="false">美容</button>
+      </div>
+      <div id="promoGiftList" class="pm-gift-list"></div>
+    </div>
   </div>
 </aside>
 
