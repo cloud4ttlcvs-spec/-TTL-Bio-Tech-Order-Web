@@ -634,6 +634,21 @@ header { position: sticky; top: 0; z-index: 1000; background: rgba(255,255,255,0
 .sum-line { display: flex; justify-content: space-between; border-bottom: 1px dashed #eee; padding: 6px 0; }
 
 .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 15px; }
+
+/* Two-stage checkout: collapse delivery + order inputs by default */
+.checkout-fields{
+  max-height: 0;
+  opacity: 0;
+  overflow: hidden;
+  pointer-events: none;
+  transition: max-height .42s cubic-bezier(.2,.85,.25,1), opacity .28s ease;
+}
+.checkout-fields.open{
+  max-height: 1200px;
+  opacity: 1;
+  pointer-events: auto;
+}
+
 input, select { width: 100%; padding: 14px; border: 1px solid #cfd8dc; border-radius: 12px; font-size: 14px; background: #fafafa; transition: 0.2s; }
 input:focus, select:focus { border-color: var(--primary); background: #fff; outline: none; box-shadow: 0 0 0 3px rgba(0,137,123,0.1); }
 .btn-bar { display: flex; gap: 10px; margin-top: 20px; }
@@ -1540,6 +1555,7 @@ body.cfg-error .btn-bundle{
       <div style="display:flex;justify-content:space-between;margin-bottom:5px;color:var(--accent)"><span>折扣與優惠</span><span id="sumDisc">-$0</span></div>
       <div style="display:flex;justify-content:space-between;margin-top:10px;padding-top:10px;border-top:1px dashed #cfd8dc;font-size:22px;font-weight:800;color:#263238"><span>應付金額</span><span id="sumPay">$0</span></div>
 
+      <div id="checkoutFields" class="checkout-fields">
       <div class="delivery-toggle-wrap">
         <label class="d-toggle-label">
           <input type="checkbox" id="chkDelivery" onchange="toggleDelivery()">
@@ -1566,9 +1582,10 @@ body.cfg-error .btn-bundle{
         </select>
         <input id="fNote" placeholder="訂單備註">
       </div>
+      </div>
       <div class="btn-bar">
         <button class="btn-clear" onclick="clearCart()"><span class="material-icons-round">delete_outline</span></button>
-        <button class="btn-submit" onclick="submitOrder()">確認訂購</button>
+        <button class="btn-submit" id="btnCheckoutAction" onclick="handleCheckoutAction()">結帳去</button>
       </div>
       <div id="warnMsg" style="color:#ef5350;font-size:13px;text-align:center;margin-top:10px;display:none;font-weight:700;background:#ffebee;padding:8px;border-radius:8px;"></div>
     </div>
@@ -1970,14 +1987,60 @@ window.openCart = function() {
   document.getElementById("float-bar").classList.add("hidden"); 
   document.body.classList.add('modal-open');
   isCartOpen = true; 
+  try{ resetCheckoutStage(); }catch(e){} 
   history.pushState({modal: 'cart'}, null, ""); 
 };
+// --- Two-stage checkout (collapse delivery + order inputs) ---
+let __CHECKOUT_STAGE__ = 1;
+function setCheckoutStage(stage, opts){
+  try{
+    __CHECKOUT_STAGE__ = stage;
+    const fields = document.getElementById('checkoutFields');
+    const btn = document.getElementById('btnCheckoutAction');
+    const warn = document.getElementById('warnMsg');
+    if(stage === 1){
+      if(fields) fields.classList.remove('open');
+      if(btn) btn.textContent = '結帳去';
+      if(warn) warn.style.display = 'none';
+    }else{
+      if(fields) fields.classList.add('open');
+      if(btn) btn.textContent = '確認訂購';
+      // scroll into view within drawer body
+      const body = document.querySelector('#drawer-panel .dr-body');
+      if(body && fields){
+        const by = body.getBoundingClientRect().top;
+        const fy = fields.getBoundingClientRect().top;
+        const target = (fy - by) + body.scrollTop - 10;
+        try{ body.scrollTo({ top: Math.max(0, target), behavior: 'smooth' }); }catch(e){ body.scrollTop = Math.max(0, target); }
+      }
+      // focus first input (訂購人姓名) after a short delay
+      if(!(opts && opts.focus === false)){
+        setTimeout(()=>{ try{ document.getElementById('fName')?.focus(); }catch(e){} }, 320);
+      }
+    }
+  }catch(e){}
+}
+function resetCheckoutStage(){
+  try{ setCheckoutStage(1, {focus:false}); }catch(e){}
+}
+window.handleCheckoutAction = function(){
+  try{
+    if(__CHECKOUT_STAGE__ !== 2){
+      setCheckoutStage(2);
+      return;
+    }
+    // stage 2: submit
+    window.submitOrder && window.submitOrder();
+  }catch(e){}
+};
+
 
 window.closeCart = function() {
   document.getElementById("drawer").classList.remove("open");
   document.getElementById("float-bar").classList.remove("hidden");
   cleanupUI(); 
   isCartOpen = false;
+  try{ resetCheckoutStage(); }catch(e){}
   if(history.state && history.state.modal === 'cart') history.back();
 };
 
@@ -3155,7 +3218,13 @@ function openStarHeroOverlay(isAuto=false){
     }
     const overlay = document.getElementById('starHeroOverlay');
     if(!overlay) return;
-    applyStarHeroCopy();
+const card = overlay.querySelector('.star-hero-card');
+    if(card){
+      try{ (card.getAnimations ? card.getAnimations() : []).forEach(a=>{ try{ a.cancel(); }catch(e){} }); }catch(e){}
+      try{ card.style.opacity=''; card.style.transform=''; card.style.filter=''; }catch(e){}
+    }
+    try{ overlay.style.pointerEvents=''; }catch(e){}
+        applyStarHeroCopy();
     buildStarHeroCarousel();
     overlay.classList.remove('fade-out');
     overlay.classList.add('show');
@@ -3191,7 +3260,7 @@ function dismissStarHero(reason){
         card.animate([
           { transform:'translateY(0) scale(1)', opacity:1, filter:'blur(0px)' },
           { transform:'translateY(-8px) scale(0.985)', opacity:0.0, filter:'blur(0.4px)' }
-        ], { duration: 260, easing:'cubic-bezier(.2,.85,.25,1)', fill:'forwards' });
+        ], { duration: 320, easing:'cubic-bezier(.16,.88,.22,1)', fill:'forwards' });
       }catch(e){}
     }
 
@@ -3237,10 +3306,10 @@ function dismissStarHero(reason){
     let anim;
     try{
       anim = fly.animate([
-        { transform:`translate(0px, 0px) scale(1.06) rotate(0deg)`, opacity:0.15 },
+        { transform:`translate(0px, 0px) scale(1.06) rotate(0deg)`, opacity:0.85 },
         { transform:`translate(${midX}px, ${midY}px) scale(0.90) rotate(14deg)`, opacity:1.0 },
-        { transform:`translate(${dx}px, ${dy}px) scale(0.62) rotate(26deg)`, opacity:1.0 }
-      ], { duration: 740, easing:'cubic-bezier(.22,.86,.24,1)', fill:'forwards' });
+        { transform:`translate(${dx}px, ${dy}px) scale(0.62) rotate(48deg)`, opacity:1.0 }
+      ], { duration: 860, easing:'cubic-bezier(.18,.86,.22,1)', fill:'forwards' });
     }catch(e){
       // fallback
       fly.style.transform = `translate(${dx}px, ${dy}px) scale(0.62)`;
@@ -3248,6 +3317,7 @@ function dismissStarHero(reason){
 
     const finish = ()=>{
       try{ overlay.classList.remove('show'); overlay.classList.remove('fade-out'); overlay.setAttribute('aria-hidden','true'); overlay.style.pointerEvents=''; }catch(e){}
+      try{ const c2 = overlay.querySelector('.star-hero-card'); if(c2){ (c2.getAnimations?c2.getAnimations():[]).forEach(a=>{ try{ a.cancel(); }catch(e){} }); c2.style.opacity=''; c2.style.transform=''; c2.style.filter=''; } }catch(e){}
       try{ fly.remove(); }catch(e){}
       try{
         if(dockBtn){ dockBtn.style.opacity=''; }
