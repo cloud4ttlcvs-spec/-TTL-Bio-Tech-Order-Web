@@ -789,8 +789,12 @@ input:focus, select:focus { border-color: var(--primary); background: #fff; outl
 .sys-ann .title{ font-weight: 800; margin-bottom: 4px; }
 
 @media (max-width:380px){
-  .sys-ann--row{ flex-wrap:wrap; }
+  .sys-ann--row{ flex-wrap:nowrap; }
+  .sys-ann-main{ flex:1 1 auto; }
+  .sys-ann-cta .cta-text{ display:none; }
+  .sys-ann-cta{ padding: 8px 10px; }
 }
+
 
 /* --- V2.8.9: Promo Map (優惠地圖) entry + drawer --- */
 .sys-ann--row{
@@ -1258,9 +1262,9 @@ body.cfg-error .btn-bundle{
 }
 
 .sh-carousel{
-  margin-top: 14px;
+  margin-top: 12px;
   display:flex;
-  gap: 12px;
+  gap: 10px;
   overflow-x:auto;
   padding: 2px 2px 12px;
   scroll-snap-type: x mandatory;
@@ -1271,7 +1275,7 @@ body.cfg-error .btn-bundle{
 
 
 .sh-item{
-  flex: 0 0 268px;
+  flex: 0 0 184px;
   scroll-snap-align: start;
   border-radius: 18px;
   border: 1px solid rgba(0,0,0,0.08);
@@ -1281,30 +1285,29 @@ body.cfg-error .btn-bundle{
   cursor: pointer;
   transition: transform .14s ease, box-shadow .18s ease, filter .18s ease;
   display:flex;
-  align-items:center;
-  gap: 10px;
-  padding: 12px;
+  flex-direction:column;
+  gap: 8px;
+  padding: 10px;
 }
 .sh-item:active{ transform: scale(0.985); }
 .sh-item:hover{ box-shadow: 0 14px 30px rgba(0,0,0,0.08); filter: brightness(1.01); }
 
 .sh-item .sh-img{
-  width: 78px;
-  height: 78px;
+  width: 100%;
+  height: 108px;
   object-fit: contain;
   display:block;
   background: rgba(255,255,255,0.95);
   border-radius: 16px;
   border: 1px solid rgba(0,0,0,0.06);
-  padding: 6px;
 }
 .sh-item .sh-meta{
-  flex: 1 1 auto;
+  flex: 1;
   min-width: 0;
-  padding: 0;
   display:flex;
   flex-direction:column;
   gap: 6px;
+  padding: 0 2px 2px;
 }
 .sh-item .sh-amt{
   font-size: 12px;
@@ -1356,22 +1359,22 @@ body.cfg-error .btn-bundle{
 .star-fly{
   position: fixed;
   z-index: 10010;
-  width: 34px;
-  height: 34px;
-  border-radius: 12px;
+  width: 46px;
+  height: 46px;
+  border-radius: 16px;
   display:flex;
   align-items:center;
   justify-content:center;
-  background: rgba(255,255,255,0.92);
-  border: 1px solid rgba(255,167,38,0.6);
+  background: rgba(255,255,255,0.94);
+  border: 1px solid rgba(255,167,38,0.65);
   color: #ff8f00;
-  box-shadow: 0 18px 38px rgba(0,0,0,0.16);
+  box-shadow: 0 18px 44px rgba(0,0,0,0.18);
   transform: translateZ(0);
-  transition: transform .62s cubic-bezier(.2,.9,.2,1), opacity .62s ease;
   opacity: 0.0;
   pointer-events:none;
+  will-change: transform, opacity;
 }
-.star-fly .material-icons-round{ font-size: 20px; }
+.star-fly .material-icons-round{ font-size: 24px; }
 
 </style>
 </head>
@@ -1390,9 +1393,9 @@ body.cfg-error .btn-bundle{
 <div id="starHeroOverlay" aria-hidden="true">
   <div class="star-hero-card" role="dialog" aria-modal="true" aria-label="主打星推薦">
     <div class="sh-head">
-      <div class="sh-title"><span class="material-icons-round">auto_awesome</span> 商城首選推薦｜超值特殺</div>
+      <div class="sh-title"><span class="material-icons-round">auto_awesome</span> <span id="starHeroTitleText"></span></div>
     </div>
-    <div class="sh-sub">滑一下挑喜歡的，點一下就帶你去商品 ✨</div>
+    <div class="sh-sub" id="starHeroSubtitleText"></div>
     <div class="sh-carousel" id="starHeroCarousel"></div>
     <button type="button" id="starHeroBrowseBtn">先去逛逛</button>
   </div>
@@ -3005,6 +3008,28 @@ function getStarProducts(){
   }
 }
 
+function getStarHeroCopy(){
+  try{
+    const defTitle = '商城首選推薦｜超值特殺';
+    const defSub = '滑一下挑喜歡的，點一下就帶你去商品 ✨';
+    const title = (uiGet('star|title', uiGet('ui|star_title', defTitle)) || defTitle).trim();
+    const sub = (uiGet('star|subtitle', uiGet('star|sub', uiGet('ui|star_subtitle', defSub))) || defSub).trim();
+    return { title: title || defTitle, sub: sub || defSub };
+  }catch(e){
+    return { title:'商城首選推薦｜超值特殺', sub:'滑一下挑喜歡的，點一下就帶你去商品 ✨' };
+  }
+}
+function applyStarHeroCopy(){
+  try{
+    const c = getStarHeroCopy();
+    const tEl = document.getElementById('starHeroTitleText');
+    const sEl = document.getElementById('starHeroSubtitleText');
+    if(tEl) tEl.textContent = c.title;
+    if(sEl) sEl.textContent = c.sub;
+  }catch(e){}
+}
+
+
 function _starZoneOf(p){
   const c = String((p && p.category) || '').toLowerCase();
   if(c.includes('美容') || c.includes('beauty')) return 'beauty';
@@ -3022,51 +3047,49 @@ function _starTierApplies(tZone, pZone){
 }
 function calcStarDeal(p){
   const base = Number(p && p.price || 0);
-  let bestRatio = 1;
-  let bestUnit = base;
+  let bestRatio = (base > 0 && isFinite(base)) ? 1 : 1;
+  let bestUnit  = (base > 0 && isFinite(base)) ? base : 0;
+  let source = '';
 
-  // Flat price (absolute unit price)
+  // Bundle promo price (best absolute promo)
   try{
-    if(RULES && Array.isArray(RULES.flat_price)){
-      RULES.flat_price.forEach(r=>{
-        if(String(r.code||'') !== String(p.code||'')) return;
-        const unit = Number(r.unit||0);
-        if(unit > 0 && base > 0){
-          const ratio = unit / base;
-          if(ratio < bestRatio){ bestRatio = ratio; bestUnit = unit; }
-        }else if(unit > 0 && (!base || !isFinite(base))){
-          bestUnit = unit;
+    const bundleRule = (RULES && Array.isArray(RULES.bundle)) ? RULES.bundle.find(r => r && r.code === (p && p.code) && isFinite(r.price) && r.price > 0) : null;
+    if(bundleRule){
+      const unit = Number(bundleRule.price);
+      if(unit > 0 && isFinite(unit)){
+        const ratio = (base > 0) ? (unit / base) : 1;
+        if(!isFinite(bestUnit) || bestUnit <= 0 || ratio < bestRatio){
+          bestRatio = (base > 0) ? ratio : 1;
+          bestUnit  = unit;
+          source = 'bundle';
         }
-      });
-    }
-  }catch(e){}
-
-  // BOGO effective ratio
-  try{
-    if(RULES && Array.isArray(RULES.bogo)){
-      const bg = RULES.bogo.find(r => String(r.code||'') === String(p.code||''));
-      if(bg && bg.buy > 0 && bg.get > 0 && base > 0){
-        const ratio = bg.buy / (bg.buy + bg.get);
-        const unit = base * ratio;
-        if(ratio < bestRatio){ bestRatio = ratio; bestUnit = unit; }
       }
     }
   }catch(e){}
 
-  // Tier percent off (best discount in applicable zone)
+  // BOGO effective unit price
   try{
-    if(RULES && Array.isArray(RULES.tiers) && RULES.tiers.length){
-      const pz = _starZoneOf(p);
-      let maxPct = 0;
-      RULES.tiers.forEach(t=>{
-        if(!_starTierApplies(t.zone, pz)) return;
-        const pct = Number(t.pct||0);
-        if(pct > maxPct) maxPct = pct;
-      });
-      if(maxPct > 0 && base > 0){
-        const ratio = (100 - maxPct) / 100;
-        const unit = base * ratio;
-        if(ratio < bestRatio){ bestRatio = ratio; bestUnit = unit; }
+    const bg = (RULES && Array.isArray(RULES.bogo)) ? RULES.bogo.find(r => r && r.code === (p && p.code)) : null;
+    if(bg && bg.buy > 0 && bg.get > 0 && base > 0){
+      const ratio = bg.buy / (bg.buy + bg.get);
+      const unit = base * ratio;
+      if(ratio < bestRatio){
+        bestRatio = ratio;
+        bestUnit  = unit;
+        source = 'bogo';
+      }
+    }
+  }catch(e){}
+
+  // Tier discount range (use the BEST pct => lowest unit price)
+  try{
+    const tr = getTierDiscountRangeForProduct(p);
+    if(tr && isFinite(tr.low) && tr.low > 0 && base > 0){
+      const ratio = tr.low / base;
+      if(ratio < bestRatio){
+        bestRatio = ratio;
+        bestUnit  = tr.low;
+        source = 'tier';
       }
     }
   }catch(e){}
@@ -3078,7 +3101,7 @@ function calcStarDeal(p){
     const fold = Math.round(bestRatio * 10 * 10) / 10; // 1 decimal
     foldStr = (Math.abs(fold - Math.round(fold)) < 0.05) ? String(Math.round(fold)) : fold.toFixed(1);
   }
-  return { minPrice, foldText: `${foldStr}折起` };
+  return { minPrice, foldText: `${foldStr}折起`, ratio: bestRatio, source };
 }
 
 function buildStarHeroCarousel(){
@@ -3095,12 +3118,22 @@ function buildStarHeroCarousel(){
     const div = document.createElement('div');
     div.className = 'sh-item';
     const deal = calcStarDeal(p);
-    const amt = (deal && deal.minPrice) ? `最低${Number(deal.minPrice).toLocaleString('en-US')}元／${String(deal.foldText||'').replace(/[<>]/g,'')}` : (p.category ? String(p.category) : '');
+    const base = Number(p && p.price || 0);
+    let line = '';
+    if(deal && deal.minPrice){
+      if(base > 0 && deal.ratio && deal.ratio < 0.999){
+        line = `最低${Number(deal.minPrice).toLocaleString('zh-TW')}元／${String(deal.foldText||'').replace(/[<>]/g,'')}`;
+      }else{
+        line = `售價${Number(deal.minPrice).toLocaleString('zh-TW')}元`;
+      }
+    }else if(base > 0){
+      line = `售價${Number(base).toLocaleString('zh-TW')}元`;
+    }
     const img = (p.photo && String(p.photo).trim().length>5) ? String(p.photo) : '';
     div.innerHTML = `
       ${img ? `<img class="sh-img" src="${img}" loading="lazy" onerror="this.style.display='none'">` : `<div class="sh-img" style="display:flex;align-items:center;justify-content:center;color:rgba(0,0,0,0.35);font-weight:900;">無圖片</div>`}
       <div class="sh-meta">
-        <div class="sh-amt">${String(amt||'').replace(/[<>]/g,'')}</div>
+        <div class="sh-amt">${String(line||'').replace(/[<>]/g,'')}</div>
         <div class="sh-name">${String(p.name||'').replace(/[<>]/g,'')}</div>
       </div>
     `;
@@ -3122,6 +3155,7 @@ function openStarHeroOverlay(isAuto=false){
     }
     const overlay = document.getElementById('starHeroOverlay');
     if(!overlay) return;
+    applyStarHeroCopy();
     buildStarHeroCarousel();
     overlay.classList.remove('fade-out');
     overlay.classList.add('show');
@@ -3149,18 +3183,44 @@ function dismissStarHero(reason){
     const overlay = document.getElementById('starHeroOverlay');
     if(!overlay) return;
     if(!overlay.classList.contains('show')) return;
-    overlay.classList.add('fade-out');
 
-    // create fly star
+    // fade overlay/card a bit so the "shrink into star" is noticeable
     const card = overlay.querySelector('.star-hero-card');
+    if(card){
+      try{
+        card.animate([
+          { transform:'translateY(0) scale(1)', opacity:1, filter:'blur(0px)' },
+          { transform:'translateY(-8px) scale(0.985)', opacity:0.0, filter:'blur(0.4px)' }
+        ], { duration: 260, easing:'cubic-bezier(.2,.85,.25,1)', fill:'forwards' });
+      }catch(e){}
+    }
+
+    overlay.classList.add('fade-out');
+    overlay.style.pointerEvents = 'none';
+
+    // compute start/end
     const r = card ? card.getBoundingClientRect() : null;
+
+    // Ensure dock button exists & get its rect as target (keep invisible during flight)
+    const dockBtn = document.getElementById('starDockBtn');
+    let dr = null;
+    if(dockBtn){
+      dockBtn.classList.remove('hidden');
+      dockBtn.style.opacity = '0';
+      dr = dockBtn.getBoundingClientRect();
+    }
     const slot = document.getElementById('systemAnnouncementSlot');
     const sr = slot ? slot.getBoundingClientRect() : null;
 
-    let sx = r ? (r.left + r.width/2 - 17) : 18;
-    let sy = r ? (r.top + 22) : 80;
-    let ex = sr ? (sr.left + 22) : 18;
-    let ey = sr ? (sr.top + 22) : 90;
+    const size = 46;
+    const sx = r ? (r.left + r.width/2 - size/2) : 18;
+    const sy = r ? (r.top + r.height/2 - size/2) : 80;
+
+    const ex = dr ? (dr.left + dr.width/2 - size/2) : (sr ? (sr.left + 18) : 18);
+    const ey = dr ? (dr.top  + dr.height/2 - size/2) : (sr ? (sr.top + 14) : 90);
+
+    const dx = ex - sx;
+    const dy = ey - sy;
 
     const fly = document.createElement('div');
     fly.className = 'star-fly';
@@ -3169,20 +3229,39 @@ function dismissStarHero(reason){
     fly.style.top  = sy + 'px';
     document.body.appendChild(fly);
 
-    requestAnimationFrame(()=>{
-      fly.style.opacity = '1';
-      const dx = ex - sx;
-      const dy = ey - sy;
-      fly.style.transform = `translate(${dx}px, ${dy}px) scale(0.62)`;
-    });
+    // A gentle arc + spin to make it "more obvious" and "silky"
+    const midX = dx * 0.55;
+    const midY = dy * 0.55 - 64;
 
-    setTimeout(()=>{
-      try{ overlay.classList.remove('show'); overlay.classList.remove('fade-out'); overlay.setAttribute('aria-hidden','true'); }catch(e){}
+    fly.style.opacity = '1';
+    let anim;
+    try{
+      anim = fly.animate([
+        { transform:`translate(0px, 0px) scale(1.06) rotate(0deg)`, opacity:0.15 },
+        { transform:`translate(${midX}px, ${midY}px) scale(0.90) rotate(14deg)`, opacity:1.0 },
+        { transform:`translate(${dx}px, ${dy}px) scale(0.62) rotate(26deg)`, opacity:1.0 }
+      ], { duration: 740, easing:'cubic-bezier(.22,.86,.24,1)', fill:'forwards' });
+    }catch(e){
+      // fallback
+      fly.style.transform = `translate(${dx}px, ${dy}px) scale(0.62)`;
+    }
+
+    const finish = ()=>{
+      try{ overlay.classList.remove('show'); overlay.classList.remove('fade-out'); overlay.setAttribute('aria-hidden','true'); overlay.style.pointerEvents=''; }catch(e){}
       try{ fly.remove(); }catch(e){}
+      try{
+        if(dockBtn){ dockBtn.style.opacity=''; }
+      }catch(e){}
       try{ showStarDock(true); }catch(e){}
       try{ setStarDismissed(); }catch(e){}
       __STAR_OPEN__ = false;
-    }, 640);
+    };
+
+    if(anim && anim.finished){
+      anim.finished.then(()=>{ setTimeout(finish, 40); }).catch(()=>{ setTimeout(finish, 780); });
+    }else{
+      setTimeout(finish, 780);
+    }
   }catch(e){}
 }
 function showStarDock(show){
