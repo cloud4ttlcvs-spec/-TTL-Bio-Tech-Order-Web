@@ -3032,6 +3032,8 @@ try{
 let __STAR_AUTO_PENDING__ = false;
 let __STAR_OPEN__ = false;
 
+let __STAR_CLOSING__ = false;
+let __STAR_INST__ = 0;
 function starIsDismissed(){
   try{ return localStorage.getItem('ttl_star_hero_dismissed') === '1'; }catch(e){ return false; }
 }
@@ -3091,6 +3093,33 @@ function applyStarHeroCopy(){
     if(sEl) sEl.textContent = c.sub;
   }catch(e){}
 }
+
+
+function hardResetStarHeroOverlay(){
+  try{
+    const overlay = document.getElementById('starHeroOverlay');
+    if(!overlay) return;
+    // cancel residual animations
+    const card = overlay.querySelector('.star-hero-card');
+    if(card){
+      try{ (card.getAnimations ? card.getAnimations() : []).forEach(a=>{ try{ a.cancel(); }catch(e){} }); }catch(e){}
+      try{ card.style.opacity=''; card.style.transform=''; card.style.filter=''; }catch(e){}
+    }
+    try{ overlay.onclick = null; }catch(e){}
+    try{ overlay.classList.remove('show','fade-out'); }catch(e){}
+    try{ overlay.style.pointerEvents=''; }catch(e){}
+    try{ overlay.style.opacity=''; }catch(e){}
+    try{ overlay.style.display='none'; }catch(e){}
+    try{ overlay.setAttribute('aria-hidden','true'); }catch(e){}
+    const wrap = document.getElementById('starHeroCarousel');
+    if(wrap){
+      try{ wrap.innerHTML=''; wrap.scrollLeft = 0; }catch(e){}
+    }
+    __STAR_OPEN__ = false;
+    __STAR_CLOSING__ = false;
+  }catch(e){}
+}
+
 
 
 function _starZoneOf(p){
@@ -3203,8 +3232,8 @@ function buildStarHeroCarousel(){
     div.onclick = (ev)=>{
       ev.preventDefault();
       ev.stopPropagation();
-      try{ jumpToProductByCode(String(p.code||'')); }catch(e){}
-      try{ dismissStarHero('nav'); }catch(e){}
+      const code = String(p.code||'');
+      try{ dismissStarHero('nav', ()=>{ try{ jumpToProductByCode(code); }catch(e){} }); }catch(e){}
     };
     wrap.appendChild(div);
   });
@@ -3216,22 +3245,44 @@ function openStarHeroOverlay(isAuto=false){
       showToast('商品資料讀取中…', 'info', 2000);
       return;
     }
+
+    // If a previous close got stuck, hard reset it first
+    if(__STAR_CLOSING__){
+      try{ hardResetStarHeroOverlay(); }catch(e){}
+    }
+
     const overlay = document.getElementById('starHeroOverlay');
     if(!overlay) return;
-const card = overlay.querySelector('.star-hero-card');
+
+    // Mark a new instance so stale close timers won't nuke a reopened overlay
+    const inst = (++__STAR_INST__);
+    overlay.dataset.starInst = String(inst);
+
+    // Deterministic reset
+    try{ overlay.onclick = null; }catch(e){}
+    try{ overlay.classList.remove('show','fade-out'); }catch(e){}
+    try{ overlay.style.pointerEvents=''; }catch(e){}
+    try{ overlay.style.opacity=''; }catch(e){}
+    try{ overlay.style.display='none'; }catch(e){}
+    const card = overlay.querySelector('.star-hero-card');
     if(card){
       try{ (card.getAnimations ? card.getAnimations() : []).forEach(a=>{ try{ a.cancel(); }catch(e){} }); }catch(e){}
       try{ card.style.opacity=''; card.style.transform=''; card.style.filter=''; }catch(e){}
     }
-    try{ overlay.style.pointerEvents=''; }catch(e){}
-        applyStarHeroCopy();
-    buildStarHeroCarousel();
-    overlay.classList.remove('fade-out');
-    overlay.classList.add('show');
-    overlay.setAttribute('aria-hidden','false');
-    __STAR_OPEN__ = true;
 
-    // backdrop click closes (but not required; keep gentle)
+    applyStarHeroCopy();
+    buildStarHeroCarousel();
+
+    // show (two-step to ensure transition applies)
+    overlay.style.display = 'flex';
+    overlay.offsetHeight; // reflow
+    overlay.classList.add('show');
+    overlay.classList.remove('fade-out');
+    overlay.setAttribute('aria-hidden','false');
+    overlay.style.pointerEvents = '';
+    __STAR_OPEN__ = true;
+    __STAR_CLOSING__ = false;
+
     overlay.onclick = (ev)=>{
       if(ev && ev.target === overlay){
         dismissStarHero('backdrop');
@@ -3247,20 +3298,24 @@ const card = overlay.querySelector('.star-hero-card');
     }
   }catch(e){}
 }
-function dismissStarHero(reason){
+
+function dismissStarHero(reason, afterClose){
   try{
     const overlay = document.getElementById('starHeroOverlay');
     if(!overlay) return;
+    if(__STAR_CLOSING__) return;
     if(!overlay.classList.contains('show')) return;
 
-    // fade overlay/card a bit so the "shrink into star" is noticeable
+    __STAR_CLOSING__ = true;
+    const inst = String(overlay.dataset.starInst || '');
+
     const card = overlay.querySelector('.star-hero-card');
     if(card){
       try{
         card.animate([
           { transform:'translateY(0) scale(1)', opacity:1, filter:'blur(0px)' },
-          { transform:'translateY(-8px) scale(0.985)', opacity:0.0, filter:'blur(0.4px)' }
-        ], { duration: 320, easing:'cubic-bezier(.16,.88,.22,1)', fill:'forwards' });
+          { transform:'translateY(-10px) scale(0.975)', opacity:0.0, filter:'blur(0.6px)' }
+        ], { duration: 340, easing:'cubic-bezier(.16,.88,.22,1)', fill:'forwards' });
       }catch(e){}
     }
 
@@ -3298,42 +3353,62 @@ function dismissStarHero(reason){
     fly.style.top  = sy + 'px';
     document.body.appendChild(fly);
 
-    // A gentle arc + spin to make it "more obvious" and "silky"
+    // A gentle arc + spin to make it obvious and silky
     const midX = dx * 0.55;
-    const midY = dy * 0.55 - 64;
+    const midY = dy * 0.55 - 72;
 
     fly.style.opacity = '1';
+
     let anim;
     try{
       anim = fly.animate([
-        { transform:`translate(0px, 0px) scale(1.06) rotate(0deg)`, opacity:0.85 },
-        { transform:`translate(${midX}px, ${midY}px) scale(0.90) rotate(14deg)`, opacity:1.0 },
-        { transform:`translate(${dx}px, ${dy}px) scale(0.62) rotate(48deg)`, opacity:1.0 }
-      ], { duration: 860, easing:'cubic-bezier(.18,.86,.22,1)', fill:'forwards' });
+        { transform:`translate(0px, 0px) scale(1.10) rotate(-6deg)`, opacity:0.88 },
+        { transform:`translate(${midX}px, ${midY}px) scale(0.92) rotate(10deg)`, opacity:1.0 },
+        { transform:`translate(${dx}px, ${dy}px) scale(0.60) rotate(54deg)`, opacity:1.0 }
+      ], { duration: 900, easing:'cubic-bezier(.18,.86,.22,1)', fill:'forwards' });
     }catch(e){
-      // fallback
-      fly.style.transform = `translate(${dx}px, ${dy}px) scale(0.62)`;
+      fly.style.transform = `translate(${dx}px, ${dy}px) scale(0.60)`;
     }
 
+    let done = false;
     const finish = ()=>{
-      try{ overlay.classList.remove('show'); overlay.classList.remove('fade-out'); overlay.setAttribute('aria-hidden','true'); overlay.style.pointerEvents=''; }catch(e){}
-      try{ const c2 = overlay.querySelector('.star-hero-card'); if(c2){ (c2.getAnimations?c2.getAnimations():[]).forEach(a=>{ try{ a.cancel(); }catch(e){} }); c2.style.opacity=''; c2.style.transform=''; c2.style.filter=''; } }catch(e){}
+      if(done) return;
+      done = true;
+
+      // If overlay has been reopened since this close started, do not nuke it
+      if(String(overlay.dataset.starInst || '') !== inst){
+        try{ fly.remove(); }catch(e){}
+        try{ if(dockBtn){ dockBtn.style.opacity=''; } }catch(e){}
+        __STAR_CLOSING__ = false;
+        return;
+      }
+
       try{ fly.remove(); }catch(e){}
-      try{
-        if(dockBtn){ dockBtn.style.opacity=''; }
-      }catch(e){}
+      try{ if(dockBtn){ dockBtn.style.opacity=''; } }catch(e){}
+      try{ hardResetStarHeroOverlay(); }catch(e){}
       try{ showStarDock(true); }catch(e){}
       try{ setStarDismissed(); }catch(e){}
       __STAR_OPEN__ = false;
+      __STAR_CLOSING__ = false;
+
+      if(typeof afterClose === 'function'){
+        setTimeout(()=>{ try{ afterClose(); }catch(e){} }, 60);
+      }
     };
 
+    // Hard guard: always finish even if animation stalls
+    const guard = setTimeout(finish, 1250);
+
     if(anim && anim.finished){
-      anim.finished.then(()=>{ setTimeout(finish, 40); }).catch(()=>{ setTimeout(finish, 780); });
-    }else{
-      setTimeout(finish, 780);
+      anim.finished.then(()=>{ try{ clearTimeout(guard); }catch(e){}; setTimeout(finish, 40); })
+                 .catch(()=>{ try{ clearTimeout(guard); }catch(e){}; setTimeout(finish, 40); });
     }
-  }catch(e){}
+  }catch(e){
+    try{ __STAR_CLOSING__ = false; }catch(_e){}
+    try{ hardResetStarHeroOverlay(); }catch(_e){}
+  }
 }
+
 function showStarDock(show){
   try{
     const btn = document.getElementById('starDockBtn');
