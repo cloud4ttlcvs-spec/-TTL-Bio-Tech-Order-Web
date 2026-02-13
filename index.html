@@ -2721,6 +2721,23 @@ function ensurePromoMapDom(){
   return !!(overlay && drawer);
 }
 
+// Promo Map: pending category jump (avoid triggering root-back logic)
+let __PM_PENDING_SCROLL_ID__ = null;
+function pmScrollToTargetId(id){
+  try{
+    const tid = String(id||'').trim();
+    if(!tid) return;
+    const target = document.getElementById(tid);
+    if(!target) return;
+    requestAnimationFrame(()=>{
+      try{ target.scrollIntoView({ behavior:'smooth', block:'start' }); }catch(e){}
+      // Offset for sticky headers / top padding (best-effort)
+      setTimeout(()=>{ try{ window.scrollBy({ top:-90, behavior:'smooth' }); }catch(e){} }, 260);
+    });
+  }catch(e){}
+}
+
+
 function buildPromoMapList(){
   try{
     const listEl = document.getElementById('promoMapList');
@@ -2785,18 +2802,9 @@ try{
       `;
       item.onclick = () => {
         const id = item.getAttribute('data-target');
-        // Close first (restore scroll), then jump
-        try{ closePromoMap({skipHistory:true}); }catch(e){}
-        if(id){
-          const target = document.getElementById(id);
-          if(target){
-            requestAnimationFrame(()=>{
-              try{ target.scrollIntoView({ behavior:'smooth', block:'start' }); }catch(e){}
-            });
-          }
-        }
-        // Clear history entry if present
-        try{ if(history.state && history.state.modal === 'promoMap'){ history.back(); } }catch(e){}
+        // Set pending target and close via history (so onpopstate can close drawer without triggering root-back logic)
+        __PM_PENDING_SCROLL_ID__ = id || null;
+        try{ closePromoMap(); }catch(e){}
       };
       listEl.appendChild(item);
     });
@@ -2972,6 +2980,17 @@ overlay.onclick = () => closePromoMap();
 function closePromoMap(opts){
   const o = opts || {};
   const skipHistory = !!o.skipHistory;
+
+  // Preferred close path: if we are on the promoMap history entry,
+  // just go back and let onpopstate close the drawer (prevents root-back logic interference).
+  try{
+    if(!skipHistory && history.state && history.state.modal === 'promoMap' && isPromoMapOpen()){
+      history.back();
+      return;
+    }
+  }catch(e){}
+
+  // Hard close (no history interaction)
   try{
     const overlay = document.getElementById('promoMapOverlay');
     const drawer = document.getElementById('promoMapDrawer');
@@ -2979,9 +2998,13 @@ function closePromoMap(opts){
     if(drawer) drawer.classList.remove('open');
     document.body.classList.remove('drawer-open');
   }catch(e){}
+
+  // If we have a pending jump target (e.g., close without popstate), do it after close
   try{
-    if(!skipHistory && history.state && history.state.modal === 'promoMap'){
-      history.back();
+    const pending = __PM_PENDING_SCROLL_ID__;
+    __PM_PENDING_SCROLL_ID__ = null;
+    if(pending){
+      setTimeout(()=>{ try{ pmScrollToTargetId(pending); }catch(e){} }, 40);
     }
   }catch(e){}
 }
@@ -3375,6 +3398,10 @@ function openStarHeroOverlay(isAuto=false){
 
     hardResetStarHeroOverlay();
 
+    // Ensure inline hard-hide from previous close doesn't block re-open
+    overlay.style.display = '';
+    overlay.style.opacity = '';
+
     applyStarHeroCopy();
     buildStarHeroCarousel();
 
@@ -3417,6 +3444,9 @@ function hardResetStarHeroOverlay(){
     overlay.onclick = null;
     overlay.classList.remove('show','fade-out','entering');
     overlay.setAttribute('aria-hidden','true');
+    // Hard-hide to guarantee backdrop is gone even if classes get stuck
+    overlay.style.display = 'none';
+    overlay.style.opacity = '';
 
     const card = overlay.querySelector('.star-hero-card');
     if(card){
@@ -3463,6 +3493,9 @@ function _finalizeStarHeroClose(){
       overlay.setAttribute('aria-hidden','true');
       overlay.style.pointerEvents='';
       overlay.onclick = null;
+      // Hard-hide to prevent any backdrop-filter residue
+      overlay.style.display = 'none';
+      overlay.style.opacity = '';
     }
   }catch(e){}
 
@@ -3470,6 +3503,15 @@ function _finalizeStarHeroClose(){
 
   __STAR_OPEN__ = false;
   __STAR_CLOSING__ = false;
+
+  // Ensure dock icon is visible (fix: opacity stuck at 0)
+  try{
+    const dockBtn = document.getElementById('starDockBtn');
+    if(dockBtn){
+      dockBtn.style.opacity = '1';
+      dockBtn.style.visibility = 'visible';
+    }
+  }catch(e){}
 
   try{ showStarDock(true); }catch(e){}
   try{ setStarDismissed(); }catch(e){}
@@ -3556,7 +3598,11 @@ function dismissStarHero(reason){
       fly.style.transform = `translate(${dx}px, ${dy}px) scale(0.62)`;
     }
 
+    let _starFinishDone = false;
+
     const finish = ()=>{
+      if(_starFinishDone) return;
+      _starFinishDone = true;
       try{ _finalizeStarHeroClose(); }catch(e){
         try{ __STAR_OPEN__ = false; __STAR_CLOSING__ = false; }catch(ex){}
       }
@@ -3567,7 +3613,7 @@ function dismissStarHero(reason){
     __STAR_CLOSE_WATCHDOG__ = setTimeout(()=>{
       try{
         const ov = document.getElementById('starHeroOverlay');
-        if(ov && ov.classList.contains('show')) finish();
+        if(__STAR_CLOSING__) finish();
       }catch(e){}
     }, 1200);
 
@@ -3592,11 +3638,18 @@ function showStarDock(show){
 
     if(show){
       btn.classList.remove('hidden');
+      // Fix: button could be left at opacity:0 (clickable but invisible)
+      btn.style.opacity = '1';
+      btn.style.visibility = 'visible';
       btn.classList.remove('attn');
       __STAR_ATT_TIMER__ = setTimeout(()=>{ 
         try{ if(!__STAR_OPEN__ && !__STAR_CLOSING__) btn.classList.add('attn'); }catch(e){} 
       }, 1200);
-      btn.onclick = (ev)=>{ ev.preventDefault(); ev.stopPropagation(); if(__STAR_CLOSING__){ __STAR_REOPEN_PENDING__ = true; return; } openStarHeroOverlay(false); };
+      btn.onclick = (ev)=>{ 
+        ev.preventDefault(); ev.stopPropagation(); 
+        if(__STAR_CLOSING__){ __STAR_REOPEN_PENDING__ = true; return; } 
+        openStarHeroOverlay(false); 
+      };
     }else{
       btn.classList.add('hidden');
       btn.classList.remove('attn');
@@ -4690,8 +4743,13 @@ window.onpopstate = (e) => {
     // Handle Promo Map Drawer (優惠地圖)
     if(isPromoMapOpen()){
         closePromoMap({skipHistory:true});
+        const pending = __PM_PENDING_SCROLL_ID__;
+        __PM_PENDING_SCROLL_ID__ = null;
         // keep guard so user doesn't leave app accidentally
         armBackGuard();
+        if(pending){
+          setTimeout(()=>{ try{ pmScrollToTargetId(pending); }catch(e){} }, 60);
+        }
         return;
     }
 
