@@ -634,21 +634,6 @@ header { position: sticky; top: 0; z-index: 1000; background: rgba(255,255,255,0
 .sum-line { display: flex; justify-content: space-between; border-bottom: 1px dashed #eee; padding: 6px 0; }
 
 .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 15px; }
-
-/* Two-stage checkout: collapse delivery + order inputs by default */
-.checkout-fields{
-  max-height: 0;
-  opacity: 0;
-  overflow: hidden;
-  pointer-events: none;
-  transition: max-height .42s cubic-bezier(.2,.85,.25,1), opacity .28s ease;
-}
-.checkout-fields.open{
-  max-height: 1200px;
-  opacity: 1;
-  pointer-events: auto;
-}
-
 input, select { width: 100%; padding: 14px; border: 1px solid #cfd8dc; border-radius: 12px; font-size: 14px; background: #fafafa; transition: 0.2s; }
 input:focus, select:focus { border-color: var(--primary); background: #fff; outline: none; box-shadow: 0 0 0 3px rgba(0,137,123,0.1); }
 .btn-bar { display: flex; gap: 10px; margin-top: 20px; }
@@ -778,6 +763,24 @@ input:focus, select:focus { border-color: var(--primary); background: #fff; outl
 /* Form controls only inside cart drawer */
   #drawer-panel input, #drawer-panel select{ padding:12px; font-size:13px; }
   .form-grid{ gap:10px; margin-top:12px; }
+.checkout-details{
+  margin-top: 12px;
+  overflow: hidden;
+  transform-origin: top;
+  transition: max-height .38s cubic-bezier(.2,.9,.2,1), opacity .22s ease, transform .38s cubic-bezier(.2,.9,.2,1);
+  max-height: 720px;
+}
+.checkout-details.collapsed{
+  max-height: 0px;
+  opacity: 0;
+  transform: translateY(-6px);
+  pointer-events: none;
+}
+.checkout-details:not(.collapsed){
+  opacity: 1;
+  transform: translateY(0px);
+  pointer-events: auto;
+}
 
   /* Buttons */
   .btn-bar{ margin-top:14px; }
@@ -1195,6 +1198,28 @@ body.cfg-error .btn-bundle{
   flex: 0 0 auto;
   transform: translateZ(0);
 }
+
+.star-dock-btn{ position: relative; }
+.star-dock-badge{
+  position:absolute;
+  top:-6px;
+  right:-6px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: rgba(255,111,0,0.95);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 900;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  box-shadow: 0 10px 18px rgba(0,0,0,0.14);
+  border: 2px solid rgba(255,255,255,0.95);
+}
+.star-dock-btn.hidden .star-dock-badge{ display:none; }
+
 .star-dock-btn.hidden{ display:none; }
 .star-dock-btn .material-icons-round{ font-size: 20px; }
 @keyframes starWiggle{
@@ -1252,6 +1277,26 @@ body.cfg-error .btn-bundle{
   opacity: 0;
 }
 
+/* Staged entrance (A) */
+#starHeroOverlay.show.entering .sh-head,
+#starHeroOverlay.show.entering .sh-sub,
+#starHeroOverlay.show.entering .sh-carousel,
+#starHeroOverlay.show.entering .sh-dots,
+#starHeroOverlay.show.entering #starHeroBrowseBtn{
+  opacity: 0;
+  transform: translateY(10px);
+}
+@keyframes shFadeUp{
+  from{ opacity:0; transform: translateY(10px); }
+  to{ opacity:1; transform: translateY(0px); }
+}
+#starHeroOverlay.show.entering .sh-head{ animation: shFadeUp .46s cubic-bezier(.2,.9,.2,1) both; animation-delay: .06s; }
+#starHeroOverlay.show.entering .sh-sub{ animation: shFadeUp .46s cubic-bezier(.2,.9,.2,1) both; animation-delay: .12s; }
+#starHeroOverlay.show.entering .sh-carousel{ animation: shFadeUp .52s cubic-bezier(.2,.9,.2,1) both; animation-delay: .18s; }
+#starHeroOverlay.show.entering .sh-dots{ animation: shFadeUp .50s cubic-bezier(.2,.9,.2,1) both; animation-delay: .26s; }
+#starHeroOverlay.show.entering #starHeroBrowseBtn{ animation: shFadeUp .46s cubic-bezier(.2,.9,.2,1) both; animation-delay: .34s; }
+
+
 .sh-head{
   display:flex;
   align-items:center;
@@ -1281,11 +1326,37 @@ body.cfg-error .btn-bundle{
   display:flex;
   gap: 10px;
   overflow-x:auto;
-  padding: 2px 2px 12px;
+  padding: 2px 14px 12px 2px;
+  scroll-padding-left: 2px;
+  scroll-padding-right: 14px;
   scroll-snap-type: x mandatory;
   -webkit-overflow-scrolling: touch;
 }
 .sh-carousel::-webkit-scrollbar{ height: 8px; }
+.sh-carousel::-webkit-scrollbar-thumb{ background: rgba(255,143,0,0.18); border-radius: 999px; }
+.sh-dots{
+  margin-top: 6px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap: 7px;
+  padding-bottom: 6px;
+  user-select:none;
+}
+.sh-dot{
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: rgba(17,24,39,0.18);
+  transform: scale(0.92);
+  transition: transform .18s ease, background .18s ease, width .18s ease;
+}
+.sh-dot.active{
+  background: rgba(255,111,0,0.95);
+  transform: scale(1.05);
+  width: 16px;
+}
+
 .sh-carousel::-webkit-scrollbar-thumb{ background: rgba(0,0,0,0.12); border-radius: 999px; }
 
 
@@ -1412,6 +1483,7 @@ body.cfg-error .btn-bundle{
     </div>
     <div class="sh-sub" id="starHeroSubtitleText"></div>
     <div class="sh-carousel" id="starHeroCarousel"></div>
+    <div class="sh-dots" id="starHeroDots" aria-hidden="true"></div>
     <button type="button" id="starHeroBrowseBtn">先去逛逛</button>
   </div>
 </div>
@@ -1555,7 +1627,7 @@ body.cfg-error .btn-bundle{
       <div style="display:flex;justify-content:space-between;margin-bottom:5px;color:var(--accent)"><span>折扣與優惠</span><span id="sumDisc">-$0</span></div>
       <div style="display:flex;justify-content:space-between;margin-top:10px;padding-top:10px;border-top:1px dashed #cfd8dc;font-size:22px;font-weight:800;color:#263238"><span>應付金額</span><span id="sumPay">$0</span></div>
 
-      <div id="checkoutFields" class="checkout-fields">
+      <div id="checkoutDetails" class="checkout-details collapsed">
       <div class="delivery-toggle-wrap">
         <label class="d-toggle-label">
           <input type="checkbox" id="chkDelivery" onchange="toggleDelivery()">
@@ -1582,10 +1654,10 @@ body.cfg-error .btn-bundle{
         </select>
         <input id="fNote" placeholder="訂單備註">
       </div>
-      </div>
+    </div>
       <div class="btn-bar">
         <button class="btn-clear" onclick="clearCart()"><span class="material-icons-round">delete_outline</span></button>
-        <button class="btn-submit" id="btnCheckoutAction" onclick="handleCheckoutAction()">結帳去</button>
+        <button class="btn-submit" id="btnCheckoutSubmit" onclick="handleCheckoutSubmit()">結帳</button>
       </div>
       <div id="warnMsg" style="color:#ef5350;font-size:13px;text-align:center;margin-top:10px;display:none;font-weight:700;background:#ffebee;padding:8px;border-radius:8px;"></div>
     </div>
@@ -1982,65 +2054,58 @@ window.safeOpenCart = function() {
   openCart();
 };
 
+
+/* --- V2.9.3: Two-stage checkout (二階結帳 + 收合) --- */
+let __CHECKOUT_STAGE__ = 1;
+function setCheckoutStage(stage){
+  try{
+    const details = document.getElementById('checkoutDetails');
+    const btn = document.getElementById('btnCheckoutSubmit');
+    __CHECKOUT_STAGE__ = (stage===2 ? 2 : 1);
+
+    if(details){
+      if(__CHECKOUT_STAGE__ === 2){
+        details.classList.remove('collapsed');
+      }else{
+        details.classList.add('collapsed');
+      }
+    }
+    if(btn){
+      btn.textContent = (__CHECKOUT_STAGE__ === 2) ? '確認訂購' : '結帳';
+    }
+  }catch(e){}
+}
+function handleCheckoutSubmit(){
+  try{
+    if(__CHECKOUT_STAGE__ !== 2){
+      setCheckoutStage(2);
+      const details = document.getElementById('checkoutDetails');
+      if(details){
+        details.scrollIntoView({ behavior:'smooth', block:'nearest' });
+      }
+      const f = document.getElementById('fName');
+      if(f) setTimeout(()=>{ try{ f.focus(); }catch(e){} }, 260);
+      return;
+    }
+    submitOrder();
+  }catch(e){}
+}
+
 window.openCart = function() {
+  setCheckoutStage(1);
   document.getElementById("drawer").classList.add("open"); 
   document.getElementById("float-bar").classList.add("hidden"); 
   document.body.classList.add('modal-open');
   isCartOpen = true; 
-  try{ resetCheckoutStage(); }catch(e){} 
   history.pushState({modal: 'cart'}, null, ""); 
 };
-// --- Two-stage checkout (collapse delivery + order inputs) ---
-let __CHECKOUT_STAGE__ = 1;
-function setCheckoutStage(stage, opts){
-  try{
-    __CHECKOUT_STAGE__ = stage;
-    const fields = document.getElementById('checkoutFields');
-    const btn = document.getElementById('btnCheckoutAction');
-    const warn = document.getElementById('warnMsg');
-    if(stage === 1){
-      if(fields) fields.classList.remove('open');
-      if(btn) btn.textContent = '結帳去';
-      if(warn) warn.style.display = 'none';
-    }else{
-      if(fields) fields.classList.add('open');
-      if(btn) btn.textContent = '確認訂購';
-      // scroll into view within drawer body
-      const body = document.querySelector('#drawer-panel .dr-body');
-      if(body && fields){
-        const by = body.getBoundingClientRect().top;
-        const fy = fields.getBoundingClientRect().top;
-        const target = (fy - by) + body.scrollTop - 10;
-        try{ body.scrollTo({ top: Math.max(0, target), behavior: 'smooth' }); }catch(e){ body.scrollTop = Math.max(0, target); }
-      }
-      // focus first input (訂購人姓名) after a short delay
-      if(!(opts && opts.focus === false)){
-        setTimeout(()=>{ try{ document.getElementById('fName')?.focus(); }catch(e){} }, 320);
-      }
-    }
-  }catch(e){}
-}
-function resetCheckoutStage(){
-  try{ setCheckoutStage(1, {focus:false}); }catch(e){}
-}
-window.handleCheckoutAction = function(){
-  try{
-    if(__CHECKOUT_STAGE__ !== 2){
-      setCheckoutStage(2);
-      return;
-    }
-    // stage 2: submit
-    window.submitOrder && window.submitOrder();
-  }catch(e){}
-};
-
 
 window.closeCart = function() {
+  setCheckoutStage(1);
   document.getElementById("drawer").classList.remove("open");
   document.getElementById("float-bar").classList.remove("hidden");
   cleanupUI(); 
   isCartOpen = false;
-  try{ resetCheckoutStage(); }catch(e){}
   if(history.state && history.state.modal === 'cart') history.back();
 };
 
@@ -2998,7 +3063,7 @@ function renderSystemAnnouncement(){
     slot.style.display='block';
     slot.innerHTML = `
       <div class="sys-ann sys-ann--row">
-        <button type="button" id="starDockBtn" class="star-dock-btn hidden" title="主打星"><span class="material-icons-round">star</span></button>
+        <button type="button" id="starDockBtn" class="star-dock-btn hidden" title="主打星"><span class="material-icons-round">star</span><span class="star-dock-badge" id="starDockBadge" style="display:none">0</span></button>
         ${safe ? `<div class="sys-ann-main">${safe}</div>` : `<div class="sys-ann-main"></div>`}
         <button type="button" id="promoMapCtaBtn" class="sys-ann-cta${attnCls}"><span class="cta-icon">👉</span><span class="cta-text">查看優惠地圖 ›</span></button>
       </div>
@@ -3031,9 +3096,11 @@ try{
 /* --- V2.9.2: Star Hero (主打星) behavior --- */
 let __STAR_AUTO_PENDING__ = false;
 let __STAR_OPEN__ = false;
-
 let __STAR_CLOSING__ = false;
-let __STAR_INST__ = 0;
+let __STAR_PENDING_NAV__ = null;
+let __STAR_ATT_TIMER__ = null;
+let __STAR_SCROLL_TIMER__ = null;
+
 function starIsDismissed(){
   try{ return localStorage.getItem('ttl_star_hero_dismissed') === '1'; }catch(e){ return false; }
 }
@@ -3043,35 +3110,38 @@ function setStarDismissed(){
 function getStarProducts(){
   try{
     const list = Array.isArray(PRODUCTS) ? PRODUCTS.slice() : [];
-    const codesRaw = uiGet('star|codes', uiGet('ui|star_codes','')).trim();
-    let picks = [];
-    if(codesRaw){
-      const codes = codesRaw.split(/[\s,;\n]+/).map(s=>s.trim()).filter(Boolean);
-      const set = new Set(codes);
-      picks = list.filter(p => p && set.has(String(p.code||'').trim()));
-      // keep order as codes
-      const map = new Map(picks.map(p => [String(p.code||'').trim(), p]));
-      picks = codes.map(c => map.get(c)).filter(Boolean);
-    }else{
-      // safe fallback: first 8 visible, non-gift, non-hidden items; prefer new items
-      const vis = list.filter(p => p && !p.isGift && !p.isHidden && String(p.photo||'').trim() !== '');
-      vis.sort((a,b)=>{
-        const an = a.isNew ? 1 : 0;
-        const bn = b.isNew ? 1 : 0;
-        if(bn !== an) return bn - an;
-        // prefer non-addon category
+    const vis = list.filter(p => p && !p.isGift && !p.isHidden && String(p.photo||'').trim() !== '');
+
+    const pickNew = ()=>{
+      const news = vis.filter(p => p.isNew);
+      const base = (news.length ? news : vis).slice();
+      base.sort((a,b)=>{
         const aa = String(a.category||'').includes('加價購') ? 1 : 0;
         const bb = String(b.category||'').includes('加價購') ? 1 : 0;
         if(aa !== bb) return aa - bb;
         return (String(a.name||'') > String(b.name||'')) ? 1 : -1;
       });
-      picks = vis.slice(0,8);
+      return base.slice(0,8);
+    };
+
+    const codesRaw = uiGet('star|codes', uiGet('ui|star_codes','')).trim();
+    let picks = [];
+    if(codesRaw){
+      const codes = codesRaw.split(/[\s,;\n]+/).map(s=>s.trim()).filter(Boolean);
+      const set = new Set(codes);
+      picks = vis.filter(p => p && set.has(String(p.code||'').trim()));
+      const map = new Map(picks.map(p => [String(p.code||'').trim(), p]));
+      picks = codes.map(c => map.get(c)).filter(Boolean);
+      if(picks.length === 0) picks = pickNew();
+    }else{
+      picks = pickNew();
     }
     return picks.slice(0,8);
   }catch(e){
     return [];
   }
 }
+
 
 function getStarHeroCopy(){
   try{
@@ -3093,33 +3163,6 @@ function applyStarHeroCopy(){
     if(sEl) sEl.textContent = c.sub;
   }catch(e){}
 }
-
-
-function hardResetStarHeroOverlay(){
-  try{
-    const overlay = document.getElementById('starHeroOverlay');
-    if(!overlay) return;
-    // cancel residual animations
-    const card = overlay.querySelector('.star-hero-card');
-    if(card){
-      try{ (card.getAnimations ? card.getAnimations() : []).forEach(a=>{ try{ a.cancel(); }catch(e){} }); }catch(e){}
-      try{ card.style.opacity=''; card.style.transform=''; card.style.filter=''; }catch(e){}
-    }
-    try{ overlay.onclick = null; }catch(e){}
-    try{ overlay.classList.remove('show','fade-out'); }catch(e){}
-    try{ overlay.style.pointerEvents=''; }catch(e){}
-    try{ overlay.style.opacity=''; }catch(e){}
-    try{ overlay.style.display='none'; }catch(e){}
-    try{ overlay.setAttribute('aria-hidden','true'); }catch(e){}
-    const wrap = document.getElementById('starHeroCarousel');
-    if(wrap){
-      try{ wrap.innerHTML=''; wrap.scrollLeft = 0; }catch(e){}
-    }
-    __STAR_OPEN__ = false;
-    __STAR_CLOSING__ = false;
-  }catch(e){}
-}
-
 
 
 function _starZoneOf(p){
@@ -3197,18 +3240,28 @@ function calcStarDeal(p){
 }
 
 function buildStarHeroCarousel(){
-
   const wrap = document.getElementById('starHeroCarousel');
+  const dots = document.getElementById('starHeroDots');
   if(!wrap) return;
-  const items = getStarProducts();
+
+  const items = (getStarProducts() || []).slice(0,8);
+
+  wrap.innerHTML = '';
+  if(dots) dots.innerHTML = '';
+
   if(items.length === 0){
-    wrap.innerHTML = `<div style="padding:18px 6px;color:rgba(31,41,55,0.65);font-weight:800;">主打星清單尚未設定</div>`;
+    wrap.innerHTML = `<div style="padding:16px 6px;color:rgba(31,41,55,0.65);font-weight:800;">尚無可顯示商品</div>`;
+    updateStarDockBadge(0);
     return;
   }
-  wrap.innerHTML = '';
-  items.forEach(p=>{
+
+  updateStarDockBadge(items.length);
+
+  items.forEach((p, idx)=>{
     const div = document.createElement('div');
     div.className = 'sh-item';
+    div.dataset.idx = String(idx);
+
     const deal = calcStarDeal(p);
     const base = Number(p && p.price || 0);
     let line = '';
@@ -3221,67 +3274,111 @@ function buildStarHeroCarousel(){
     }else if(base > 0){
       line = `售價${Number(base).toLocaleString('zh-TW')}元`;
     }
+
     const img = (p.photo && String(p.photo).trim().length>5) ? String(p.photo) : '';
     div.innerHTML = `
-      ${img ? `<img class="sh-img" src="${img}" loading="lazy" onerror="this.style.display='none'">` : `<div class="sh-img" style="display:flex;align-items:center;justify-content:center;color:rgba(0,0,0,0.35);font-weight:900;">無圖片</div>`}
+      ${img ? `<img class="sh-img" src="${img}" loading="lazy" onerror="this.style.display='none'">`
+            : `<div class="sh-img" style="display:flex;align-items:center;justify-content:center;color:rgba(0,0,0,0.35);font-weight:900;">無圖片</div>`}
       <div class="sh-meta">
         <div class="sh-amt">${String(line||'').replace(/[<>]/g,'')}</div>
         <div class="sh-name">${String(p.name||'').replace(/[<>]/g,'')}</div>
       </div>
     `;
+
     div.onclick = (ev)=>{
-      ev.preventDefault();
-      ev.stopPropagation();
-      const code = String(p.code||'');
-      try{ dismissStarHero('nav', ()=>{ try{ jumpToProductByCode(code); }catch(e){} }); }catch(e){}
+      ev.preventDefault(); ev.stopPropagation();
+      try{
+        div.animate([{transform:'scale(1)'},{transform:'scale(0.975)'},{transform:'scale(1)'}], {duration: 190, easing:'cubic-bezier(.2,.85,.2,1)'});
+      }catch(e){}
+      __STAR_PENDING_NAV__ = String(p.code||'').trim();
+      dismissStarHero('nav');
     };
+
     wrap.appendChild(div);
+
+    if(dots){
+      const d = document.createElement('span');
+      d.className = 'sh-dot' + (idx===0 ? ' active' : '');
+      d.dataset.idx = String(idx);
+      d.onclick = (ev)=>{
+        ev.preventDefault(); ev.stopPropagation();
+        try{
+          const target = wrap.querySelector(`.sh-item[data-idx="${idx}"]`);
+          if(target){
+            wrap.scrollTo({ left: Math.max(0, target.offsetLeft - 2), behavior:'smooth' });
+          }
+        }catch(e){}
+      };
+      dots.appendChild(d);
+    }
   });
+
+  const updateDot = ()=>{
+    if(!dots) return;
+    const center = wrap.scrollLeft + wrap.clientWidth*0.45;
+    let best = 0, bestDist = Infinity;
+    wrap.querySelectorAll('.sh-item').forEach((el, i)=>{
+      const x = el.offsetLeft + el.clientWidth/2;
+      const d = Math.abs(x - center);
+      if(d < bestDist){ bestDist = d; best = i; }
+    });
+    dots.querySelectorAll('.sh-dot').forEach((el,i)=>{
+      el.classList.toggle('active', i===best);
+    });
+  };
+
+  const snapToNearest = ()=>{
+    const els = Array.from(wrap.querySelectorAll('.sh-item'));
+    if(els.length === 0) return;
+    const center = wrap.scrollLeft + wrap.clientWidth*0.45;
+    let bestEl = els[0], bestDist = Infinity;
+    els.forEach(el=>{
+      const x = el.offsetLeft + el.clientWidth/2;
+      const d = Math.abs(x - center);
+      if(d < bestDist){ bestDist = d; bestEl = el; }
+    });
+    try{ wrap.scrollTo({ left: Math.max(0, bestEl.offsetLeft - 2), behavior:'smooth' }); }catch(e){}
+  };
+
+  try{
+    if(wrap.__shScrollHandler){ wrap.removeEventListener('scroll', wrap.__shScrollHandler); }
+  }catch(e){}
+  wrap.__shScrollHandler = ()=>{
+    try{ updateDot(); }catch(e){}
+    try{ if(__STAR_SCROLL_TIMER__){ clearTimeout(__STAR_SCROLL_TIMER__); } }catch(e){}
+    __STAR_SCROLL_TIMER__ = setTimeout(()=>{ try{ snapToNearest(); }catch(e){} }, 110);
+  };
+  wrap.addEventListener('scroll', wrap.__shScrollHandler, { passive:true });
+
+  try{ updateDot(); }catch(e){}
 }
+
+
 function openStarHeroOverlay(isAuto=false){
   try{
+    if(__STAR_CLOSING__) return;
     if(isAuto && starIsDismissed()) return;
     if(!Array.isArray(PRODUCTS) || PRODUCTS.length===0){
       showToast('商品資料讀取中…', 'info', 2000);
       return;
     }
-
-    // If a previous close got stuck, hard reset it first
-    if(__STAR_CLOSING__){
-      try{ hardResetStarHeroOverlay(); }catch(e){}
-    }
-
     const overlay = document.getElementById('starHeroOverlay');
     if(!overlay) return;
 
-    // Mark a new instance so stale close timers won't nuke a reopened overlay
-    const inst = (++__STAR_INST__);
-    overlay.dataset.starInst = String(inst);
-
-    // Deterministic reset
-    try{ overlay.onclick = null; }catch(e){}
-    try{ overlay.classList.remove('show','fade-out'); }catch(e){}
-    try{ overlay.style.pointerEvents=''; }catch(e){}
-    try{ overlay.style.opacity=''; }catch(e){}
-    try{ overlay.style.display='none'; }catch(e){}
-    const card = overlay.querySelector('.star-hero-card');
-    if(card){
-      try{ (card.getAnimations ? card.getAnimations() : []).forEach(a=>{ try{ a.cancel(); }catch(e){} }); }catch(e){}
-      try{ card.style.opacity=''; card.style.transform=''; card.style.filter=''; }catch(e){}
-    }
+    hardResetStarHeroOverlay();
 
     applyStarHeroCopy();
     buildStarHeroCarousel();
 
-    // show (two-step to ensure transition applies)
-    overlay.style.display = 'flex';
-    overlay.offsetHeight; // reflow
-    overlay.classList.add('show');
     overlay.classList.remove('fade-out');
+    overlay.classList.add('show');
     overlay.setAttribute('aria-hidden','false');
-    overlay.style.pointerEvents = '';
     __STAR_OPEN__ = true;
-    __STAR_CLOSING__ = false;
+
+    overlay.classList.remove('entering');
+    void overlay.offsetWidth;
+    overlay.classList.add('entering');
+    setTimeout(()=>{ try{ overlay.classList.remove('entering'); }catch(e){} }, 720);
 
     overlay.onclick = (ev)=>{
       if(ev && ev.target === overlay){
@@ -3299,7 +3396,44 @@ function openStarHeroOverlay(isAuto=false){
   }catch(e){}
 }
 
-function dismissStarHero(reason, afterClose){
+function hardResetStarHeroOverlay(){
+  try{
+    const overlay = document.getElementById('starHeroOverlay');
+    if(!overlay) return;
+    overlay.style.pointerEvents = '';
+    overlay.onclick = null;
+    overlay.classList.remove('fade-out');
+    overlay.setAttribute('aria-hidden','true');
+
+    const card = overlay.querySelector('.star-hero-card');
+    if(card){
+      try{ card.getAnimations().forEach(a=>a.cancel()); }catch(e){}
+      card.style.opacity = '';
+      card.style.transform = '';
+      card.style.filter = '';
+    }
+
+    const wrap = document.getElementById('starHeroCarousel');
+    if(wrap){
+      try{ wrap.getAnimations().forEach(a=>a.cancel()); }catch(e){}
+      wrap.querySelectorAll('.sh-item').forEach(el=>{
+        try{ el.getAnimations().forEach(a=>a.cancel()); }catch(e){}
+        el.style.opacity = '';
+        el.style.transform = '';
+        el.style.filter = '';
+      });
+    }
+
+    const fly = document.querySelectorAll('.star-fly');
+    fly.forEach(el=>{ try{ el.remove(); }catch(e){} });
+
+    const dockBtn = document.getElementById('starDockBtn');
+    if(dockBtn) dockBtn.style.opacity = '';
+  }catch(e){}
+}
+
+
+function dismissStarHero(reason){
   try{
     const overlay = document.getElementById('starHeroOverlay');
     if(!overlay) return;
@@ -3307,25 +3441,23 @@ function dismissStarHero(reason, afterClose){
     if(!overlay.classList.contains('show')) return;
 
     __STAR_CLOSING__ = true;
-    const inst = String(overlay.dataset.starInst || '');
 
     const card = overlay.querySelector('.star-hero-card');
     if(card){
       try{
+        card.getAnimations().forEach(a=>a.cancel());
         card.animate([
           { transform:'translateY(0) scale(1)', opacity:1, filter:'blur(0px)' },
-          { transform:'translateY(-10px) scale(0.975)', opacity:0.0, filter:'blur(0.6px)' }
-        ], { duration: 340, easing:'cubic-bezier(.16,.88,.22,1)', fill:'forwards' });
+          { transform:'translateY(-8px) scale(0.985)', opacity:0.0, filter:'blur(0.4px)' }
+        ], { duration: 260, easing:'cubic-bezier(.2,.85,.25,1)', fill:'forwards' });
       }catch(e){}
     }
 
     overlay.classList.add('fade-out');
     overlay.style.pointerEvents = 'none';
 
-    // compute start/end
     const r = card ? card.getBoundingClientRect() : null;
 
-    // Ensure dock button exists & get its rect as target (keep invisible during flight)
     const dockBtn = document.getElementById('starDockBtn');
     let dr = null;
     if(dockBtn){
@@ -3353,69 +3485,68 @@ function dismissStarHero(reason, afterClose){
     fly.style.top  = sy + 'px';
     document.body.appendChild(fly);
 
-    // A gentle arc + spin to make it obvious and silky
     const midX = dx * 0.55;
-    const midY = dy * 0.55 - 72;
-
-    fly.style.opacity = '1';
+    const midY = dy * 0.55 - 64;
 
     let anim;
     try{
       anim = fly.animate([
-        { transform:`translate(0px, 0px) scale(1.10) rotate(-6deg)`, opacity:0.88 },
-        { transform:`translate(${midX}px, ${midY}px) scale(0.92) rotate(10deg)`, opacity:1.0 },
-        { transform:`translate(${dx}px, ${dy}px) scale(0.60) rotate(54deg)`, opacity:1.0 }
-      ], { duration: 900, easing:'cubic-bezier(.18,.86,.22,1)', fill:'forwards' });
+        { transform:`translate(0px, 0px) scale(1.06) rotate(0deg)`, opacity:0.15 },
+        { transform:`translate(${midX}px, ${midY}px) scale(0.90) rotate(14deg)`, opacity:1.0 },
+        { transform:`translate(${dx}px, ${dy}px) scale(0.62) rotate(26deg)`, opacity:1.0 }
+      ], { duration: 740, easing:'cubic-bezier(.22,.86,.24,1)', fill:'forwards' });
     }catch(e){
-      fly.style.transform = `translate(${dx}px, ${dy}px) scale(0.60)`;
+      fly.style.transform = `translate(${dx}px, ${dy}px) scale(0.62)`;
     }
 
-    let done = false;
     const finish = ()=>{
-      if(done) return;
-      done = true;
-
-      // If overlay has been reopened since this close started, do not nuke it
-      if(String(overlay.dataset.starInst || '') !== inst){
-        try{ fly.remove(); }catch(e){}
-        try{ if(dockBtn){ dockBtn.style.opacity=''; } }catch(e){}
-        __STAR_CLOSING__ = false;
-        return;
-      }
-
+      try{
+        overlay.classList.remove('show');
+        overlay.classList.remove('fade-out');
+        overlay.setAttribute('aria-hidden','true');
+        overlay.style.pointerEvents='';
+        overlay.onclick = null;
+      }catch(e){}
       try{ fly.remove(); }catch(e){}
       try{ if(dockBtn){ dockBtn.style.opacity=''; } }catch(e){}
-      try{ hardResetStarHeroOverlay(); }catch(e){}
-      try{ showStarDock(true); }catch(e){}
-      try{ setStarDismissed(); }catch(e){}
+
       __STAR_OPEN__ = false;
       __STAR_CLOSING__ = false;
 
-      if(typeof afterClose === 'function'){
-        setTimeout(()=>{ try{ afterClose(); }catch(e){} }, 60);
+      try{ showStarDock(true); }catch(e){}
+      try{ setStarDismissed(); }catch(e){}
+
+      if(__STAR_PENDING_NAV__){
+        const code = __STAR_PENDING_NAV__;
+        __STAR_PENDING_NAV__ = null;
+        try{ jumpToProductByCode(String(code||'')); }catch(e){}
       }
     };
 
-    // Hard guard: always finish even if animation stalls
-    const guard = setTimeout(finish, 1250);
-
     if(anim && anim.finished){
-      anim.finished.then(()=>{ try{ clearTimeout(guard); }catch(e){}; setTimeout(finish, 40); })
-                 .catch(()=>{ try{ clearTimeout(guard); }catch(e){}; setTimeout(finish, 40); });
+      anim.finished.then(()=>{ finish(); }).catch(()=>{ finish(); });
+    }else{
+      setTimeout(()=>{ finish(); }, 780);
     }
   }catch(e){
-    try{ __STAR_CLOSING__ = false; }catch(_e){}
-    try{ hardResetStarHeroOverlay(); }catch(_e){}
+    try{ __STAR_OPEN__ = false; __STAR_CLOSING__ = false; }catch(ex){}
   }
 }
+
 
 function showStarDock(show){
   try{
     const btn = document.getElementById('starDockBtn');
     if(!btn) return;
+
+    try{ if(__STAR_ATT_TIMER__){ clearTimeout(__STAR_ATT_TIMER__); __STAR_ATT_TIMER__ = null; } }catch(e){}
+
     if(show){
       btn.classList.remove('hidden');
-      btn.classList.add('attn');
+      btn.classList.remove('attn');
+      __STAR_ATT_TIMER__ = setTimeout(()=>{ 
+        try{ if(!__STAR_OPEN__ && !__STAR_CLOSING__) btn.classList.add('attn'); }catch(e){} 
+      }, 1200);
       btn.onclick = (ev)=>{ ev.preventDefault(); ev.stopPropagation(); openStarHeroOverlay(false); };
     }else{
       btn.classList.add('hidden');
@@ -3423,6 +3554,21 @@ function showStarDock(show){
     }
   }catch(e){}
 }
+
+function updateStarDockBadge(n){
+  try{
+    const b = document.getElementById('starDockBadge');
+    if(!b) return;
+    const v = Math.max(0, Number(n||0));
+    if(v > 0){
+      b.textContent = String(v);
+      b.style.display = 'flex';
+    }else{
+      b.style.display = 'none';
+    }
+  }catch(e){}
+}
+
 function initStarHero(){
   try{
     // If previously dismissed, show dock immediately
@@ -3680,14 +3826,9 @@ const groupCode = String(pick("group_code")||"").trim();
       };
       if(p.code) PRODUCT_MAP.set(p.code, p);
       
-      // Collect Multiple Images for Gift Map
+      // Gift Map Image (single source): use only "Photos url" to align with site-wide image logic
       if(p.photo && p.photo.length > 5) {
-          let imgs = [p.photo];
-          let p2 = pick("Photos url 2");
-          let p3 = pick("Photos url 3");
-          if(p2 && p2.length > 5) imgs.push(p2);
-          if(p3 && p3.length > 5) imgs.push(p3);
-          GIFT_MAP.set(p.code, imgs); 
+          GIFT_MAP.set(p.code, [p.photo]);
       }
       return p;
     }).filter(x => x);
@@ -3780,10 +3921,6 @@ if (gText) {
       const url = pick("photos url");
       if(code && url) {
           let imgs = [url];
-          let u2 = pick("Photos url 2");
-          let u3 = pick("Photos url 3");
-          if(u2) imgs.push(u2);
-          if(u3) imgs.push(u3);
           GIFT_MAP.set(code, imgs);
       }
   });
