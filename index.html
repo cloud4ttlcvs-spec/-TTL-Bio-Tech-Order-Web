@@ -2785,13 +2785,18 @@ try{
       `;
       item.onclick = () => {
         const id = item.getAttribute('data-target');
+        // Close first (restore scroll), then jump
+        try{ closePromoMap({skipHistory:true}); }catch(e){}
         if(id){
           const target = document.getElementById(id);
           if(target){
-            try{ target.scrollIntoView({ behavior:'smooth', block:'start' }); }catch(e){}
+            requestAnimationFrame(()=>{
+              try{ target.scrollIntoView({ behavior:'smooth', block:'start' }); }catch(e){}
+            });
           }
         }
-        closePromoMap();
+        // Clear history entry if present
+        try{ if(history.state && history.state.modal === 'promoMap'){ history.back(); } }catch(e){}
       };
       listEl.appendChild(item);
     });
@@ -3101,6 +3106,9 @@ let __STAR_PENDING_NAV__ = null;
 let __STAR_ATT_TIMER__ = null;
 let __STAR_SCROLL_TIMER__ = null;
 
+
+let __STAR_CLOSE_WATCHDOG__ = null;
+let __STAR_REOPEN_PENDING__ = false;
 function starIsDismissed(){
   try{ return localStorage.getItem('ttl_star_hero_dismissed') === '1'; }catch(e){ return false; }
 }
@@ -3400,9 +3408,14 @@ function hardResetStarHeroOverlay(){
   try{
     const overlay = document.getElementById('starHeroOverlay');
     if(!overlay) return;
+
+    // stop any in-flight close watchdog
+    try{ if(__STAR_CLOSE_WATCHDOG__){ clearTimeout(__STAR_CLOSE_WATCHDOG__); __STAR_CLOSE_WATCHDOG__ = null; } }catch(e){}
+
+    // force a clean visual baseline
     overlay.style.pointerEvents = '';
     overlay.onclick = null;
-    overlay.classList.remove('fade-out');
+    overlay.classList.remove('show','fade-out','entering');
     overlay.setAttribute('aria-hidden','true');
 
     const card = overlay.querySelector('.star-hero-card');
@@ -3422,14 +3435,58 @@ function hardResetStarHeroOverlay(){
         el.style.transform = '';
         el.style.filter = '';
       });
+      // remove old scroll handler to avoid duplicates
+      try{ if(wrap.__shScrollHandler) wrap.removeEventListener('scroll', wrap.__shScrollHandler); }catch(e){}
+      wrap.__shScrollHandler = null;
     }
 
-    const fly = document.querySelectorAll('.star-fly');
-    fly.forEach(el=>{ try{ el.remove(); }catch(e){} });
+    // remove any leftover flying stars
+    try{ document.querySelectorAll('.star-fly').forEach(el=>el.remove()); }catch(e){}
 
     const dockBtn = document.getElementById('starDockBtn');
     if(dockBtn) dockBtn.style.opacity = '';
+
+    // if we were stuck in closing state, unlock it
+    __STAR_CLOSING__ = false;
+    __STAR_OPEN__ = false;
   }catch(e){}
+}
+
+
+function _finalizeStarHeroClose(){
+  try{ if(__STAR_CLOSE_WATCHDOG__){ clearTimeout(__STAR_CLOSE_WATCHDOG__); __STAR_CLOSE_WATCHDOG__ = null; } }catch(e){}
+
+  try{
+    const overlay = document.getElementById('starHeroOverlay');
+    if(overlay){
+      overlay.classList.remove('show','fade-out','entering');
+      overlay.setAttribute('aria-hidden','true');
+      overlay.style.pointerEvents='';
+      overlay.onclick = null;
+    }
+  }catch(e){}
+
+  try{ document.querySelectorAll('.star-fly').forEach(el=>el.remove()); }catch(e){}
+
+  __STAR_OPEN__ = false;
+  __STAR_CLOSING__ = false;
+
+  try{ showStarDock(true); }catch(e){}
+  try{ setStarDismissed(); }catch(e){}
+
+  // If user clicked the star while we were closing, reopen smoothly
+  if(__STAR_REOPEN_PENDING__){
+    __STAR_REOPEN_PENDING__ = false;
+    setTimeout(()=>{ try{ openStarHeroOverlay(false); }catch(e){} }, 80);
+    return;
+  }
+
+  // Post-close navigation
+  if(__STAR_PENDING_NAV__){
+    const code = __STAR_PENDING_NAV__;
+    __STAR_PENDING_NAV__ = null;
+    try{ jumpToProductByCode(String(code||'')); }catch(e){}
+  }
 }
 
 
@@ -3500,28 +3557,20 @@ function dismissStarHero(reason){
     }
 
     const finish = ()=>{
-      try{
-        overlay.classList.remove('show');
-        overlay.classList.remove('fade-out');
-        overlay.setAttribute('aria-hidden','true');
-        overlay.style.pointerEvents='';
-        overlay.onclick = null;
-      }catch(e){}
-      try{ fly.remove(); }catch(e){}
-      try{ if(dockBtn){ dockBtn.style.opacity=''; } }catch(e){}
-
-      __STAR_OPEN__ = false;
-      __STAR_CLOSING__ = false;
-
-      try{ showStarDock(true); }catch(e){}
-      try{ setStarDismissed(); }catch(e){}
-
-      if(__STAR_PENDING_NAV__){
-        const code = __STAR_PENDING_NAV__;
-        __STAR_PENDING_NAV__ = null;
-        try{ jumpToProductByCode(String(code||'')); }catch(e){}
+      try{ _finalizeStarHeroClose(); }catch(e){
+        try{ __STAR_OPEN__ = false; __STAR_CLOSING__ = false; }catch(ex){}
       }
     };
+
+    // Watchdog: if animation promise never resolves (rare), force-cleanup to avoid blur residue.
+    try{ if(__STAR_CLOSE_WATCHDOG__){ clearTimeout(__STAR_CLOSE_WATCHDOG__); } }catch(e){}
+    __STAR_CLOSE_WATCHDOG__ = setTimeout(()=>{
+      try{
+        const ov = document.getElementById('starHeroOverlay');
+        if(ov && ov.classList.contains('show')) finish();
+      }catch(e){}
+    }, 1200);
+
 
     if(anim && anim.finished){
       anim.finished.then(()=>{ finish(); }).catch(()=>{ finish(); });
@@ -3547,7 +3596,7 @@ function showStarDock(show){
       __STAR_ATT_TIMER__ = setTimeout(()=>{ 
         try{ if(!__STAR_OPEN__ && !__STAR_CLOSING__) btn.classList.add('attn'); }catch(e){} 
       }, 1200);
-      btn.onclick = (ev)=>{ ev.preventDefault(); ev.stopPropagation(); openStarHeroOverlay(false); };
+      btn.onclick = (ev)=>{ ev.preventDefault(); ev.stopPropagation(); if(__STAR_CLOSING__){ __STAR_REOPEN_PENDING__ = true; return; } openStarHeroOverlay(false); };
     }else{
       btn.classList.add('hidden');
       btn.classList.remove('attn');
