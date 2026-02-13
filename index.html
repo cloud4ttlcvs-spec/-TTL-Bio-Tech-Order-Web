@@ -1026,6 +1026,11 @@ body.drawer-open { overflow:hidden; }
   border-color: rgba(216,27,96,0.22);
   color:#ad1457;
 }
+.pm-scope-btn[data-scope="series"].active{
+  background: rgba(67,160,71,0.12);
+  border-color: rgba(67,160,71,0.22);
+  color:#2e7d32;
+}
 .pm-scope-btn:active{ transform: translateY(1px); }
 
 /* 贈品門檻（全區/美容）視覺區隔：徽章 + 摘要 */
@@ -1058,17 +1063,24 @@ body.drawer-open { overflow:hidden; }
   border-color: rgba(216,27,96,0.20);
   color:#ad1457;
 }
+.pm-badge-series{
+  background: rgba(67,160,71,0.12);
+  border-color: rgba(67,160,71,0.22);
+  color:#2e7d32;
+}
 .pm-gh-text{ display:flex; flex-direction:column; gap:2px; min-width:0; }
 .pm-gh-title{ font-weight: 900; font-size: 13px; color:#263238; line-height:1.15; }
 .pm-gh-sub{ font-weight: 700; font-size: 11px; color:#607d8b; line-height:1.2; }
 
 #promoMapPaneGifts.scope-all .pm-gift-header{ background: rgba(255,243,224,0.70); }
 #promoMapPaneGifts.scope-beauty .pm-gift-header{ background: rgba(252,228,236,0.70); }
+#promoMapPaneGifts.scope-series .pm-gift-header{ background: rgba(232,245,233,0.78); }
 
 /* 贈品門檻清單卡：色帶＋標籤配色 */
 .pm-gift-item{ position: relative; overflow: hidden; }
 .pm-gift-item.pm-gift-all{ border-left: 4px solid rgba(230,81,0,0.55); }
 .pm-gift-item.pm-gift-beauty{ border-left: 4px solid rgba(216,27,96,0.45); }
+.pm-gift-item.pm-gift-series{ border-left: 4px solid rgba(46,125,50,0.38); }
 .pm-gift-item.pm-gift-all .pm-gift-amt{
   background: rgba(230,81,0,0.10);
   border-color: rgba(230,81,0,0.18);
@@ -1079,6 +1091,12 @@ body.drawer-open { overflow:hidden; }
   border-color: rgba(216,27,96,0.18);
   color:#ad1457;
 }
+.pm-gift-item.pm-gift-series .pm-gift-amt{
+  background: rgba(67,160,71,0.10);
+  border-color: rgba(67,160,71,0.18);
+  color:#2e7d32;
+}
+
 
 .pm-gift-list{ display:flex; flex-direction:column; gap:10px; }
 .pm-gift-item{
@@ -1115,6 +1133,8 @@ body.drawer-open { overflow:hidden; }
   line-height: 1.25;
   word-break: break-word;
 }
+
+.pm-gift-note{ font-weight: 800; font-size: 11px; color:#607d8b; line-height:1.2; }
 
 .pm-empty{
   padding: 12px 12px;
@@ -1206,6 +1226,29 @@ body.cfg-error .btn-bundle{
 /* --- V2.9.2: Star Hero (主打星) overlay + announcement dock --- */
 /* Star pulse highlight */
 .p-card.star-pulse{ outline: 2px solid rgba(255,143,0,0.55); box-shadow: 0 18px 40px rgba(255,143,0,0.18); }
+/* Navigation breathe highlight (source-colored) */
+.p-card.nav-breathe{ position: relative; }
+.p-card.nav-breathe::after{
+  content:"";
+  position:absolute;
+  inset:0;
+  border-radius: inherit;
+  pointer-events:none;
+  background: rgba(var(--nav-breathe-rgb,255,143,0),0.055);
+  box-shadow: inset 0 0 0 1px rgba(var(--nav-breathe-rgb,255,143,0),0.16),
+              0 18px 34px rgba(var(--nav-breathe-rgb,255,143,0),0.10);
+  opacity:0;
+  transform: scale(0.998);
+  animation: navBreathe 3.2s ease-in-out 0s 2;
+}
+@keyframes navBreathe{
+  0%{ opacity:0; transform: scale(0.998); }
+  45%{ opacity:1; transform: scale(1); }
+  100%{ opacity:0; transform: scale(0.999); }
+}
+@media (prefers-reduced-motion: reduce){
+  .p-card.nav-breathe::after{ animation:none; opacity:1; }
+}
 
 .star-dock-btn{
   display:inline-flex;
@@ -1347,14 +1390,17 @@ body.cfg-error .btn-bundle{
 }
 
 .sh-carousel{
+  --sh-card-w: 184px;
+  --sh-side-pad: max(14px, calc((100% - var(--sh-card-w)) / 2));
   margin-top: 12px;
   display:flex;
   gap: 10px;
   overflow-x:auto;
-  padding: 2px 14px 12px 2px;
-  scroll-padding-left: 2px;
-  scroll-padding-right: 14px;
+  padding: 2px var(--sh-side-pad) 12px var(--sh-side-pad);
+  scroll-padding-left: var(--sh-side-pad);
+  scroll-padding-right: var(--sh-side-pad);
   scroll-snap-type: x mandatory;
+  scroll-snap-stop: always;
   -webkit-overflow-scrolling: touch;
 }
 .sh-carousel::-webkit-scrollbar{ height: 8px; }
@@ -1387,7 +1433,7 @@ body.cfg-error .btn-bundle{
 
 .sh-item{
   flex: 0 0 184px;
-  scroll-snap-align: start;
+  scroll-snap-align: center;
   border-radius: 18px;
   border: 1px solid rgba(0,0,0,0.08);
   background: rgba(255,255,255,0.98);
@@ -1703,7 +1749,7 @@ body.cfg-error .btn-bundle{
 
 <div id="giftModal" class="modal">
   <div class="m-box">
-    <div class="m-head" style="margin-bottom:20px">🎁 滿額贈達標清單</div>
+    <div class="m-head" style="margin-bottom:20px">全站獲得贈品</div>
     <div class="gift-list" id="giftListGrid"></div>
     <button class="m-btn" style="background:#f5f5f5;color:#546e7a;margin-top:20px;flex-shrink:0" onclick="closeGiftList()">關閉</button>
   </div>
@@ -2176,7 +2222,16 @@ window.openGiftList = function() {
         seriesRules.forEach(g => {
             const prefixes = splitPrefixes(g.prefix);
             const qty = prefixes.length ? sumQtyByPrefixes(CART, prefixes) : 0;
-            const reached = qty > 0;
+            let reached = false;
+        try{
+          const thr = Number(g.amt);
+          if(Number.isFinite(thr) && thr > 0){
+            const times = g.mult ? Math.floor(qty / thr) : (qty >= thr ? 1 : 0);
+            reached = (times > 0);
+          } else {
+            reached = qty > 0;
+          }
+        }catch(e){ reached = (qty > 0); }
             grid.appendChild(createSeriesGiftItem(g, reached, qty));
         });
     }
@@ -2870,14 +2925,73 @@ function buildPromoGiftList(scope){
     const listEl = document.getElementById('promoGiftList');
     if(!listEl) return;
     listEl.innerHTML = '';
-    const gifts = (RULES && Array.isArray(RULES.spend)) ? RULES.spend.filter(r => r && r.scope === scope).sort((a,b)=> (a.amt||0)-(b.amt||0)) : [];
+
+    const sc = String(scope||'all');
+
+    // Series gift rules (explain-only)
+    if(sc === 'series'){
+      const rules = (RULES && Array.isArray(RULES.series_gift)) ? RULES.series_gift.filter(r => r && r.gift) : [];
+      rules.sort((a,b)=>{
+        const pa = String(a.prefix||'');
+        const pb = String(b.prefix||'');
+        if(pa !== pb) return pa.localeCompare(pb, 'zh-Hant');
+        return (Number(a.amt)||0) - (Number(b.amt)||0);
+      });
+
+      if(!rules.length){
+        listEl.innerHTML = '<div class="pm-empty">目前沒有可顯示的系列搭贈規則</div>';
+        return;
+      }
+
+      rules.forEach(g => {
+        const item = document.createElement('div');
+        item.className = 'pm-gift-item pm-gift-series';
+
+        const prefixes = (typeof splitPrefixes === 'function') ? splitPrefixes(g.prefix) : [String(g.prefix||'')];
+        const prefixLabel = prefixes.filter(Boolean).join('、');
+
+        const thr = Number(g.amt);
+        const unit = (typeof seriesGiftUnit === 'function') ? seriesGiftUnit(prefixLabel) : '件';
+        const giftQty = Number(g.qty)||0;
+
+        let ruleText = '';
+        if(Number.isFinite(thr) && thr > 0){
+          ruleText = `每 ${Math.round(thr)} ${unit}送 ${giftQty} 個`;
+        }else{
+          // threshold empty => treat as "每 1 單位送"
+          ruleText = `每 1 ${unit}送 ${giftQty} 個`;
+        }
+
+        const gName = pmFormatGiftName(g.gift);
+        let imgHtml = '';
+        try{ imgHtml = renderGiftImages(g.gift) || ''; }catch(e){}
+        if(!imgHtml) imgHtml = '<div class="g-thumb" style="display:flex;align-items:center;justify-content:center;font-size:16px">🎁</div>';
+
+        item.innerHTML = `
+          <div class="pm-gift-row">
+            <div class="pm-gift-media">${imgHtml}</div>
+            <div class="pm-gift-info">
+              <div class="pm-gift-amt">${ruleText}</div>
+              <div class="pm-gift-name">${String(gName||'').replace(/[<>]/g,'')}</div>
+              ${prefixLabel ? `<div class="pm-gift-note">適用系列：${String(prefixLabel).replace(/[<>]/g,'')}</div>` : ''}
+            </div>
+          </div>
+        `;
+        listEl.appendChild(item);
+      });
+      return;
+    }
+
+    // Spend thresholds (all / beauty)
+    const gifts = (RULES && Array.isArray(RULES.spend)) ? RULES.spend.filter(r => r && r.scope === sc).sort((a,b)=> (a.amt||0)-(b.amt||0)) : [];
     if(!gifts.length){
       listEl.innerHTML = '<div class="pm-empty">目前沒有可顯示的贈品門檻</div>';
       return;
     }
+
     gifts.forEach(g => {
       const item = document.createElement('div');
-      item.className = `pm-gift-item ${scope === 'zone_prefix' ? 'pm-gift-beauty' : 'pm-gift-all'}`;
+      item.className = `pm-gift-item ${sc === 'zone_prefix' ? 'pm-gift-beauty' : 'pm-gift-all'}`;
       const amt = Number(g.amt||0);
       const gName = pmFormatGiftName(g.gift);
       let imgHtml = '';
@@ -2903,20 +3017,43 @@ function updatePromoGiftHeader(sc){
     const header = document.getElementById('pmGiftHeader');
     if(!header) return;
 
-    const isBeauty = (sc === 'zone_prefix');
-    header.classList.toggle('pm-gh-all', !isBeauty);
+    const mode = String(sc||'all');
+    const isBeauty = (mode === 'zone_prefix');
+    const isSeries = (mode === 'series');
+
+    header.classList.toggle('pm-gh-all', mode === 'all');
     header.classList.toggle('pm-gh-beauty', isBeauty);
+    header.classList.toggle('pm-gh-series', isSeries);
 
     const badge = header.querySelector('.pm-badge');
     const title = header.querySelector('.pm-gh-title');
     const sub = header.querySelector('.pm-gh-sub');
 
+    if(isSeries){
+      if(badge){
+        badge.classList.remove('pm-badge-all','pm-badge-beauty');
+        badge.classList.add('pm-badge-series');
+        badge.textContent = 'SERIES';
+      }
+      if(title) title.textContent = '系列贈品';
+      if(sub) sub.textContent = '依系列搭贈條件';
+      return;
+    }
+
     if(isBeauty){
-      if(badge){ badge.classList.remove('pm-badge-all'); badge.classList.add('pm-badge-beauty'); badge.textContent = 'BEAUTY'; }
+      if(badge){
+        badge.classList.remove('pm-badge-all','pm-badge-series');
+        badge.classList.add('pm-badge-beauty');
+        badge.textContent = 'BEAUTY';
+      }
       if(title) title.textContent = '美容區滿額贈';
       if(sub) sub.textContent = '僅美容區商品累計';
     }else{
-      if(badge){ badge.classList.remove('pm-badge-beauty'); badge.classList.add('pm-badge-all'); badge.textContent = 'ALL'; }
+      if(badge){
+        badge.classList.remove('pm-badge-beauty','pm-badge-series');
+        badge.classList.add('pm-badge-all');
+        badge.textContent = 'ALL';
+      }
       if(title) title.textContent = '全區滿額贈';
       if(sub) sub.textContent = '全站商品合併計算';
     }
@@ -2925,7 +3062,9 @@ function updatePromoGiftHeader(sc){
 
 function setPromoGiftScope(scope, opts){
   const o = opts || {};
-  const sc = (scope === 'zone_prefix') ? 'zone_prefix' : 'all';
+  const raw = String(scope||'');
+  const sc = (raw === 'zone_prefix' || raw === 'series' || raw === 'all') ? raw : 'all';
+
   const btns = Array.from(document.querySelectorAll('#promoMapPaneGifts .pm-scope-btn'));
   btns.forEach(b=>{
     const isOn = (String(b.getAttribute('data-scope')) === sc);
@@ -2934,17 +3073,19 @@ function setPromoGiftScope(scope, opts){
   });
   if(!o.skipSave) pmLsSet('ttl_pm_gift_scope', sc);
 
-  // 視覺區隔（全區 / 美容）
+  // Visual split (all / beauty / series)
   try{
     const pane = document.getElementById('promoMapPaneGifts');
     const list = document.getElementById('promoGiftList');
     if(pane){
       pane.classList.toggle('scope-all', sc === 'all');
       pane.classList.toggle('scope-beauty', sc === 'zone_prefix');
+      pane.classList.toggle('scope-series', sc === 'series');
     }
     if(list){
       list.classList.toggle('scope-all', sc === 'all');
       list.classList.toggle('scope-beauty', sc === 'zone_prefix');
+      list.classList.toggle('scope-series', sc === 'series');
     }
   }catch(e){}
 
@@ -2968,7 +3109,7 @@ function setPromoMapTab(tab, opts){
   if(t==='nav'){
     buildPromoMapList();
   }else{
-    const scope = pmLsGet('ttl_pm_gift_scope', 'all');
+    const scope = pmLsGet('ttl_pm_gift_scope', 'zone_prefix');
     setPromoGiftScope(scope, {skipSave:true});
   }
 }
@@ -3433,7 +3574,8 @@ function buildStarHeroCarousel(){
         try{
           const target = wrap.querySelector(`.sh-item[data-idx="${idx}"]`);
           if(target){
-            wrap.scrollTo({ left: Math.max(0, target.offsetLeft - 2), behavior:'smooth' });
+            const left = target.offsetLeft - (wrap.clientWidth - target.clientWidth)/2;
+            wrap.scrollTo({ left: Math.max(0, left), behavior:'smooth' });
           }
         }catch(e){}
       };
@@ -3443,7 +3585,7 @@ function buildStarHeroCarousel(){
 
   const updateDot = ()=>{
     if(!dots) return;
-    const center = wrap.scrollLeft + wrap.clientWidth*0.45;
+    const center = wrap.scrollLeft + wrap.clientWidth*0.5;
     let best = 0, bestDist = Infinity;
     wrap.querySelectorAll('.sh-item').forEach((el, i)=>{
       const x = el.offsetLeft + el.clientWidth/2;
@@ -3459,14 +3601,15 @@ function buildStarHeroCarousel(){
   const snapToNearest = ()=>{
     const els = Array.from(wrap.querySelectorAll('.sh-item'));
     if(els.length === 0) return;
-    const center = wrap.scrollLeft + wrap.clientWidth*0.45;
+    const center = wrap.scrollLeft + wrap.clientWidth*0.5;
     let bestEl = els[0], bestDist = Infinity;
     els.forEach(el=>{
       const x = el.offsetLeft + el.clientWidth/2;
       const d = Math.abs(x - center);
       if(d < bestDist){ bestDist = d; bestEl = el; }
     });
-    try{ wrap.scrollTo({ left: Math.max(0, bestEl.offsetLeft - 2), behavior:'smooth' }); }catch(e){}
+    try{ const left = bestEl.offsetLeft - (wrap.clientWidth - bestEl.clientWidth)/2;
+    wrap.scrollTo({ left: Math.max(0, left), behavior:'smooth' }); }catch(e){}
   };
 
   try{
@@ -3855,6 +3998,27 @@ function requestStarHeroAutoShow(){
     openStarHeroOverlay(true);
   }catch(e){}
 }
+function applyNavBreathe(el, source){
+  try{
+    if(!el) return;
+    let rgb = '255,143,0';
+    if(source === 'star') rgb = '255,193,7';
+    if(source === 'rank') rgb = '216,27,96';
+    el.style.setProperty('--nav-breathe-rgb', rgb);
+
+    // restart animation reliably
+    try{ el.classList.remove('nav-breathe'); }catch(e){}
+    // force reflow
+    void el.offsetHeight;
+    el.classList.add('nav-breathe');
+
+    try{ if(el.__navBreatheTimer) clearTimeout(el.__navBreatheTimer); }catch(e){}
+    el.__navBreatheTimer = setTimeout(()=>{
+      try{ el.classList.remove('nav-breathe'); }catch(e){}
+    }, 6800);
+  }catch(e){}
+}
+
 function jumpToProductByCode(code){
   try{
     const c = String(code||'').trim();
@@ -3864,9 +4028,7 @@ function jumpToProductByCode(code){
     const el = document.getElementById(`p-${p._id}`);
     if(el){
       el.scrollIntoView({behavior:'smooth', block:'start'});
-      // subtle pulse
-      el.classList.add('star-pulse');
-      setTimeout(()=>{ try{ el.classList.remove('star-pulse'); }catch(e){} }, 1200);
+      applyNavBreathe(el, 'star');
       const _tpl = uiGet('star|nav_toast', '已帶你到主打商品：{name} ✨');
       const _msg = _formatStarSubtitle(_tpl, p.name || p.product_name || p.name_zh || '');
       showToast(_msg, 'info', 1600);
@@ -3983,7 +4145,7 @@ function animateGiftFly(giftName) {
   setTimeout(() => fly.remove(), 1600);
 }
 
-function jumpToProduct(pid) {
+function jumpToProduct(pid, source){
   const searchInp = document.getElementById("searchInp");
   if(searchInp.value) {
     searchInp.value = "";
@@ -3994,18 +4156,22 @@ function jumpToProduct(pid) {
     const el = document.getElementById(`p-${pid}`);
     if(el) {
       el.scrollIntoView({ behavior: "smooth", block: "center" });
-      el.classList.add("flash-highlight");
-      setTimeout(()=>el.classList.remove("flash-highlight"), 1300);
+      if(source === 'rank'){
+        applyNavBreathe(el, 'rank');
+      }else{
+        el.classList.add("flash-highlight");
+        setTimeout(()=>el.classList.remove("flash-highlight"), 1300);
+      }
     }
   }, 100);
 }
 
-function jumpToGroupByCode(groupCode){
+function jumpToGroupByCode(groupCode, source){
   const gc = String(groupCode||'').trim();
   if(!gc) return false;
   const g = PRODUCT_MAP.get(gc);
   if(g && !g.is_hidden){
-    jumpToProduct(g._id);
+    jumpToProduct(g._id, source);
     return true;
   }
   try{ showPromoHint(`找不到商品組：${gc}`); }catch(e){}
@@ -4014,10 +4180,10 @@ function jumpToGroupByCode(groupCode){
 function handleRankingClick(p){
   try{
     if(p && p.is_hidden && p.group_code){
-      if(jumpToGroupByCode(p.group_code)) return;
+      if(jumpToGroupByCode(p.group_code, 'rank')) return;
     }
   }catch(e){}
-  jumpToProduct(p._id);
+  jumpToProduct(p._id, 'rank');
 }
 
 
@@ -4324,23 +4490,75 @@ function renderUI() {
   setupScrollSpy();
 }
 
+function __mainScrollOffset(){
+  try{
+    const header = document.getElementById('header');
+    const headerH = header ? header.getBoundingClientRect().height : 110;
+    // Align with Promo Map jump offset (less "low" than scroll-margin-top)
+    const offset = Math.min(140, Math.max(78, (headerH || 110) - 18));
+    return offset;
+  }catch(e){ return 110; }
+}
+
+function __mainScrollToId(id, behavior){
+  try{
+    const el = document.getElementById(id);
+    if(!el) return false;
+    const offset = __mainScrollOffset();
+    const y = el.getBoundingClientRect().top + window.pageYOffset - offset;
+    window.scrollTo({ top: Math.max(0, y), behavior: behavior || 'smooth' });
+    return true;
+  }catch(e){ return false; }
+}
+
 function scrollToSection(id) {
-  const el = document.getElementById(id);
-  if(el) {
-    if(document.getElementById("searchInp").value) {
-        document.getElementById("searchInp").value = "";
-        document.getElementById("clearSearch").style.display = 'none'; 
-        renderList();
-        setTimeout(() => {
-             const el2 = document.getElementById(id);
-             if(el2) el2.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }, 50);
-    } else {
-        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
-  } else if (id === 'cat-all') {
-      window.scrollTo({ top:0, behavior:'smooth' });
+  const tid = String(id||'').trim();
+  if(!tid){ return; }
+
+  // Special: top
+  if (tid === 'cat-all') {
+    window.scrollTo({ top:0, behavior:'smooth' });
+    return;
   }
+
+  const go = () => {
+    if(__mainScrollToId(tid, 'smooth')){
+      // keep top pills state in sync
+      try{
+        document.querySelectorAll('.cat-pill').forEach(p => {
+          p.classList.toggle('active', p.dataset.target === tid);
+        });
+        const activePill = document.querySelector('.cat-pill.active');
+        if(activePill) activePill.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+      }catch(e){}
+
+      // subtle flash on section title
+      try{
+        const sec = document.getElementById(tid);
+        const title = sec ? sec.querySelector('.cat-section-title') : null;
+        if(title){
+          title.classList.add('cat-flash');
+          setTimeout(()=>title.classList.remove('cat-flash'), 900);
+        }
+      }catch(e){}
+    }
+  };
+
+  // If searching, clear and re-render, then jump
+  try{
+    const searchInp = document.getElementById('searchInp');
+    if(searchInp && searchInp.value){
+      searchInp.value = '';
+      const clr = document.getElementById('clearSearch');
+      if(clr) clr.style.display = 'none';
+      renderList();
+      setTimeout(go, 120);
+      return;
+    }
+  }catch(e){}
+
+  // Normal jump
+  go();
 }
 
 function setupScrollSpy() {
@@ -5422,6 +5640,7 @@ return showPromoHint('本分類目前無優惠訊息');
       <div class="pm-scope" role="tablist" aria-label="贈品範圍">
         <button type="button" class="pm-scope-btn active" data-scope="all" role="tab" aria-selected="true">全區</button>
         <button type="button" class="pm-scope-btn" data-scope="zone_prefix" role="tab" aria-selected="false">美容</button>
+        <button type="button" class="pm-scope-btn" data-scope="series" role="tab" aria-selected="false">系列</button>
       </div>
       <div id="promoGiftList" class="pm-gift-list"></div>
     </div>
