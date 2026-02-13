@@ -68,6 +68,31 @@ body.modal-open { overflow: hidden; height: 100vh; position: fixed; width: 100%;
 /* --- LAYOUT --- */
 main { padding: 12px; max-width: 900px; margin: 0 auto; margin-top: 10px; }
 .grid-layout { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; align-content: start; width: 100%; }
+
+/* --- Global: Two-stage checkout collapse (desktop + mobile) --- */
+.checkout-details{
+  margin-top: 12px;
+  overflow: hidden;
+  transform-origin: top;
+  transition: max-height .38s cubic-bezier(.2,.9,.2,1), opacity .22s ease, transform .38s cubic-bezier(.2,.9,.2,1);
+  max-height: 720px;
+}
+.checkout-details.collapsed{
+  max-height: 0px;
+  opacity: 0;
+  transform: translateY(-6px);
+  pointer-events: none;
+  margin-top: 0px;
+}
+.checkout-details:not(.collapsed){
+  opacity: 1;
+  transform: translateY(0px);
+  pointer-events: auto;
+}
+
+/* Keep space tidy when collapsed */
+.checkout-details.collapsed + .btn-bar{ margin-top: 12px; }
+
 @media (max-width: 480px) { .grid-layout { grid-template-columns: repeat(2, 1fr) !important; gap: 10px; } }
 
 /* Ranking UI */
@@ -1657,7 +1682,7 @@ body.cfg-error .btn-bundle{
     </div>
       <div class="btn-bar">
         <button class="btn-clear" onclick="clearCart()"><span class="material-icons-round">delete_outline</span></button>
-        <button class="btn-submit" id="btnCheckoutSubmit" onclick="handleCheckoutSubmit()">結帳</button>
+        <button class="btn-submit" id="btnCheckoutSubmit" onclick="handleCheckoutSubmit()">結帳去</button>
       </div>
       <div id="warnMsg" style="color:#ef5350;font-size:13px;text-align:center;margin-top:10px;display:none;font-weight:700;background:#ffebee;padding:8px;border-radius:8px;"></div>
     </div>
@@ -2071,7 +2096,7 @@ function setCheckoutStage(stage){
       }
     }
     if(btn){
-      btn.textContent = (__CHECKOUT_STAGE__ === 2) ? '確認訂購' : '結帳';
+      btn.textContent = (__CHECKOUT_STAGE__ === 2) ? '確認訂購' : '結帳去';
     }
   }catch(e){}
 }
@@ -2729,11 +2754,22 @@ function pmScrollToTargetId(id){
     if(!tid) return;
     const target = document.getElementById(tid);
     if(!target) return;
-    requestAnimationFrame(()=>{
-      try{ target.scrollIntoView({ behavior:'smooth', block:'start' }); }catch(e){}
-      // Offset for sticky headers / top padding (best-effort)
-      setTimeout(()=>{ try{ window.scrollBy({ top:-90, behavior:'smooth' }); }catch(e){} }, 260);
-    });
+
+    const header = document.getElementById('header');
+    const headerH = header ? header.getBoundingClientRect().height : 110;
+    const offset = Math.min(140, Math.max(78, (headerH || 110) - 18));
+
+    const y = target.getBoundingClientRect().top + window.pageYOffset - offset;
+    window.scrollTo({ top: Math.max(0, y), behavior:'smooth' });
+  }catch(e){}
+}
+
+// Defer scroll until after drawer close/layout settle (prevents partial scroll / wrong stop)
+function pmDeferredScroll(id){
+  try{
+    const tid = String(id||'').trim();
+    if(!tid) return;
+    requestAnimationFrame(()=>{ requestAnimationFrame(()=>{ try{ pmScrollToTargetId(tid); }catch(e){} }); });
   }catch(e){}
 }
 
@@ -3004,7 +3040,7 @@ function closePromoMap(opts){
     const pending = __PM_PENDING_SCROLL_ID__;
     __PM_PENDING_SCROLL_ID__ = null;
     if(pending){
-      setTimeout(()=>{ try{ pmScrollToTargetId(pending); }catch(e){} }, 40);
+      pmDeferredScroll(pending);
     }
   }catch(e){}
 }
@@ -3128,6 +3164,34 @@ let __STAR_CLOSING__ = false;
 let __STAR_PENDING_NAV__ = null;
 let __STAR_ATT_TIMER__ = null;
 let __STAR_SCROLL_TIMER__ = null;
+let __STAR_ITEMS__ = [];
+let __STAR_ACTIVE_IDX__ = 0;
+let __STAR_SUBTITLE_TPL__ = '';
+
+
+// --- Star Hero DOM template reset (hard fix for "blur only" reopen) ---
+let __STAR_TEMPLATE_HTML__ = null;
+function __starCaptureTemplate(){
+  try{
+    const ov = document.getElementById('starHeroOverlay');
+    if(!ov) return;
+    if(__STAR_TEMPLATE_HTML__ == null){
+      __STAR_TEMPLATE_HTML__ = ov.innerHTML;
+    }
+  }catch(e){}
+}
+function __starRebuildDOM(){
+  try{
+    const ov = document.getElementById('starHeroOverlay');
+    if(!ov) return;
+    __starCaptureTemplate();
+    if(__STAR_TEMPLATE_HTML__ != null){
+      // Rebuild inner DOM to purge any lingering WAAPI fill-forwards / computed opacity issues
+      ov.innerHTML = __STAR_TEMPLATE_HTML__;
+    }
+  }catch(e){}
+}
+
 
 
 let __STAR_CLOSE_WATCHDOG__ = null;
@@ -3185,12 +3249,42 @@ function getStarHeroCopy(){
     return { title:'商城首選推薦｜超值特殺', sub:'滑一下挑喜歡的，點一下就帶你去商品 ✨' };
   }
 }
+function _formatStarSubtitle(tpl, name){
+  try{
+    const n = String(name||'').trim();
+    const s = String(tpl||'');
+    if(!n) return s;
+    // supports: {name} / {{name}} / {product} / {{product}} / %NAME%
+    if(/[\{\%](?:\s*(?:name|product)\s*)[\}\%]/i.test(s) || /\%NAME\%/i.test(s)){
+      return s
+        .replace(/\{\{\s*(name|product)\s*\}\}/gi, n)
+        .replace(/\{\s*(name|product)\s*\}/gi, n)
+        .replace(/\%NAME\%/gi, n);
+    }
+    return s;
+  }catch(e){
+    return String(tpl||'');
+  }
+}
+function updateStarHeroSubtitleByIdx(idx){
+  try{
+    __STAR_ACTIVE_IDX__ = Math.max(0, Number(idx)||0);
+    const el = document.getElementById('starHeroSubtitleText');
+    if(!el) return;
+    const item = (__STAR_ITEMS__ && __STAR_ITEMS__[__STAR_ACTIVE_IDX__]) ? __STAR_ITEMS__[__STAR_ACTIVE_IDX__] : null;
+    const name = item ? (item.name || '') : '';
+    const tpl = (__STAR_SUBTITLE_TPL__ && String(__STAR_SUBTITLE_TPL__).length) ? __STAR_SUBTITLE_TPL__ : getStarHeroCopy().sub;
+    el.textContent = _formatStarSubtitle(tpl, name);
+  }catch(e){}
+}
 function applyStarHeroCopy(){
   try{
     const c = getStarHeroCopy();
+    __STAR_SUBTITLE_TPL__ = c.sub;
     const tEl = document.getElementById('starHeroTitleText');
     const sEl = document.getElementById('starHeroSubtitleText');
     if(tEl) tEl.textContent = c.title;
+    // show template first (will be replaced after carousel build)
     if(sEl) sEl.textContent = c.sub;
   }catch(e){}
 }
@@ -3276,6 +3370,8 @@ function buildStarHeroCarousel(){
   if(!wrap) return;
 
   const items = (getStarProducts() || []).slice(0,8);
+  __STAR_ITEMS__ = items;
+  __STAR_ACTIVE_IDX__ = 0;
 
   wrap.innerHTML = '';
   if(dots) dots.innerHTML = '';
@@ -3283,6 +3379,7 @@ function buildStarHeroCarousel(){
   if(items.length === 0){
     wrap.innerHTML = `<div style="padding:16px 6px;color:rgba(31,41,55,0.65);font-weight:800;">尚無可顯示商品</div>`;
     updateStarDockBadge(0);
+    try{ updateStarHeroSubtitleByIdx(0); }catch(e){}
     return;
   }
 
@@ -3356,6 +3453,7 @@ function buildStarHeroCarousel(){
     dots.querySelectorAll('.sh-dot').forEach((el,i)=>{
       el.classList.toggle('active', i===best);
     });
+    try{ updateStarHeroSubtitleByIdx(best); }catch(e){}
   };
 
   const snapToNearest = ()=>{
@@ -3397,6 +3495,8 @@ function openStarHeroOverlay(isAuto=false){
     if(!overlay) return;
 
     hardResetStarHeroOverlay();
+
+    __starRebuildDOM();
 
     // Ensure inline hard-hide from previous close doesn't block re-open
     overlay.style.display = '';
@@ -3481,6 +3581,56 @@ function hardResetStarHeroOverlay(){
     __STAR_OPEN__ = false;
   }catch(e){}
 }
+
+function forceCloseStarHeroNow(){
+  try{
+    // Cancel close watchdog/timers
+    try{ if(__STAR_CLOSE_WATCHDOG__){ clearTimeout(__STAR_CLOSE_WATCHDOG__); __STAR_CLOSE_WATCHDOG__ = null; } }catch(e){}
+    try{ if(__STAR_SCROLL_TIMER__){ clearTimeout(__STAR_SCROLL_TIMER__); __STAR_SCROLL_TIMER__ = null; } }catch(e){}
+
+    const overlay = document.getElementById('starHeroOverlay');
+    if(!overlay) return;
+
+    // Cancel animations + reset card
+    const card = overlay.querySelector('.star-hero-card');
+    if(card){
+      try{ card.getAnimations().forEach(a=>a.cancel()); }catch(e){}
+      card.style.opacity = '';
+      card.style.transform = '';
+      card.style.filter = '';
+    }
+
+    const wrap = document.getElementById('starHeroCarousel');
+    if(wrap){
+      try{ wrap.getAnimations().forEach(a=>a.cancel()); }catch(e){}
+      try{ if(wrap.__shScrollHandler) wrap.removeEventListener('scroll', wrap.__shScrollHandler); }catch(e){}
+      wrap.__shScrollHandler = null;
+    }
+
+    // Remove flying stars
+    try{ document.querySelectorAll('.star-fly').forEach(el=>el.remove()); }catch(e){}
+
+    // Hard hide overlay to kill backdrop-filter residue
+    overlay.classList.remove('show','fade-out','entering');
+    overlay.setAttribute('aria-hidden','true');
+    overlay.style.pointerEvents = '';
+    overlay.onclick = null;
+    overlay.style.display = 'none';
+    overlay.style.opacity = '';
+
+    // Ensure dock is visible
+    const dockBtn = document.getElementById('starDockBtn');
+    if(dockBtn){
+      dockBtn.style.opacity = '1';
+      dockBtn.style.visibility = 'visible';
+    }
+
+    __STAR_OPEN__ = false;
+    __STAR_CLOSING__ = false;
+    __STAR_REOPEN_PENDING__ = false;
+  }catch(e){}
+}
+
 
 
 function _finalizeStarHeroClose(){
@@ -3617,6 +3767,11 @@ function dismissStarHero(reason){
       }catch(e){}
     }, 1200);
 
+    // Safety net: always finalize close after fixed time (prevents stuck blur-only overlay)
+    try{ setTimeout(()=>{ finish(); }, 820); }catch(e){}
+
+
+
 
     if(anim && anim.finished){
       anim.finished.then(()=>{ finish(); }).catch(()=>{ finish(); });
@@ -3647,7 +3802,8 @@ function showStarDock(show){
       }, 1200);
       btn.onclick = (ev)=>{ 
         ev.preventDefault(); ev.stopPropagation(); 
-        if(__STAR_CLOSING__){ __STAR_REOPEN_PENDING__ = true; return; } 
+        // Always hard-reset before opening (prevents "blur only" stuck state after nav)
+        try{ forceCloseStarHeroNow(); }catch(e){}
         openStarHeroOverlay(false); 
       };
     }else{
@@ -3711,7 +3867,9 @@ function jumpToProductByCode(code){
       // subtle pulse
       el.classList.add('star-pulse');
       setTimeout(()=>{ try{ el.classList.remove('star-pulse'); }catch(e){} }, 1200);
-      showToast('已帶你到主打商品 ✨', 'info', 1400);
+      const _tpl = uiGet('star|nav_toast', '已帶你到主打商品：{name} ✨');
+      const _msg = _formatStarSubtitle(_tpl, p.name || p.product_name || p.name_zh || '');
+      showToast(_msg, 'info', 1600);
     }
   }catch(e){}
 }
@@ -4728,8 +4886,8 @@ function refreshCart() {
   return data;
 }
 
-window.openCart = () => { if(CART.length === 0) return; document.getElementById("drawer").classList.add("open"); document.getElementById("float-bar").classList.add("hidden"); isCartOpen = true; history.pushState({modal: 'cart'}, null, ""); };
-window.closeCart = () => { document.getElementById("drawer").classList.remove("open"); document.getElementById("float-bar").classList.remove("hidden"); cleanupUI(); isCartOpen = false; if(history.state && history.state.modal === 'cart') history.back(); };
+/* removed accidental override of openCart (kept core openCart with 2-stage checkout) */
+/* removed accidental override of closeCart (kept core closeCart with 2-stage checkout) */
 
 window.onpopstate = (e) => { 
     // CRITICAL FIX: Always ensure body is clean when returning to root state
@@ -4748,7 +4906,7 @@ window.onpopstate = (e) => {
         // keep guard so user doesn't leave app accidentally
         armBackGuard();
         if(pending){
-          setTimeout(()=>{ try{ pmScrollToTargetId(pending); }catch(e){} }, 60);
+          pmDeferredScroll(pending);
         }
         return;
     }
@@ -5147,6 +5305,7 @@ document.getElementById("searchInp").addEventListener("input", renderList);
 window.onbeforeunload = (e) => { if(CART.length > 0) return "訂單尚未送出"; };
 
 initApp();
+try{ __starCaptureTemplate(); }catch(e){}
 try{ initBackGuard(); }catch(e){}
 
 // --- V2.8.8: Click-to-explain for promo badges/pills (non-intrusive) ---
