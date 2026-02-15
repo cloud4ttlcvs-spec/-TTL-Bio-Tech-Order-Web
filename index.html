@@ -19,6 +19,7 @@
   --safe-bottom: env(safe-area-inset-bottom, 20px);
   --price-size: 17px;
   --price-size-lg: calc(var(--price-size) + 2px);
+  --kb: 0px;
 }
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; user-select: none; }
 body {
@@ -276,7 +277,7 @@ main { padding: 12px; max-width: 900px; margin: 0 auto; margin-top: 10px; }
 .fb-btn:active { background: #e65100; transform: scale(0.98); }
 
 #gift-fab {
-  position: fixed; bottom: calc(90px + var(--safe-bottom)); left: 20px;
+  position: fixed; bottom: calc(90px + var(--safe-bottom) + var(--kb)); left: 20px;
   width: 50px; height: 50px; border-radius: 50%;
   background: #fff; border: 2px solid #ffd54f;
   box-shadow: 0 4px 15px rgba(255, 160, 0, 0.3);
@@ -699,12 +700,12 @@ header { position: sticky; top: 0; z-index: 1000; background: rgba(255,255,255,0
 /* Drawer Core */
 #drawer { position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 1200; pointer-events: none; }
 #drawer-bg { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.6); opacity: 0; transition: 0.3s; backdrop-filter: blur(4px); }
-#drawer-panel { position: absolute; top: 0; right: 0; bottom: 0; width: 100%; max-width: 480px; background: #fff; transform: translateX(100%); transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1); display: flex; flex-direction: column; pointer-events: auto; box-shadow: -5px 0 30px rgba(0,0,0,0.15); }
+#drawer-panel { position: absolute; top: 0; right: 0; bottom: var(--kb); width: 100%; max-width: 480px; background: #fff; transform: translateX(100%); transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1); display: flex; flex-direction: column; pointer-events: auto; box-shadow: -5px 0 30px rgba(0,0,0,0.15); }
 #drawer.open #drawer-bg { opacity: 1; pointer-events: auto; }
 #drawer.open #drawer-panel { transform: translateX(0); }
 .dr-head { padding: 16px 20px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; background: #fff; flex-shrink: 0; }
 .dr-body { flex: 1; overflow-y: auto; padding: 12px; background: #f4f6f8; overscroll-behavior: contain; }
-.dr-foot { padding: 20px; padding-bottom: calc(20px + var(--safe-bottom)); background: #fff; border-top: 1px solid var(--border); box-shadow: 0 -4px 20px rgba(0,0,0,0.05); flex-shrink: 0; }
+.dr-foot { padding: 20px; padding-bottom: calc(20px + var(--safe-bottom) + var(--kb)); background: #fff; border-top: 1px solid var(--border); box-shadow: 0 -4px 20px rgba(0,0,0,0.05); flex-shrink: 0; }
 
 .c-item { display: flex; gap: 10px; margin-bottom: 8px; padding: 8px 12px; background: #fff; border-radius: 10px; border: 1px solid #e0e0e0; box-shadow: 0 1px 2px rgba(0,0,0,0.02); align-items: center; }
 .c-info { flex: 1; }
@@ -1482,6 +1483,8 @@ body.cfg-error .btn-bundle{
 #starHeroOverlay.fade-out{ opacity: 0; }
 
 .star-hero-card{
+  position: relative;
+
   width: min(980px, 92vw);
   max-height: min(78vh, 660px);
   overflow: hidden;
@@ -1514,7 +1517,6 @@ body.cfg-error .btn-bundle{
 #starHeroOverlay.show.entering .sh-sub,
 #starHeroOverlay.show.entering .sh-carousel,
 #starHeroOverlay.show.entering .sh-dots,
-#starHeroOverlay.show.entering #starHeroBackBtn,
 #starHeroOverlay.show.entering #starHeroBrowseBtn{
   opacity: 0;
   transform: translateY(10px);
@@ -1527,7 +1529,6 @@ body.cfg-error .btn-bundle{
 #starHeroOverlay.show.entering .sh-sub{ animation: shFadeUp .46s cubic-bezier(.2,.9,.2,1) both; animation-delay: .12s; }
 #starHeroOverlay.show.entering .sh-carousel{ animation: shFadeUp .52s cubic-bezier(.2,.9,.2,1) both; animation-delay: .18s; }
 #starHeroOverlay.show.entering .sh-dots{ animation: shFadeUp .50s cubic-bezier(.2,.9,.2,1) both; animation-delay: .26s; }
-#starHeroOverlay.show.entering #starHeroBackBtn{ animation: shFadeUp .44s cubic-bezier(.2,.9,.2,1) both; animation-delay: .32s; }
 #starHeroOverlay.show.entering #starHeroBrowseBtn{ animation: shFadeUp .46s cubic-bezier(.2,.9,.2,1) both; animation-delay: .38s; }
 
 
@@ -1663,24 +1664,6 @@ body.cfg-error .btn-bundle{
   flex-direction: column;
   gap: 10px;
 }
-#starHeroBackBtn{
-  width: 100%;
-  border: 1px solid rgba(0,0,0,0.10);
-  background: rgba(255,255,255,0.86);
-  color:#ff6f00;
-  font-weight: 900;
-  border-radius: 14px;
-  padding: 11px 12px;
-  cursor:pointer;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  gap: 8px;
-  box-shadow: 0 10px 24px rgba(0,0,0,0.08);
-  transition: transform .12s ease, filter .18s ease;
-}
-#starHeroBackBtn .material-icons-round{ font-size:18px; }
-#starHeroBackBtn:active{ transform: translateY(1px) scale(0.996); }
 
 #starHeroBrowseBtn{
   width: 100%;
@@ -1719,6 +1702,35 @@ body.cfg-error .btn-bundle{
 }
 .star-fly .material-icons-round{ font-size: 24px; }
 
+
+#starHeroCloseBtn{
+  position:absolute;
+  top:10px; right:10px;
+  width:36px; height:36px;
+  border:none;
+  border-radius:12px;
+  background: rgba(255,255,255,0.72);
+  box-shadow: 0 6px 18px rgba(0,0,0,0.08);
+  display:flex; align-items:center; justify-content:center;
+  color:#455a64;
+  cursor:pointer;
+}
+#starHeroCloseBtn:active{ transform: scale(0.96); }
+
+
+#gift-fab.attn{
+  animation: giftPulse 1.15s ease-in-out infinite, giftShake 0.9s ease-in-out infinite;
+  box-shadow: 0 10px 26px rgba(255,111,0,0.28);
+}
+@keyframes giftPulse{ 0%,100%{ transform: translateY(0) scale(1); filter: brightness(1); } 50%{ transform: translateY(-1px) scale(1.06); filter: brightness(1.08);} }
+@keyframes giftShake{
+  0%,100%{ transform: translateX(0) rotate(0deg); }
+  20%{ transform: translateX(-2px) rotate(-1deg); }
+  40%{ transform: translateX(2px) rotate(1deg); }
+  60%{ transform: translateX(-1px) rotate(-0.6deg); }
+  80%{ transform: translateX(1px) rotate(0.6deg); }
+}
+
 </style>
 </head>
 <body>
@@ -1742,8 +1754,7 @@ body.cfg-error .btn-bundle{
     <div class="sh-carousel" id="starHeroCarousel"></div>
     <div class="sh-dots" id="starHeroDots" aria-hidden="true"></div>
     <div class="sh-actions">
-      <button type="button" id="starHeroBackBtn"><span class="material-icons-round">reply</span> 返回</button>
-      <button type="button" id="starHeroBrowseBtn">先去逛逛</button>
+<button type="button" id="starHeroBrowseBtn">先去逛逛</button>
     </div>
   </div>
 </div>
@@ -2557,10 +2568,13 @@ window.updateQty = function(btnEl, pid, delta) {
   
   if(delta > 0 && isFirstAdd) {
       isFirstAdd = false;
-      setTimeout(() => {
-          showMilestoneCard();
-          setTimeout(() => { minimizeMilestoneCard(); }, 2000);
-      }, 500);
+      try{
+        const openedOnce = localStorage.getItem('ttl_ms_opened_once') === '1';
+        const fab = document.getElementById('gift-fab');
+        if(fab && !openedOnce){
+          fab.classList.add('attn');
+        }
+      }catch(e){}
   } else if (delta > 0) {
       const addedToast = showToast("已加入購物車");
       setTimeout(() => {
@@ -2588,6 +2602,8 @@ window.updateQty = function(btnEl, pid, delta) {
 // --- MILESTONE LOGIC (DUAL TRACK) ---
 
 window.showMilestoneCard = function() {
+    try{ localStorage.setItem('ttl_ms_opened_once','1'); }catch(e){}
+    try{ const fab=document.getElementById('gift-fab'); if(fab) fab.classList.remove('attn'); }catch(e){}
     renderMilestoneContent();
     document.getElementById('milestone-overlay').classList.add('open');
     document.getElementById('msCard').classList.remove('shrinking');
@@ -3244,52 +3260,36 @@ function initPromoMarqueeArrows(){
     const track = slot.querySelector('#promoMarqueeTrack') || slot.querySelector('.pm-track');
     const left = slot.querySelector('#pmNavLeft');
     const right = slot.querySelector('#pmNavRight');
-    if(!viewport || !left || !right) return;
-
-    const canScroll = ()=>{
-      const max = Math.max(0, viewport.scrollWidth - viewport.clientWidth);
-      return max > 2;
-    };
+    if(!viewport || !track || !left || !right) return;
 
     const update = ()=>{
-      const can = canScroll();
+      // show arrows only when one-loop width is meaningfully wider than viewport
+      const ow = Number(track.dataset.origW || 0);
+      const can = ow ? (ow > viewport.clientWidth + 8) : (track.scrollWidth > viewport.clientWidth + 8);
       left.classList.toggle('hidden', !can);
       right.classList.toggle('hidden', !can);
     };
 
     const step = ()=> Math.max(220, Math.floor(viewport.clientWidth * 0.82));
 
-    const getOrigW = ()=>{
-      const ow = Number((track && (track.dataset.origW || track.getAttribute('data-orig-w'))) || __PM_MARQ_ORIG_W__ || 0);
-      return (isFinite(ow) && ow > 0) ? ow : 0;
+    const nudge = (dir)=>{
+      try{
+        if(!__PM_MARQ_CTRL__){ return; }
+        const c = __PM_MARQ_CTRL__;
+        c.paused = true;
+        c.resumeAt = performance.now() + 1200;
+        c.x += (dir * step());
+        while(c.x < 0) c.x += c.ow;
+        while(c.x >= c.ow) c.x -= c.ow;
+        c.track.style.transform = `translate3d(${-c.x}px,0,0)`;
+      }catch(e){}
     };
 
-    const preWrapForNav = (dir)=>{
-      const ow = getOrigW();
-      if(!ow) return;
-      // Keep scrollLeft away from hard edges to avoid "卡住/反彈" 感
-      if(dir < 0 && viewport.scrollLeft <= 8){
-        viewport.scrollLeft += ow;
-      }
-      if(dir > 0 && viewport.scrollLeft >= (ow * 1.55)){
-        viewport.scrollLeft -= ow;
-      }
-    };
+    left.onclick = ()=> nudge(-1);
+    right.onclick = ()=> nudge(1);
 
-    left.onclick = ()=>{
-      try{ promoMarqueePause(3500); }catch(e){}
-      try{ preWrapForNav(-1); }catch(e){}
-      viewport.scrollBy({left: -step(), behavior:'smooth'});
-    };
-    right.onclick = ()=>{
-      try{ promoMarqueePause(3500); }catch(e){}
-      try{ preWrapForNav(+1); }catch(e){}
-      viewport.scrollBy({left: step(), behavior:'smooth'});
-    };
-
-    viewport.addEventListener('scroll', update, {passive:true});
-    window.addEventListener('resize', update, {passive:true});
     update();
+    window.addEventListener('resize', ()=>{ try{ update(); }catch(e){} }, {passive:true});
   }catch(e){}
 }
 
@@ -3299,67 +3299,120 @@ function initPromoMarqueeAutoScroll(){
     stopPromoMarqueeAutoScroll();
     const slot = document.getElementById("promoMarqueeSlot");
     if(!slot || slot.style.display === "none") return;
+
     const viewport = slot.querySelector('#promoMarqueeViewport') || slot.querySelector('.pm-viewport');
     const track = slot.querySelector('#promoMarqueeTrack') || slot.querySelector('.pm-track');
     if(!viewport || !track) return;
-    if(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
 
-    // width of one loop (track is duplicated)
-    let ow = Number(track.dataset.origW || track.getAttribute('data-orig-w') || 0);
-    if(!ow || !isFinite(ow) || ow <= 0){
-      try{ ow = Math.max(0, track.scrollWidth / 2); }catch(e){ ow = 0; }
-      ow = Math.round(ow);
-      if(ow > 0){ track.dataset.origW = String(ow); }
+    // Build seamless loop by duplicating children once
+    if(!track.dataset.loopReady){
+      const kids = Array.from(track.children);
+      kids.forEach(k=> track.appendChild(k.cloneNode(true)));
+      track.dataset.loopReady = '1';
     }
-    __PM_MARQ_ORIG_W__ = ow || __PM_MARQ_ORIG_W__ || 0;
 
-    const max = Math.max(0, track.scrollWidth - viewport.clientWidth);
-    if(max <= 2 || !ow || ow <= (viewport.clientWidth + 6)) return;
+    // Measure one-loop width
+    requestAnimationFrame(()=>{
+      try{
+        const kids = Array.from(track.children);
+        if(kids.length === 0) return;
+        const half = Math.floor(kids.length/2);
+        let ow = 0;
+        for(let i=0;i<half;i++){
+          ow += kids[i].getBoundingClientRect().width;
+        }
+        ow = Math.max(1, Math.round(ow));
+        track.dataset.origW = String(ow);
+        __PM_MARQ_ORIG_W__ = ow;
 
-    // Normalize (teleport is seamless because content repeats)
-    try{ viewport.scrollLeft = ((viewport.scrollLeft % ow) + ow) % ow; }catch(e){}
+        __PM_MARQ_CTRL__ = { x: (__PM_MARQ_CTRL__ && __PM_MARQ_CTRL__.x) || 0, ow, viewport, track, dragging:false, paused:false, resumeAt:0 };
 
-    // Bind pause listeners once
-    try{
-      if(viewport.dataset.pmMarqBound !== '1'){
-        viewport.dataset.pmMarqBound = '1';
-        const pauseLong = ()=>{ try{ promoMarqueePause(3500); }catch(e){} };
-        const pauseMid = ()=>{ try{ promoMarqueePause(2500); }catch(e){} };
-        viewport.addEventListener('pointerdown', pauseLong, {passive:true});
-        viewport.addEventListener('touchstart', pauseLong, {passive:true});
-        viewport.addEventListener('wheel', pauseMid, {passive:true});
-        viewport.addEventListener('mouseenter', pauseMid, {passive:true});
-        viewport.addEventListener('scroll', ()=>{
+        // Ensure styles for transform marquee
+        viewport.style.overflow = 'hidden';
+        track.style.willChange = 'transform';
+        track.style.transform = `translate3d(${-__PM_MARQ_CTRL__.x}px,0,0)`;
+
+        const prefersReduce = (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+        const speed = prefersReduce ? 10 : 22; // px/s
+
+        let last = performance.now();
+        const tick = (t)=>{
           try{
-            const now = performance.now();
-            if(now - (__PM_MARQ_LAST_AUTO_T__||0) < 120) return; // ignore auto ticks
-            promoMarqueePause(1400);
+            if(!__PM_MARQ_CTRL__){ __PM_MARQ_RAF__ = requestAnimationFrame(tick); return; }
+            const c = __PM_MARQ_CTRL__;
+            const now = t;
+            const dt = Math.min(48, Math.max(0, now - last)); // cap
+            last = now;
+
+            // Pause while dragging or recent user scroll
+            if(c.dragging || c.paused){
+              if(c.resumeAt && now > c.resumeAt){ c.paused = false; c.resumeAt = 0; }
+              __PM_MARQ_RAF__ = requestAnimationFrame(tick);
+              return;
+            }
+
+            c.x += speed * dt / 1000;
+            if(c.x >= c.ow) c.x -= c.ow;
+            c.track.style.transform = `translate3d(${-c.x}px,0,0)`;
           }catch(e){}
-        }, {passive:true});
-      }
-    }catch(e){}
+          __PM_MARQ_RAF__ = requestAnimationFrame(tick);
+        };
+        __PM_MARQ_RAF__ = requestAnimationFrame(tick);
 
-    let last = performance.now();
-    const speed = 16; // px/sec (smooth)
+        // Drag support (pointer)
+        const onDown = (ev)=>{
+          try{
+            __PM_MARQ_CTRL__.dragging = true;
+            __PM_MARQ_CTRL__.paused = true;
+            __PM_MARQ_CTRL__.resumeAt = 0;
+            __PM_MARQ_CTRL__._dragStartX = (ev.touches?ev.touches[0].clientX:ev.clientX);
+            __PM_MARQ_CTRL__._dragStartPos = __PM_MARQ_CTRL__.x;
+          }catch(e){}
+        };
+        const onMove = (ev)=>{
+          try{
+            const c=__PM_MARQ_CTRL__;
+            if(!c || !c.dragging) return;
+            const cx = (ev.touches?ev.touches[0].clientX:ev.clientX);
+            const dx = cx - c._dragStartX;
+            c.x = c._dragStartPos - dx;
+            while(c.x < 0) c.x += c.ow;
+            while(c.x >= c.ow) c.x -= c.ow;
+            c.track.style.transform = `translate3d(${-c.x}px,0,0)`;
+          }catch(e){}
+        };
+        const onUp = ()=>{
+          try{
+            const c=__PM_MARQ_CTRL__;
+            if(!c) return;
+            c.dragging = false;
+            c.paused = true;
+            c.resumeAt = performance.now() + 900;
+          }catch(e){}
+        };
 
-    function tick(t){
-      const dt = Math.min(40, Math.max(0, t - last));
-      last = t;
-      __PM_MARQ_LAST_AUTO_T__ = t;
+        // remove prior
+        try{
+          if(viewport.__pmDown){ viewport.removeEventListener('pointerdown', viewport.__pmDown); viewport.removeEventListener('touchstart', viewport.__pmDown); }
+          if(viewport.__pmMove){ window.removeEventListener('pointermove', viewport.__pmMove); window.removeEventListener('touchmove', viewport.__pmMove); }
+          if(viewport.__pmUp){ window.removeEventListener('pointerup', viewport.__pmUp); window.removeEventListener('touchend', viewport.__pmUp); window.removeEventListener('pointercancel', viewport.__pmUp); }
+        }catch(e){}
 
-      const dx = speed * dt / 1000;
-      let x = viewport.scrollLeft + dx;
-      // Seamless wrap
-      if(x >= ow) x = x - ow;
-      if(x < 0) x = x + ow;
-      viewport.scrollLeft = x;
-
-      __PM_MARQ_RAF__ = requestAnimationFrame(tick);
-    }
-
-    __PM_MARQ_RAF__ = requestAnimationFrame(tick);
+        viewport.__pmDown = onDown;
+        viewport.__pmMove = onMove;
+        viewport.__pmUp = onUp;
+        viewport.addEventListener('pointerdown', onDown, {passive:true});
+        viewport.addEventListener('touchstart', onDown, {passive:true});
+        window.addEventListener('pointermove', onMove, {passive:true});
+        window.addEventListener('touchmove', onMove, {passive:true});
+        window.addEventListener('pointerup', onUp, {passive:true});
+        window.addEventListener('pointercancel', onUp, {passive:true});
+        window.addEventListener('touchend', onUp, {passive:true});
+      }catch(e){}
+    });
   }catch(e){}
 }
+
 
 function renderPromoMarquee(){
   try{
@@ -4180,7 +4233,8 @@ function buildStarHeroCarousel(){
   wrap.__shScrollHandler = ()=>{
     try{ updateDot(); }catch(e){}
     try{ if(__STAR_SCROLL_TIMER__){ clearTimeout(__STAR_SCROLL_TIMER__); } }catch(e){}
-    __STAR_SCROLL_TIMER__ = setTimeout(()=>{ try{ snapToNearest(); }catch(e){} }, 110);
+    const __isIOS__ = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform==='MacIntel' && navigator.maxTouchPoints>1);
+    if(!__isIOS__){ __STAR_SCROLL_TIMER__ = setTimeout(()=>{ try{ snapToNearest(); }catch(e){} }, 110); }
   };
   wrap.addEventListener('scroll', wrap.__shScrollHandler, { passive:true });
 
@@ -4216,6 +4270,8 @@ function openStarHeroOverlay(isAuto=false){
     overlay.classList.add('show');
     overlay.setAttribute('aria-hidden','false');
     __STAR_OPEN__ = true;
+    try{ if(!window.__STAR_HISTORY_ACTIVE__){ history.pushState({modal:'star'}, null, ''); window.__STAR_HISTORY_ACTIVE__=true; } }catch(e){}
+    try{ const xbtn=document.getElementById('starHeroCloseBtn'); if(xbtn){ xbtn.onclick = ()=>{ try{ dismissStarHero('x'); }catch(e){} }; } }catch(e){}
 
     overlay.classList.remove('entering');
     void overlay.offsetWidth;
@@ -4233,16 +4289,6 @@ function openStarHeroOverlay(isAuto=false){
       btn.onclick = (ev)=>{
         ev.preventDefault(); ev.stopPropagation();
         dismissStarHero('browse');
-      };
-    }
-  
-
-    const backBtn = document.getElementById('starHeroBackBtn');
-    if(backBtn){
-      backBtn.onclick = (ev)=>{
-        ev.preventDefault(); ev.stopPropagation();
-        __STAR_PENDING_BACK__ = true;
-        dismissStarHero('back');
       };
     }
 }catch(e){}
@@ -4382,6 +4428,7 @@ function _finalizeStarHeroClose(){
 
   __STAR_OPEN__ = false;
   __STAR_CLOSING__ = false;
+  try{ window.__STAR_HISTORY_ACTIVE__ = false; }catch(e){}
 
   // Ensure dock icon is visible (fix: opacity stuck at 0)
   try{
@@ -4422,6 +4469,14 @@ function dismissStarHero(reason){
     if(!overlay) return;
     if(__STAR_CLOSING__) return;
     if(!overlay.classList.contains('show')) return;
+
+    const fromPop = (reason === 'popstate');
+    const skipHistory = (reason && typeof reason === 'object' && reason.skipHistory);
+
+    if(window.__STAR_HISTORY_ACTIVE__ && !fromPop && !skipHistory){
+      try{ history.back(); }catch(e){}
+      return;
+    }
 
     __STAR_CLOSING__ = true;
 
@@ -4805,7 +4860,35 @@ function highlightText(text, query) {
   return text.replace(regex, '<span class="highlight">$1</span>');
 }
 
+
+function setupViewportVars(){
+  try{
+    const root = document.documentElement;
+    const apply = ()=>{
+      try{
+        const vv = window.visualViewport;
+        const innerH = window.innerHeight || 0;
+        let kb = 0;
+        if(vv){
+          kb = Math.max(0, innerH - vv.height - vv.offsetTop);
+          root.style.setProperty('--vvh', vv.height + 'px');
+        }
+        root.style.setProperty('--kb', kb + 'px');
+      }catch(e){}
+    };
+    apply();
+    if(window.visualViewport){
+      visualViewport.addEventListener('resize', apply, {passive:true});
+      visualViewport.addEventListener('scroll', apply, {passive:true});
+    }else{
+      window.addEventListener('resize', apply, {passive:true});
+    }
+  }catch(e){}
+}
+
+
 async function initApp() {
+  try{ setupViewportVars(); }catch(e){}
   try{ setBootConfigState('loading'); }catch(e){}
 
   try {
@@ -5734,6 +5817,11 @@ function refreshCart() {
 /* removed accidental override of closeCart (kept core closeCart with 2-stage checkout) */
 
 window.onpopstate = (e) => { 
+    // Handle Star Hero overlay
+    try{
+      const so = document.getElementById('starHeroOverlay');
+      if(so && so.classList.contains('show')){ dismissStarHero('popstate'); return; }
+    }catch(ex){}
     // CRITICAL FIX: Always ensure body is clean when returning to root state
     if (!document.querySelector('.modal.open') && 
         !document.getElementById('drawer').classList.contains('open') && 
