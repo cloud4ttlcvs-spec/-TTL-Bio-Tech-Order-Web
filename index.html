@@ -779,7 +779,16 @@ header { position: sticky; top: 0; z-index: 1000; background: rgba(255,255,255,0
 }
 @keyframes shimmer { 0% { background-position: -468px 0; } 100% { background-position: 468px 0; } }
 .skeleton { background: #f6f7f8; background-image: linear-gradient(to right, #f6f7f8 0%, #edeef1 20%, #f6f7f8 40%, #f6f7f8 100%); background-repeat: no-repeat; background-size: 800px 104px; animation: shimmer 1s linear infinite forwards; border-radius: 8px; }
-.sk-card { height: 280px; border-radius: 16px; background: #fff; padding: 12px; margin-bottom: 12px; }
+.sk-card { height: 280px;
+
+/* V39 Phase1/2: skeleton cards used by chunked renderer */
+.skel-card{ border: 1px solid #eef2f4; background: #fff; border-radius: 16px; overflow: hidden; }
+.skel-card .p-img-box{ background:#fafafa; }
+
+/* V39 Phase5: Smoothness kit (flag: p5_cv) */
+.ff-p5_cv .p-card{ contain: layout paint; }
+.ff-p5_cv .rank-list, .ff-p5_cv .cat-nav, .ff-p5_cv .pm-track, .ff-p5_cv #promoMarqueeTrack, .ff-p5_cv #starHeroList{ -webkit-overflow-scrolling: touch; }
+ border-radius: 16px; background: #fff; padding: 12px; margin-bottom: 12px; }
 
 #toast-container { position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%); z-index: 9999; pointer-events: none; width: 90%; max-width: 320px; display: flex; flex-direction: column-reverse; gap: 8px; align-items: center; }
 .toast { background: rgba(33, 33, 33, 0.95); color: #fff; padding: 12px 24px; border-radius: 50px; font-size: 14px; text-align: center; box-shadow: 0 8px 20px rgba(0,0,0,0.2); opacity: 0; transform: translateY(20px); animation: toastIn 0.3s forwards, toastOut 0.3s forwards 2.5s; backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; gap: 8px; transition: 0.3s; }
@@ -1740,12 +1749,6 @@ body.cfg-error .btn-bundle{
 }
 
 
-20%{ transform: translateX(-2px) rotate(-1deg); }
-  40%{ transform: translateX(2px) rotate(1deg); }
-  60%{ transform: translateX(-1px) rotate(-0.6deg); }
-  80%{ transform: translateX(1px) rotate(0.6deg); }
-}
-
 </style>
 </head>
 <body>
@@ -1998,6 +2001,105 @@ body.cfg-error .btn-bundle{
 <script>
 const GIFT_IMAGES = {}; 
 
+/* ==========================================================
+   V39 (DEV) Feature Flags — Phase 0 Skeleton (V38 baseline)
+   - Same bundle delivery, staged enablement via flags.
+   - Sources (priority): URL ?ff=a,b  > localStorage ttl_ff
+   Debug: ?ffdebug=1 (or localStorage ttl_ffdebug=1)
+   ========================================================== */
+(function initFeatureFlags(){
+  const parseList = (s)=>{
+    if(!s) return [];
+    return String(s).split(/[,\s]+/).map(x=>x.trim()).filter(Boolean);
+  };
+  const q = new URLSearchParams(location.search);
+  const fromQuery = parseList(q.get('ff'));
+  const fromLS = parseList(localStorage.getItem('ttl_ff'));
+  const enabled = new Set([...fromLS, ...fromQuery]);
+
+  // Public API
+  const api = {
+    enabled,
+    sources: { query: fromQuery.slice(), localStorage: fromLS.slice() },
+    has: (name)=> enabled.has(String(name||"").trim()),
+    list: ()=> Array.from(enabled).sort(),
+    setLocal: (list)=>{
+      const arr = Array.isArray(list) ? list : parseList(list);
+      localStorage.setItem('ttl_ff', arr.join(','));
+    },
+    enable: (...names)=>{
+      names.flat().forEach(n=>{ n=parseList(n)[0]||n; if(n) enabled.add(String(n).trim()); });
+      api.setLocal(api.list());
+    },
+    disable: (...names)=>{
+      names.flat().forEach(n=>{ n=parseList(n)[0]||n; if(n) enabled.delete(String(n).trim()); });
+      api.setLocal(api.list());
+    }
+  };
+
+  // Safe runner for flagged blocks (prevents white screen on dev features)
+  window.FF_SAFE_RUN = function(label, fn){
+    try { return fn(); }
+    catch(err){
+      console.warn('[FF_SAFE_RUN]', label, err);
+      // Never throw — Phase 0 guarantee: new code cannot break V38 path.
+      return null;
+    }
+  };
+
+  window.FF = api;
+
+  // Apply CSS classes for enabled flags (for styling tweaks per phase)
+  try{
+    const root = document.documentElement;
+    api.list().forEach(f=> root.classList.add('ff-' + String(f).replace(/[^a-zA-Z0-9_-]/g,'_')));
+  }catch(e){}
+
+
+  // Optional small debug HUD
+  const debugOn = (q.get('ffdebug') === '1') || (localStorage.getItem('ttl_ffdebug') === '1');
+  if(debugOn){
+    const hud = document.createElement('div');
+    hud.id = 'ffHud';
+    hud.style.cssText = [
+      'position:fixed','left:10px','bottom:10px','z-index:99999',
+      'background:rgba(0,0,0,.72)','color:#fff','padding:10px 12px',
+      'border-radius:12px','font-size:12px','line-height:1.35',
+      'max-width:72vw','box-shadow:0 10px 30px rgba(0,0,0,.25)'
+    ].join(';');
+    const render = ()=>{
+      const flags = api.list();
+      hud.innerHTML = `<div style="font-weight:800;margin-bottom:4px">V39 Flags</div>
+        <div style="opacity:.9">Enabled: ${flags.length ? flags.join(', ') : '(none)'}</div>
+        <div style="opacity:.7;margin-top:2px">URL ff: ${api.sources.query.join(', ')||'(none)'} · LS: ${api.sources.localStorage.join(', ')||'(none)'}</div>`;
+    };
+    render();
+    document.addEventListener('DOMContentLoaded', ()=> document.body.appendChild(hud), {once:true});
+  }
+})();
+
+/* V39 (DEV) Smoke checks: append ?smoke=1 to run basic sanity tests */
+(function initSmoke(){
+  const q = new URLSearchParams(location.search);
+  if(q.get('smoke') !== '1') return;
+  window.addEventListener('load', ()=>{
+    const results = [];
+    const ok = (name, cond)=> results.push({name, pass: !!cond});
+    ok('closeWelcome exists', typeof window.closeWelcome === 'function');
+    ok('#welcome-overlay exists', !!document.getElementById('welcome-overlay'));
+    ok('#starHeroOverlay exists', !!document.getElementById('starHeroOverlay'));
+    ok('#gift-fab exists', !!document.getElementById('gift-fab'));
+    ok('PapaParse loaded', typeof window.Papa === 'object' && typeof window.Papa.parse === 'function');
+    const fails = results.filter(r=>!r.pass);
+    console.groupCollapsed('%c[SMOKE] V39', 'color:#00c853;font-weight:800');
+    results.forEach(r=>console.log(r.pass?'✅':'❌', r.name));
+    console.groupEnd();
+    if(fails.length){
+      console.warn('[SMOKE] failures:', fails);
+    }
+  }, {once:true});
+})();
+
 const SHEET_P = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQBtV8q3Ank7Bnhs83IbOb97U46juV-RKeL3NpdFiNcSu-ifI21fQYo1-io62S3JIrXEO5MiDArc1Lr/pub?gid=1623055155&single=true&output=csv";
 const SHEET_R = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQU95r9_TOPlQXY-lcBS_RH3tRc0mtRyuazxHHWljpRusbzBiWsEfm3Pa_HZmKW5Ob5TOq4W5O-vumI/pub?gid=2071879068&single=true&output=csv";
 const SHEET_RANK = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQj5QLrtaWikGcLNwMawbjiN8ZQDgFzW1RV7UECFgLzECWj16I2ugE_B6tzzLICCynsk1L6lAuJfccS/pub?gid=93142219&single=true&output=csv";
@@ -2032,8 +2134,60 @@ function looksLikeHtml(text) {
   return t.startsWith("<!doctype") || t.startsWith("<html") || t.includes("<head") || t.includes("<body");
 }
 
+
+// V39 Phase4: Optional CSV cache (flag: p4_cachecsv)
+function __fnv1a32(str){
+  let h = 0x811c9dc5;
+  const s = String(str||"");
+  for(let i=0;i<s.length;i++){
+    h ^= s.charCodeAt(i);
+    h = (h + ((h<<1)+(h<<4)+(h<<7)+(h<<8)+(h<<24))) >>> 0;
+  }
+  return ('0000000' + h.toString(16)).slice(-8);
+}
+function __csvCacheKey(url){ return 'ttl_csv_cache_' + __fnv1a32(url); }
+function __csvCacheTtlMs(){
+  // default 10 minutes; override via localStorage: ttl_csvcache_ttl_min
+  try{
+    const v = Number(localStorage.getItem('ttl_csvcache_ttl_min'));
+    if(isFinite(v) && v > 0) return v * 60 * 1000;
+  }catch(e){}
+  return 10 * 60 * 1000;
+}
+function __csvCacheGet(url){
+  try{
+    const raw = localStorage.getItem(__csvCacheKey(url));
+    if(!raw) return null;
+    const obj = JSON.parse(raw);
+    if(!obj || typeof obj.txt !== 'string') return null;
+    const t = Number(obj.t||0);
+    if(t && (Date.now() - t) < __csvCacheTtlMs()) return obj.txt;
+  }catch(e){}
+  return null;
+}
+function __csvCacheSet(url, txt){
+  try{
+    const obj = { t: Date.now(), txt: String(txt||"") };
+    localStorage.setItem(__csvCacheKey(url), JSON.stringify(obj));
+  }catch(e){}
+}
+
 async function fetchCsvTextSmart(sourceUrl, label = "data", options = {}) {
-  const { timeoutMs = 12000, optional = false, minLength = 50 } = options || {};
+  const { timeoutMs = 12000, optional = false, minLength = 50, __noCache = false } = options || {};
+
+  // Phase4 cache: return cached immediately; refresh in background
+  const useCache = (!__noCache) && (window.FF && FF.has && FF.has('p4_cachecsv'));
+  if(useCache){
+    const cached = __csvCacheGet(sourceUrl);
+    if(cached){
+      FF_SAFE_RUN('csvCacheRefresh:' + label, ()=>{
+        fetchCsvTextSmart(sourceUrl, label, { timeoutMs, optional: true, minLength, __noCache: true })
+          .then(fresh=>{ if(fresh && String(fresh).trim().length >= minLength) __csvCacheSet(sourceUrl, fresh); })
+          .catch(()=>{});
+      });
+      return cached;
+    }
+  }
   let lastErr = null;
 
   for (let i = 0; i < CORS_FALLBACKS.length; i++) {
@@ -2042,6 +2196,7 @@ async function fetchCsvTextSmart(sourceUrl, label = "data", options = {}) {
       const txt = await fetchTextWithTimeout(u, timeoutMs);
       if (!txt || txt.trim().length < minLength) throw new Error("Empty response");
       if (looksLikeHtml(txt)) throw new Error("Unexpected HTML response");
+      if((window.FF && FF.has && FF.has('p4_cachecsv')) && !options.__noCache){ __csvCacheSet(sourceUrl, txt); }
       return txt;
     } catch (e) {
       lastErr = e;
@@ -5346,7 +5501,140 @@ function setupScrollSpy() {
   document.querySelectorAll('.cat-section').forEach(section => { sectionObserver.observe(section); });
 }
 
+
+// V39 Phase2: Chunked render for large lists (flag: p2_chunk)
+function __makeProductSkeletonCard(){
+  const d = document.createElement('div');
+  d.className = 'p-card skel-card';
+  d.innerHTML = `
+    <div class="p-img-box"><div class="skeleton" style="width:100%;height:100%;border-radius:14px"></div></div>
+    <div class="p-body">
+      <div class="skeleton" style="height:14px;width:65%;margin:6px 0"></div>
+      <div class="skeleton" style="height:12px;width:40%;margin:10px 0 6px"></div>
+      <div class="skeleton" style="height:36px;width:100%;border-radius:12px;margin-top:12px"></div>
+    </div>`;
+  return d;
+}
+
+function __renderListChunkedNoSearch(grid){
+  // cancel previous chunked render
+  window.__RENDER_TOKEN__ = (window.__RENDER_TOKEN__||0) + 1;
+  const token = window.__RENDER_TOKEN__;
+
+  if(sectionObserver) sectionObserver.disconnect();
+
+  let topAnchor = document.getElementById('cat-all-wrapper');
+  if(!topAnchor){
+    topAnchor = document.createElement('div');
+    topAnchor.id = 'cat-all-wrapper';
+    grid.appendChild(topAnchor);
+  }
+
+    if(window.FF && FF.has && FF.has('p2_chunk')){
+      FF_SAFE_RUN('renderListChunked', ()=> __renderListChunkedNoSearch(grid));
+      return;
+    }
+
+
+  const catData = [];
+  categories.forEach(cat => {
+    const catProducts = PRODUCTS.filter(p => {
+      if(p.is_hidden) return false;
+      if (cat.includes('清潔-')) {
+        if (!p.category.includes('清潔')) return false;
+        if (cat === '清潔-洗潔' && !p.name.includes('洗潔')) return false;
+        if (cat === '清潔-洗衣' && !p.name.includes('洗衣')) return false;
+        if (cat === '清潔-皂' && !p.name.includes('皂')) return false;
+        return true;
+      } else {
+        return p.category.includes(cat);
+      }
+    });
+    if(catProducts.length <= 0) return;
+
+    const secId = `cat-${cat.replace(/\s+/g,'-')}`;
+    const section = document.createElement('div');
+    section.className = 'cat-section';
+    section.id = secId;
+
+    const title = document.createElement('div');
+    title.className = 'cat-section-title';
+    let displayName = cat.includes('清潔-') ? cat : cat.split(/[\s_]/)[0];
+    title.innerText = displayName;
+    section.appendChild(title);
+
+    const gridContainer = document.createElement('div');
+    gridContainer.className = 'grid-layout';
+
+    // Phase1 skeleton per section (flag: p1_skel)
+    if(window.FF && FF.has && FF.has('p1_skel')){
+      const sk = Math.min(4, catProducts.length, 6);
+      for(let i=0;i<sk;i++) gridContainer.appendChild(__makeProductSkeletonCard());
+      gridContainer.dataset.hasSkel = '1';
+    }
+
+    section.appendChild(gridContainer);
+    grid.appendChild(section);
+    catData.push({ grid: gridContainer, products: catProducts });
+  });
+
+  // content-visibility optimization (flag: p5_cv)
+  if(window.FF && FF.has && FF.has('p5_cv')){
+    try{
+      grid.querySelectorAll('.cat-section').forEach(sec=>{
+        sec.style.contentVisibility = 'auto';
+        sec.style.containIntrinsicSize = '1px 900px';
+      });
+    }catch(e){}
+  }
+
+  let catIdx = 0;
+  let prodIdx = 0;
+
+  const step = ()=>{
+    if(token !== window.__RENDER_TOKEN__) return; // cancelled
+    const start = performance.now();
+
+    while(catIdx < catData.length){
+      const block = catData[catIdx];
+      const cont = block.grid;
+      const arr = block.products;
+
+      if(cont.dataset.hasSkel === '1'){
+        cont.innerHTML = '';
+        delete cont.dataset.hasSkel;
+      }
+
+      const frag = document.createDocumentFragment();
+      let wrote = 0;
+      while(prodIdx < arr.length){
+        frag.appendChild(createProductCard(arr[prodIdx], null));
+        prodIdx++; wrote++;
+        if(wrote >= 6 && (performance.now() - start) > 10) break;
+        if((performance.now() - start) > 14) break;
+      }
+      cont.appendChild(frag);
+
+      if(prodIdx >= arr.length){
+        catIdx++; prodIdx = 0;
+        continue;
+      }
+      break; // yield
+    }
+
+    if(catIdx < catData.length){
+      requestAnimationFrame(step);
+    } else {
+      setupScrollSpy();
+    }
+  };
+
+  requestAnimationFrame(step);
+}
+
 function renderList() {
+  // cancel any in-flight chunked render
+  window.__RENDER_TOKEN__ = (window.__RENDER_TOKEN__||0) + 1;
   const grid = document.getElementById("list");
   grid.innerHTML = "";
   const inp = document.getElementById("searchInp");
@@ -5454,9 +5742,10 @@ const L_tier  = getBadgeName('tier','多件優惠');
       const hasSel = SELECTED_BUNDLE.has(p._id);
       actionBtn = `<div class="btn-bundle" onclick="openBundle(${p._id})">${hasSel ? "內容已選 ✓" : "選擇內容物"}</div>`;
     }
+    const lazyImgAttr = (window.FF && FF.has && FF.has('p3_lazyimg')) ? 'loading="lazy" decoding="async"' : '';
     let imgHtml = `<div class="p-no-img"><span class="material-icons-round" style="font-size:32px">image_not_supported</span>無圖片</div>`;
     if(p.photo && p.photo.length > 5) {
-      imgHtml = `<img src="${p.photo}" class="p-img" onload="this.classList.add('loaded')" onerror="this.style.display='none';this.parentElement.innerHTML='<div class=\'p-no-img\'>暫無圖片</div>'">`;
+      imgHtml = `<img src="${p.photo}" class="p-img" ${lazyImgAttr} onload="this.classList.add('loaded')" onerror="this.style.display='none';this.parentElement.innerHTML='<div class=\'p-no-img\'>暫無圖片</div>'">`;
     }
     
     // RESTORED HIGHLIGHT LOGIC
