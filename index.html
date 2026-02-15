@@ -163,7 +163,7 @@ main { padding: 12px; max-width: 900px; margin: 0 auto; margin-top: 10px; }
 .pm-card{
   flex: 0 0 132px; /* 窄卡：5字寬節奏 */
   border-radius: 16px;
-  padding: 12px 12px 10px;
+  padding: 12px 12px 10px 14px;
   background: rgba(255,255,255,0.94);
   border: 1px solid rgba(0,0,0,0.06);
   box-shadow: 0 10px 24px rgba(0,0,0,0.06);
@@ -175,13 +175,25 @@ main { padding: 12px; max-width: 900px; margin: 0 auto; margin-top: 10px; }
 .pm-card::before{
   content:'';
   position:absolute;
+  left:0; top:0; bottom:0;
+  width:6px;
+  background: var(--pm-rail, #cfd8dc);
+  border-radius: 16px 0 0 16px;
+  opacity: 0.95;
+  pointer-events:none;
+}
+.pm-card::after{
+  content:'';
+  position:absolute;
   inset:0;
-  background: linear-gradient(135deg, rgba(255,255,255,0) 0%, var(--pm-tint, rgba(255,224,178,0.35)) 92%);
+  background: linear-gradient(135deg, var(--pm-wash, rgba(207,216,220,0.16)) 0%, rgba(255,255,255,0) 62%);
   pointer-events:none;
 }
 .pm-card:hover{ filter: brightness(1.02); box-shadow: 0 14px 28px rgba(0,0,0,0.08); }
 .pm-card:active{ transform: translateY(1px) scale(0.996); }
 
+
+.pm-card > *{ position: relative; z-index: 1; }
 .pm-name{
   font-weight: 950;
   color:#111827;
@@ -206,11 +218,11 @@ main { padding: 12px; max-width: 900px; margin: 0 auto; margin-top: 10px; }
   max-width: 100%;
 }
 
-.pm-theme-drink{ --pm-tint: rgba(255, 183, 77, 0.34); }
-.pm-theme-health{ --pm-tint: rgba(144, 202, 249, 0.32); }
-.pm-theme-beauty{ --pm-tint: rgba(248, 187, 208, 0.34); }
-.pm-theme-clean{ --pm-tint: rgba(165, 214, 167, 0.32); }
-.pm-theme-default{ --pm-tint: rgba(224, 224, 224, 0.34); }
+.pm-theme-drink{ --pm-rail: #ffa726; --pm-wash: rgba(255,167,38,0.16); }
+.pm-theme-health{ --pm-rail: #64b5f6; --pm-wash: rgba(100,181,246,0.16); }
+.pm-theme-beauty{ --pm-rail: #f48fb1; --pm-wash: rgba(244,143,177,0.16); }
+.pm-theme-clean{ --pm-rail: #81c784; --pm-wash: rgba(129,199,132,0.16); }
+.pm-theme-default{ --pm-rail: #cfd8dc; --pm-wash: rgba(207,216,220,0.16); }
 
 .pm-nav{
   position:absolute;
@@ -1087,10 +1099,22 @@ body.drawer-open { overflow:hidden; }
 .pm-item:active{ transform: translateY(1px); }
 .pm-item:hover{ box-shadow: 0 10px 24px rgba(0,0,0,0.06); }
 .pm-item.is-focus{
-  background: linear-gradient(135deg, rgba(255,255,255,0.92) 0%, var(--pm-accent, rgba(255, 224, 178, 0.75)) 100%);
-  border-color: rgba(0,0,0,0.10);
+  background: rgba(255,255,255,0.96);
+  background-image: linear-gradient(270deg, var(--pm-accent, rgba(255,224,178,0.28)) 0%, rgba(255,255,255,0) 50%, rgba(255,255,255,0) 100%);
+  border-color: rgba(0,0,0,0.12);
   box-shadow: 0 14px 30px rgba(0,0,0,0.10);
   position: relative;
+  overflow: hidden;
+}
+.pm-item.is-focus::before{
+  content:'';
+  position:absolute;
+  left:0; top:0; bottom:0;
+  width:6px;
+  background: var(--pm-accent, rgba(255,167,38,0.80));
+  border-radius: 16px 0 0 16px;
+  opacity: 0.90;
+  pointer-events:none;
 }
 .pm-item.is-focus::after{
   content:'';
@@ -3089,6 +3113,9 @@ function setPromoMapSeen(){
 
 let __PM_MARQ_RAF__ = null;
 let __PM_MARQ_IDLE_T__ = null;
+let __PM_MARQ_ORIG_W__ = 0; // width of one loop
+let __PM_MARQ_LAST_AUTO_T__ = 0; // last auto-scroll timestamp
+let __PM_MARQ_BOUND__ = false; // whether listeners are bound
 
 function stopPromoMarqueeAutoScroll(){
   try{ if(__PM_MARQ_RAF__){ cancelAnimationFrame(__PM_MARQ_RAF__); __PM_MARQ_RAF__ = null; } }catch(e){}
@@ -3200,11 +3227,12 @@ function buildPromoMarqueeSummary(title){
   }catch(e){ return '多重優惠'; }
 }
 
-function promoMarqueePause(){
+function promoMarqueePause(delayMs){
   try{ stopPromoMarqueeAutoScroll(); }catch(e){}
   try{ if(__PM_MARQ_IDLE_T__) clearTimeout(__PM_MARQ_IDLE_T__); }catch(e){}
+  const ms = (typeof delayMs === 'number' && isFinite(delayMs)) ? Math.max(800, delayMs) : 2500;
   try{
-    __PM_MARQ_IDLE_T__ = setTimeout(()=>{ try{ initPromoMarqueeAutoScroll(); }catch(e){} }, 2500);
+    __PM_MARQ_IDLE_T__ = setTimeout(()=>{ try{ initPromoMarqueeAutoScroll(); }catch(e){} }, ms);
   }catch(e){}
 }
 
@@ -3213,25 +3241,51 @@ function initPromoMarqueeArrows(){
     const slot = document.getElementById('promoMarqueeSlot');
     if(!slot || slot.style.display === 'none') return;
     const viewport = slot.querySelector('#promoMarqueeViewport') || slot.querySelector('.pm-viewport');
+    const track = slot.querySelector('#promoMarqueeTrack') || slot.querySelector('.pm-track');
     const left = slot.querySelector('#pmNavLeft');
     const right = slot.querySelector('#pmNavRight');
     if(!viewport || !left || !right) return;
 
-    const update = ()=>{
+    const canScroll = ()=>{
       const max = Math.max(0, viewport.scrollWidth - viewport.clientWidth);
-      if(max <= 2){
-        left.classList.add('hidden');
-        right.classList.add('hidden');
-        return;
-      }
-      left.classList.toggle('hidden', viewport.scrollLeft <= 2);
-      right.classList.toggle('hidden', viewport.scrollLeft >= (max - 2));
+      return max > 2;
+    };
+
+    const update = ()=>{
+      const can = canScroll();
+      left.classList.toggle('hidden', !can);
+      right.classList.toggle('hidden', !can);
     };
 
     const step = ()=> Math.max(220, Math.floor(viewport.clientWidth * 0.82));
 
-    left.onclick = ()=>{ try{ promoMarqueePause(); }catch(e){}; viewport.scrollBy({left: -step(), behavior:'smooth'}); };
-    right.onclick = ()=>{ try{ promoMarqueePause(); }catch(e){}; viewport.scrollBy({left: step(), behavior:'smooth'}); };
+    const getOrigW = ()=>{
+      const ow = Number((track && (track.dataset.origW || track.getAttribute('data-orig-w'))) || __PM_MARQ_ORIG_W__ || 0);
+      return (isFinite(ow) && ow > 0) ? ow : 0;
+    };
+
+    const preWrapForNav = (dir)=>{
+      const ow = getOrigW();
+      if(!ow) return;
+      // Keep scrollLeft away from hard edges to avoid "卡住/反彈" 感
+      if(dir < 0 && viewport.scrollLeft <= 8){
+        viewport.scrollLeft += ow;
+      }
+      if(dir > 0 && viewport.scrollLeft >= (ow * 1.55)){
+        viewport.scrollLeft -= ow;
+      }
+    };
+
+    left.onclick = ()=>{
+      try{ promoMarqueePause(3500); }catch(e){}
+      try{ preWrapForNav(-1); }catch(e){}
+      viewport.scrollBy({left: -step(), behavior:'smooth'});
+    };
+    right.onclick = ()=>{
+      try{ promoMarqueePause(3500); }catch(e){}
+      try{ preWrapForNav(+1); }catch(e){}
+      viewport.scrollBy({left: step(), behavior:'smooth'});
+    };
 
     viewport.addEventListener('scroll', update, {passive:true});
     window.addEventListener('resize', update, {passive:true});
@@ -3245,31 +3299,65 @@ function initPromoMarqueeAutoScroll(){
     stopPromoMarqueeAutoScroll();
     const slot = document.getElementById("promoMarqueeSlot");
     if(!slot || slot.style.display === "none") return;
-    const viewport = slot.querySelector(".pm-viewport");
-    const track = slot.querySelector(".pm-track");
+    const viewport = slot.querySelector('#promoMarqueeViewport') || slot.querySelector('.pm-viewport');
+    const track = slot.querySelector('#promoMarqueeTrack') || slot.querySelector('.pm-track');
     if(!viewport || !track) return;
     if(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
 
+    // width of one loop (track is duplicated)
+    let ow = Number(track.dataset.origW || track.getAttribute('data-orig-w') || 0);
+    if(!ow || !isFinite(ow) || ow <= 0){
+      try{ ow = Math.max(0, track.scrollWidth / 2); }catch(e){ ow = 0; }
+      ow = Math.round(ow);
+      if(ow > 0){ track.dataset.origW = String(ow); }
+    }
+    __PM_MARQ_ORIG_W__ = ow || __PM_MARQ_ORIG_W__ || 0;
+
+    const max = Math.max(0, track.scrollWidth - viewport.clientWidth);
+    if(max <= 2 || !ow || ow <= (viewport.clientWidth + 6)) return;
+
+    // Normalize (teleport is seamless because content repeats)
+    try{ viewport.scrollLeft = ((viewport.scrollLeft % ow) + ow) % ow; }catch(e){}
+
+    // Bind pause listeners once
+    try{
+      if(viewport.dataset.pmMarqBound !== '1'){
+        viewport.dataset.pmMarqBound = '1';
+        const pauseLong = ()=>{ try{ promoMarqueePause(3500); }catch(e){} };
+        const pauseMid = ()=>{ try{ promoMarqueePause(2500); }catch(e){} };
+        viewport.addEventListener('pointerdown', pauseLong, {passive:true});
+        viewport.addEventListener('touchstart', pauseLong, {passive:true});
+        viewport.addEventListener('wheel', pauseMid, {passive:true});
+        viewport.addEventListener('mouseenter', pauseMid, {passive:true});
+        viewport.addEventListener('scroll', ()=>{
+          try{
+            const now = performance.now();
+            if(now - (__PM_MARQ_LAST_AUTO_T__||0) < 120) return; // ignore auto ticks
+            promoMarqueePause(1400);
+          }catch(e){}
+        }, {passive:true});
+      }
+    }catch(e){}
+
     let last = performance.now();
-    const speed = 18; // px/sec
+    const speed = 16; // px/sec (smooth)
 
     function tick(t){
-      const dt = Math.min(50, t - last);
+      const dt = Math.min(40, Math.max(0, t - last));
       last = t;
-      const max = Math.max(0, track.scrollWidth - viewport.clientWidth);
-      if(max > 0){
-        viewport.scrollLeft += (speed * dt / 1000);
-        if(viewport.scrollLeft >= (max - 1)) viewport.scrollLeft = 0;
-      }
+      __PM_MARQ_LAST_AUTO_T__ = t;
+
+      const dx = speed * dt / 1000;
+      let x = viewport.scrollLeft + dx;
+      // Seamless wrap
+      if(x >= ow) x = x - ow;
+      if(x < 0) x = x + ow;
+      viewport.scrollLeft = x;
+
       __PM_MARQ_RAF__ = requestAnimationFrame(tick);
     }
-    __PM_MARQ_RAF__ = requestAnimationFrame(tick);
 
-    const pause = ()=>{ try{ promoMarqueePause(); }catch(e){} };
-    viewport.addEventListener("pointerdown", pause, {passive:true});
-    viewport.addEventListener("wheel", pause, {passive:true});
-    viewport.addEventListener("touchstart", pause, {passive:true});
-    viewport.addEventListener("mouseenter", pause, {passive:true});
+    __PM_MARQ_RAF__ = requestAnimationFrame(tick);
   }catch(e){}
 }
 
@@ -3308,22 +3396,26 @@ function renderPromoMarquee(){
 
     const track = slot.querySelector("#promoMarqueeTrack");
     if(track){
-      for(const it of items){
-        const card = document.createElement("div");
-        const theme = it.theme || "default";
-        card.className = `pm-card pm-theme-${theme}`;
-        const t = escapeHtml(it.title);
-        const s = escapeHtml(it.summary || "多重優惠");
-        card.innerHTML = `
-          <div class="pm-name">${t}</div>
-          <div class="pm-hint">${s}</div>
-        `;
-        card.onclick = () => {
-          try{ __PM_OPEN_FROM_MARQUEE__ = true; __PM_FOCUS_TITLE__ = it.title; }catch(e){}
-          try{ setPromoMapSeen(); }catch(e){}
-          try{ openPromoMap(); }catch(e){}
-        };
-        track.appendChild(card);
+      track.innerHTML = '';
+      // Duplicate once to make a seamless loop (A+B). We always scroll within one-loop width.
+      for(let pass=0; pass<2; pass++){
+        for(const it of items){
+          const card = document.createElement("div");
+          const theme = it.theme || "default";
+          card.className = `pm-card pm-theme-${theme}`;
+          const t = escapeHtml(it.title);
+          const s = escapeHtml(it.summary || "多重優惠");
+          card.innerHTML = `
+            <div class="pm-name">${t}</div>
+            <div class="pm-hint">${s}</div>
+          `;
+          card.onclick = () => {
+            try{ __PM_OPEN_FROM_MARQUEE__ = true; __PM_FOCUS_TITLE__ = it.title; }catch(e){}
+            try{ setPromoMapSeen(); }catch(e){}
+            try{ openPromoMap(); }catch(e){}
+          };
+          track.appendChild(card);
+        }
       }
     }
 
@@ -3334,8 +3426,21 @@ function renderPromoMarquee(){
     }catch(e){}
 
     slot.style.display = "block";
-    try{ initPromoMarqueeArrows(); }catch(e){}
-    try{ initPromoMarqueeAutoScroll(); }catch(e){}
+    try{
+      requestAnimationFrame(()=>{
+        try{
+          const track2 = slot.querySelector("#promoMarqueeTrack");
+          const ow = track2 ? Math.round(track2.scrollWidth / 2) : 0;
+          if(ow && isFinite(ow) && ow > 0){
+            track2.dataset.origW = String(ow);
+            __PM_MARQ_ORIG_W__ = ow;
+          }
+        }catch(e){}
+        try{ initPromoMarqueeArrows(); }catch(e){}
+        try{ initPromoMarqueeAutoScroll(); }catch(e){}
+      });
+    }catch(e){}
+
   }catch(e){}
 }
 
@@ -4768,7 +4873,7 @@ const groupCode = String(pick("group_code")||"").trim();
     }
 
     const rData = Papa.parse(rText, { header: true, skipEmptyLines: true }).data;
-    RULES = { tiers: [], bogo: [], spend: [], bundle: [], series_gift: [], flat_price: [], eligibility: [], uiNotes: {}, uiAccent: {}, uiCatStyle: {}, uiCfg: {}, freeShipThreshold: null };
+    RULES = { tiers: [], bogo: [], spend: [], bundle: [], series_gift: [], flat_price: [], eligibility: [], uiNotes: {}, uiAccent: {}, uiCatStyle: {}, uiCfg: {}, uiPromoMarqueeCopy: {}, freeShipThreshold: null };
     rData.forEach(row => {
       const pick = (k) => {
         const kk = String(k||'').replace(/^\uFEFF/,'').trim().toLowerCase();
@@ -4835,6 +4940,22 @@ else if(type.includes("ui_note")) {
         const zone = String(pick("zone")||"").trim();
         const txt = String(pick("ui_text")||"").trim();
         if(zone && txt) RULES.uiNotes[zone] = txt;
+
+        // Promo Marquee copy (recommended: add a new column like ui_text2 for cat_hint rows)
+        try{
+          if(!RULES.uiPromoMarqueeCopy) RULES.uiPromoMarqueeCopy = {};
+          const z = String(zone||"").trim();
+          if(z.startsWith("cat_marquee|") || z.startsWith("marquee|")){
+            const t = z.split("|").slice(1).join("|").trim();
+            if(t && txt) RULES.uiPromoMarqueeCopy[t] = String(txt).trim();
+          }else if(z.startsWith("cat_hint|")){
+            const t = z.substring("cat_hint|".length).trim();
+            const short = String(
+              pick("ui_text2") || pick("ui_text_short") || pick("ui_marquee_copy") || pick("ui_marquee") || pick("ui_text_marquee") || ""
+            ).trim();
+            if(t && short) RULES.uiPromoMarqueeCopy[t] = short;
+          }
+        }catch(e){}
       }
 
             else if(type.includes("bundle")) RULES.bundle.push({ code: pick("product_code"), price: Number(pick("unit_price")) });
