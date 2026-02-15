@@ -153,6 +153,9 @@ main { padding: 12px; max-width: 900px; margin: 0 auto; margin-top: 10px; }
   scrollbar-width: none;
   padding: 2px 36px 8px; /* 留給左右箭頭 */
   scroll-behavior: smooth;
+
+  touch-action: pan-y;
+  overscroll-behavior: contain;
 }
 .pm-viewport::-webkit-scrollbar{ display:none; }
 .pm-track{
@@ -1718,13 +1721,26 @@ body.cfg-error .btn-bundle{
 
 
 #gift-fab.attn{
-  animation: giftPulse 1.15s ease-in-out infinite, giftShake 0.9s ease-in-out infinite;
-  box-shadow: 0 10px 26px rgba(255,111,0,0.28);
+  animation: giftGlow 1.55s ease-in-out infinite, giftShake 2.6s ease-in-out infinite;
+  box-shadow: 0 10px 26px rgba(255,111,0,0.32);
 }
-@keyframes giftPulse{ 0%,100%{ transform: translateY(0) scale(1); filter: brightness(1); } 50%{ transform: translateY(-1px) scale(1.06); filter: brightness(1.08);} }
+@keyframes giftGlow{
+  0%,100%{ filter: brightness(1); box-shadow: 0 8px 22px rgba(0,0,0,0.10), 0 0 0 rgba(255,193,7,0.0); }
+  50%{ filter: brightness(1.10); box-shadow: 0 10px 26px rgba(0,0,0,0.12), 0 0 18px rgba(255,193,7,0.35); }
+}
 @keyframes giftShake{
-  0%,100%{ transform: translateX(0) rotate(0deg); }
-  20%{ transform: translateX(-2px) rotate(-1deg); }
+  0%,65%,100%{ transform: translateX(0) rotate(0deg); }
+  6%{ transform: translateX(-2px) rotate(-1deg); }
+  12%{ transform: translateX(2px) rotate(1deg); }
+  18%{ transform: translateX(-2px) rotate(-1deg); }
+  24%{ transform: translateX(2px) rotate(1deg); }
+  30%{ transform: translateX(-1px) rotate(-0.6deg); }
+  36%{ transform: translateX(1px) rotate(0.6deg); }
+  42%{ transform: translateX(0) rotate(0deg); }
+}
+
+
+20%{ transform: translateX(-2px) rotate(-1deg); }
   40%{ transform: translateX(2px) rotate(1deg); }
   60%{ transform: translateX(-1px) rotate(-0.6deg); }
   80%{ transform: translateX(1px) rotate(0.6deg); }
@@ -3333,7 +3349,7 @@ function initPromoMarqueeAutoScroll(){
         track.style.transform = `translate3d(${-__PM_MARQ_CTRL__.x}px,0,0)`;
 
         const prefersReduce = (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
-        const speed = prefersReduce ? 10 : 22; // px/s
+        const speed = prefersReduce ? 15 : 33; // px/s (v38: +50%)
 
         let last = performance.now();
         const tick = (t)=>{
@@ -3359,22 +3375,54 @@ function initPromoMarqueeAutoScroll(){
         };
         __PM_MARQ_RAF__ = requestAnimationFrame(tick);
 
-        // Drag support (pointer)
+        // Drag support (pointer/touch) with direction lock (avoid pausing on vertical scroll)
+        const DRAG_TH = 6;
         const onDown = (ev)=>{
           try{
-            __PM_MARQ_CTRL__.dragging = true;
-            __PM_MARQ_CTRL__.paused = true;
-            __PM_MARQ_CTRL__.resumeAt = 0;
-            __PM_MARQ_CTRL__._dragStartX = (ev.touches?ev.touches[0].clientX:ev.clientX);
-            __PM_MARQ_CTRL__._dragStartPos = __PM_MARQ_CTRL__.x;
+            const c = __PM_MARQ_CTRL__;
+            if(!c) return;
+            c._down = true;
+            c._lock = null; // 'h' or 'v'
+            c._dragMoved = false;
+            c._dragStartX = (ev.touches?ev.touches[0].clientX:ev.clientX);
+            c._dragStartY = (ev.touches?ev.touches[0].clientY:ev.clientY);
+            c._dragStartPos = c.x;
+            // capture pointer to keep receiving moves (Android stability)
+            try{ if(ev.pointerId!=null && viewport.setPointerCapture) viewport.setPointerCapture(ev.pointerId); }catch(e){}
           }catch(e){}
         };
         const onMove = (ev)=>{
           try{
             const c=__PM_MARQ_CTRL__;
-            if(!c || !c.dragging) return;
+            if(!c || !c._down) return;
             const cx = (ev.touches?ev.touches[0].clientX:ev.clientX);
+            const cy = (ev.touches?ev.touches[0].clientY:ev.clientY);
             const dx = cx - c._dragStartX;
+            const dy = cy - c._dragStartY;
+
+            if(!c._lock){
+              if(Math.abs(dx) < DRAG_TH && Math.abs(dy) < DRAG_TH) return;
+              // decide direction (bias to vertical to preserve scroll feel)
+              if(Math.abs(dx) > Math.abs(dy) * 1.15){
+                c._lock = 'h';
+                c.dragging = true;
+                c.paused = true;
+                c.resumeAt = 0;
+              }else if(Math.abs(dy) > Math.abs(dx) * 1.15){
+                c._lock = 'v';
+                c._down = false; // release; allow page scroll
+                return;
+              }else{
+                return;
+              }
+            }
+
+            if(c._lock !== 'h') return;
+
+            // prevent page scroll while actively dragging horizontally (Android fix)
+            try{ if(ev.cancelable) ev.preventDefault(); }catch(e){}
+            if(Math.abs(dx) > 10) c._dragMoved = true;
+
             c.x = c._dragStartPos - dx;
             while(c.x < 0) c.x += c.ow;
             while(c.x >= c.ow) c.x -= c.ow;
@@ -3385,17 +3433,22 @@ function initPromoMarqueeAutoScroll(){
           try{
             const c=__PM_MARQ_CTRL__;
             if(!c) return;
-            c.dragging = false;
-            c.paused = true;
-            c.resumeAt = performance.now() + 900;
+            const wasH = (c._lock === 'h');
+            c._down = false;
+            c._lock = null;
+            if(wasH){
+              c.dragging = false;
+              c.paused = true;
+              c.resumeAt = performance.now() + 650;
+            }
           }catch(e){}
         };
 
-        // remove prior
+// remove prior
         try{
           if(viewport.__pmDown){ viewport.removeEventListener('pointerdown', viewport.__pmDown); viewport.removeEventListener('touchstart', viewport.__pmDown); }
           if(viewport.__pmMove){ window.removeEventListener('pointermove', viewport.__pmMove); window.removeEventListener('touchmove', viewport.__pmMove); }
-          if(viewport.__pmUp){ window.removeEventListener('pointerup', viewport.__pmUp); window.removeEventListener('touchend', viewport.__pmUp); window.removeEventListener('pointercancel', viewport.__pmUp); }
+          if(viewport.__pmUp){ window.removeEventListener('pointerup', viewport.__pmUp); window.removeEventListener('touchend', viewport.__pmUp); window.removeEventListener('touchcancel', viewport.__pmUp); window.removeEventListener('pointercancel', viewport.__pmUp); }
         }catch(e){}
 
         viewport.__pmDown = onDown;
@@ -3404,10 +3457,11 @@ function initPromoMarqueeAutoScroll(){
         viewport.addEventListener('pointerdown', onDown, {passive:true});
         viewport.addEventListener('touchstart', onDown, {passive:true});
         window.addEventListener('pointermove', onMove, {passive:true});
-        window.addEventListener('touchmove', onMove, {passive:true});
+        window.addEventListener('touchmove', onMove, {passive:false});
         window.addEventListener('pointerup', onUp, {passive:true});
         window.addEventListener('pointercancel', onUp, {passive:true});
         window.addEventListener('touchend', onUp, {passive:true});
+        window.addEventListener('touchcancel', onUp, {passive:true});
       }catch(e){}
     });
   }catch(e){}
@@ -3463,6 +3517,10 @@ function renderPromoMarquee(){
             <div class="pm-hint">${s}</div>
           `;
           card.onclick = () => {
+            try{
+              const c = __PM_MARQ_CTRL__;
+              if(c && c._dragMoved){ c._dragMoved = false; return; }
+            }catch(e){}
             try{ __PM_OPEN_FROM_MARQUEE__ = true; __PM_FOCUS_TITLE__ = it.title; }catch(e){}
             try{ setPromoMapSeen(); }catch(e){}
             try{ openPromoMap(); }catch(e){}
