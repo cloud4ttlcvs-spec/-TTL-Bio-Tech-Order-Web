@@ -284,7 +284,6 @@ main { padding: 12px; max-width: 900px; margin: 0 auto; margin-top: 10px; }
   display: flex; align-items: center; justify-content: center;
   font-size: 24px; cursor: pointer; z-index: 1090;
   transition: transform 0.2s;
-  display: none; 
 }
 #gift-fab:active { transform: scale(0.9); }
 @keyframes shakeGift { 0% { transform: rotate(0deg); } 25% { transform: rotate(-15deg); } 50% { transform: rotate(15deg); } 75% { transform: rotate(-15deg); } 100% { transform: rotate(0deg); } }
@@ -3130,6 +3129,7 @@ function setPromoMapSeen(){
 let __PM_MARQ_RAF__ = null;
 let __PM_MARQ_IDLE_T__ = null;
 let __PM_MARQ_ORIG_W__ = 0; // width of one loop
+let __PM_MARQ_CTRL__ = null; // transform marquee controller
 let __PM_MARQ_LAST_AUTO_T__ = 0; // last auto-scroll timestamp
 let __PM_MARQ_BOUND__ = false; // whether listeners are bound
 
@@ -3451,7 +3451,7 @@ function renderPromoMarquee(){
     if(track){
       track.innerHTML = '';
       // Duplicate once to make a seamless loop (A+B). We always scroll within one-loop width.
-      for(let pass=0; pass<2; pass++){
+      for(let pass=0; pass<1; pass++){
         for(const it of items){
           const card = document.createElement("div");
           const theme = it.theme || "default";
@@ -3483,7 +3483,7 @@ function renderPromoMarquee(){
       requestAnimationFrame(()=>{
         try{
           const track2 = slot.querySelector("#promoMarqueeTrack");
-          const ow = track2 ? Math.round(track2.scrollWidth / 2) : 0;
+          const ow = track2 ? Math.round(track2.scrollWidth) : 0;
           if(ow && isFinite(ow) && ow > 0){
             track2.dataset.origW = String(ow);
             __PM_MARQ_ORIG_W__ = ow;
