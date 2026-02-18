@@ -2593,7 +2593,19 @@ function createSeriesGiftItem(g, reached, baseQty) {
     const unit = seriesGiftUnit(g.prefix);
     const thr = Number(g.amt);
     const ruleText = (Number.isFinite(thr) && thr > 0) ? `每 ${thr} ${unit}送` : `每${unit}送`;
-    const perText = `${ruleText} ${Number(g.qty)||0} 個`;
+    const perQty = (Number(g.qty) || 0);
+    const perText = `${ruleText} ${perQty} 個`;
+
+    // earned gift count (consider mult)
+    let giftTimes = 0;
+    try{
+      if(Number.isFinite(thr) && thr > 0){
+        giftTimes = (String(g.mult).toLowerCase() === 'true') ? Math.floor(baseQty / thr) : (baseQty >= thr ? 1 : 0);
+      } else {
+        giftTimes = baseQty > 0 ? 1 : 0;
+      }
+    }catch(e){ giftTimes = 0; }
+    const giftCount = Math.max(0, giftTimes * perQty);
 
     const div = document.createElement("div");
     div.className = `gift-item ${reached ? 'unlocked' : ''}`;
@@ -2603,7 +2615,7 @@ function createSeriesGiftItem(g, reached, baseQty) {
         <div class="g-info">
           <div class="g-amt">${perText}</div>
           <div class="g-name">${gName}</div>
-          <div style="font-size:12px;opacity:.8;margin-top:4px;">目前${unit}數：${baseQty}</div>
+          <div style="font-size:12px;opacity:.8;margin-top:4px;">目前${unit}數：${baseQty}　贈品${unit}數：${giftCount}</div>
           ${reached ? '<div class="g-tag">已獲得</div>' : ''}
         </div>
     `;
@@ -2703,22 +2715,17 @@ window.updateQty = function(btnEl, pid, delta) {
           fab.classList.add('attn');
         }
       }catch(e){}
-      // First add: still run gift unlock hint (but keep UI quiet: no "已加入購物車" toast)
-      setTimeout(() => {
-          try{
-            const data = calcCart();
-            checkNewGifts(data.gifts);
-          }catch(e){}
-      }, 80);
-  } else if (delta > 0) {
-      const addedToast = showToast("已加入購物車");
+  }
+  if (delta > 0) {
+      showToast("已加入購物車");
       setTimeout(() => {
           const data = calcCart();
           checkNewGifts(data.gifts); 
       }, 800);
   }
 
-  // Enforce add-on eligibility after any cart change
+
+// Enforce add-on eligibility after any cart change
   const removedAddon = enforceAddonEligibility();
   if(removedAddon > 0) {
     showToast("加價購商品已移除（未符合加購條件）", "warn");
