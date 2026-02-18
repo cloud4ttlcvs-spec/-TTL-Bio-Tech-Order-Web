@@ -2703,6 +2703,13 @@ window.updateQty = function(btnEl, pid, delta) {
           fab.classList.add('attn');
         }
       }catch(e){}
+      // First add: still run gift unlock hint (but keep UI quiet: no "已加入購物車" toast)
+      setTimeout(() => {
+          try{
+            const data = calcCart();
+            checkNewGifts(data.gifts);
+          }catch(e){}
+      }, 80);
   } else if (delta > 0) {
       const addedToast = showToast("已加入購物車");
       setTimeout(() => {
