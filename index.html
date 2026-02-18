@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"/>
-<title>生技展訂購系統 v29</title>
+<title>生技展訂購系統</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&family=Roboto:wght@500;700;900&display=swap" rel="stylesheet">
 <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
@@ -5081,6 +5081,368 @@ function setupViewportVars(){
 }
 
 
+
+// ==============================
+// V41: Worker Parse (CSV parse off main thread) — no-cache build
+// - Offload Papa.parse (and core normalization) to Web Worker when available
+// - Fallback to main-thread parse if worker fails (stability first)
+// ==============================
+let __coreParseWorker = null;
+function __getCoreParseWorker(){
+  if(__coreParseWorker) return __coreParseWorker;
+  const workerSrc = `
+    self.addEventListener('message', async (ev) => {
+      const payload = ev.data || {};
+      const pText = payload.pText || '';
+      const rText = payload.rText || '';
+      try{
+        // Load PapaParse inside worker
+        if(!self.Papa){
+          importScripts('https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js');
+        }
+        const parseCsv = (txt) => (self.Papa.parse(txt, { header:true, skipEmptyLines:true }).data || []);
+        const _pickFactory = (row) => {
+          // build a lowercase header map once per row
+          const map = {};
+          Object.keys(row||{}).forEach(k=>{
+            const kk = String(k||'').replace(/^\\uFEFF/,'').trim().toLowerCase();
+            if(kk && map[kk] == null) map[kk] = k;
+          });
+          return (k) => {
+            const kk = String(k||'').replace(/^\\uFEFF/,'').trim().toLowerCase();
+            const key = map[kk];
+            return (key ? row[key] : '') || '';
+          };
+        };
+        const _bool = (v) => {
+          const s = String(v||'').trim().toLowerCase();
+          return (s === 'true' || s === '1' || s === 'y' || s === 'yes' || s === 't');
+        };
+
+        // ---- PRODUCTS ----
+        const pData = parseCsv(pText);
+        const productMapEntries = [];
+        const giftMapEntries = [];
+        const products = [];
+        for(let i=0;i<pData.length;i++){
+          const row = pData[i];
+          const pick = _pickFactory(row);
+          const code = String(pick('product_code')||'').trim();
+          const name = String(pick('product_name')||'').trim();
+          if(!code || !name) continue;
+          const isGift = String(pick('is_gift')||'').toLowerCase();
+
+          const isNew = _bool(pick('is_new'));
+          const isHidden = _bool(pick('is_hidden'));
+          const groupCode = String(pick('group_code')||'').trim();
+
+          let bundle = [];
+          for(let k=1;k<=4;k++){
+            let sn = String(pick(\`spec_\${k}\`)||'').trim();
+            let sq = Number(pick(\`spec_\${k}_qty\`)||1);
+            if(sn){
+              sn = sn.replace(/^([A-Za-z0-9\\-\\.]+)\\s+/, '').trim();
+              bundle.push({ name: sn, qty: sq });
+            }
+          }
+
+          // Gift rows are not sellable but must exist in PRODUCT_MAP for name lookup
+          if(isGift === 'true' || isGift.includes('是')){
+            productMapEntries.push([code, { name, price: 0, bundle }]);
+            continue;
+          }
+
+          const p = {
+            _id: i,
+            code,
+            name,
+            name_lc: name.toLowerCase(),
+            code_lc: code.toLowerCase(),
+            category: String(pick('category')||'').trim(),
+            price: Number(String(pick('list_price')||'0').replace(/,/g,'')),
+            spec: String(pick('spec')||''),
+            photo: String(pick('photos url')||''),
+            bundle,
+            is_new: isNew,
+            is_hidden: isHidden,
+            group_code: groupCode
+          };
+
+          productMapEntries.push([code, p]);
+          if(p.photo && p.photo.length > 5){
+            giftMapEntries.push([code, [p.photo]]);
+          }
+          products.push(p);
+        }
+
+        if(!products || products.length === 0){
+          throw new Error('商品資料為空（可能是連線被擋 / 代理回傳異常）');
+        }
+
+        // ---- RULES ----
+        const rData = parseCsv(rText);
+        const rules = { tiers: [], bogo: [], spend: [], bundle: [], series_gift: [], flat_price: [], eligibility: [], uiNotes: {}, uiAccent: {}, uiCatStyle: {}, uiCfg: {}, uiPromoMarqueeCopy: {}, freeShipThreshold: null };
+
+        for(let i=0;i<rData.length;i++){
+          const row = rData[i];
+          const pick = _pickFactory(row);
+          const type = String(pick('rule_type')||'').toLowerCase();
+
+          if(type.includes('tier')) rules.tiers.push({ zone: String(pick('zone')||'').trim(), min: Number(pick('min_qty')), pct: Number(pick('percent_off')) });
+          else if(type.includes('bogo')) rules.bogo.push({ code: String(pick('product_code')||''), buy: Number(pick('buy')), get: Number(pick('get')) });
+          else if(type.includes('flat_price')){
+            const zone = String(pick('zone')||'').trim();
+            const code = String(pick('product_code')||'').trim();
+            const unit = Number(pick('unit_price')||pick('charge')||0);
+            if(zone && code && !Number.isNaN(unit)) rules.flat_price.push({ zone, code, unit });
+          }
+          else if(type.includes('eligibility')){
+            const zone = String(pick('zone')||'').trim();
+            const requires = String(pick('requires_any_zone_in')||'').trim();
+            const minQty = Number(pick('requires_min_qty')||pick('requires_min_qty ')||pick('requires_min_qty\t')||1);
+            if(zone) rules.eligibility.push({ zone, requires, minQty: (Number.isNaN(minQty) ? 1 : minQty) });
+          }
+          else if(type.includes('series_gift')){
+            const mRaw = String(pick('multiples')||'').trim().toUpperCase();
+            const mult = (mRaw === 'TRUE' || mRaw === '1' || mRaw === 'YES');
+            rules.series_gift.push({ scope: pick('threshold_scope'), prefix: pick('zone_prefix'), amt: Number(pick('threshold_amount')), gift: pick('gift_code'), qty: Number(pick('gift_qty')), mult });
+          }
+          else if(type.includes('spend')){
+            const mRaw = String(pick('multiples')||'').trim().toUpperCase();
+            const mult = (mRaw === 'TRUE' || mRaw === '1' || mRaw === 'YES');
+            rules.spend.push({ scope: pick('threshold_scope'), prefix: pick('zone_prefix'), amt: Number(pick('threshold_amount')), gift: pick('gift_code'), qty: Number(pick('gift_qty')), mult });
+          }
+          else if(type.includes('shipping_threshold')){
+            const rawAmt = String(pick('threshold_amount')||'').trim().replace(/,/g,'');
+            const amt = Number(rawAmt);
+            if(isFinite(amt) && amt > 0) rules.freeShipThreshold = amt;
+          }
+          else if(type.includes('ui_accent')){
+            const zone = String(pick('zone')||'').trim();
+            const c1 = String(pick('ui_accent')||'').trim();
+            const c2 = String(pick('ui_accent2')||'').trim();
+            if(zone && (c1 || c2)) rules.uiAccent[zone] = { c1, c2 };
+          }
+          else if(type.includes('ui_cat_style')){
+            const zone = String(pick('zone')||'').trim();
+            const mm = zone.match(/^cat\\|(.+)$/);
+            const catKey = mm ? String(mm[1]||'').trim() : zone.replace(/^cat\\|/,'').trim();
+            const c1 = String(pick('ui_accent')||'').trim();
+            const c2 = String(pick('ui_accent2')||'').trim();
+            if(catKey && (c1 || c2)) rules.uiCatStyle[catKey] = { c1, c2 };
+          }
+          else if(type.includes('ui_config')){
+            const key = String(pick('zone')||'').trim();
+            const txt = String(pick('ui_text')||'').trim();
+            const rawAmt = String(pick('threshold_amount')||'').trim().replace(/,/g,'');
+            const amt = Number(rawAmt);
+            if(key){
+              rules.uiCfg[key] = (txt ? txt : (isFinite(amt) ? amt : ''));
+            }
+          }
+          else if(type.includes('ui_note')){
+            const zone = String(pick('zone')||'').trim();
+            const txt = String(pick('ui_text')||'').trim();
+            if(zone && txt) rules.uiNotes[zone] = txt;
+
+            // Promo marquee copy
+            try{
+              if(!rules.uiPromoMarqueeCopy) rules.uiPromoMarqueeCopy = {};
+              const z = String(zone||'').trim();
+              if(z.startsWith('cat_marquee|') || z.startsWith('marquee|')){
+                const t = z.split('|').slice(1).join('|').trim();
+                if(t && txt) rules.uiPromoMarqueeCopy[t] = String(txt).trim();
+              }else if(z.startsWith('cat_hint|')){
+                const t = z.substring('cat_hint|'.length).trim();
+                const short = String(
+                  pick('ui_text2') || pick('ui_text_short') || pick('ui_marquee_copy') || pick('ui_marquee') || pick('ui_text_marquee') || ''
+                ).trim();
+                if(t && short) rules.uiPromoMarqueeCopy[t] = short;
+              }
+            }catch(e){}
+          }
+          else if(type.includes('bundle')) rules.bundle.push({ code: String(pick('product_code')||''), price: Number(pick('unit_price')) });
+        }
+
+        self.postMessage({ ok:true, products, productMapEntries, giftMapEntries, rules });
+      }catch(err){
+        self.postMessage({ ok:false, error: String((err && err.message) || err) });
+      }
+    });
+  `;
+  const blob = new Blob([workerSrc], { type: 'text/javascript' });
+  const url = URL.createObjectURL(blob);
+  __coreParseWorker = new Worker(url);
+  return __coreParseWorker;
+}
+
+function parseCoreInWorker(pText, rText){
+  return new Promise((resolve, reject) => {
+    try{
+      if(!('Worker' in window)) return reject(new Error('Worker not supported'));
+      const w = __getCoreParseWorker();
+      const timer = setTimeout(()=> reject(new Error('Worker parse timeout')), 25000);
+      const onMsg = (ev) => {
+        const msg = ev.data || {};
+        if(!msg.ok){
+          cleanup();
+          return reject(new Error(msg.error || 'Worker parse failed'));
+        }
+        cleanup();
+        resolve(msg);
+      };
+      const onErr = (e) => { cleanup(); reject(e instanceof Error ? e : new Error('Worker error')); };
+      function cleanup(){
+        clearTimeout(timer);
+        w.removeEventListener('message', onMsg);
+        w.removeEventListener('error', onErr);
+      }
+      w.addEventListener('message', onMsg);
+      w.addEventListener('error', onErr);
+      w.postMessage({ pText, rText });
+    }catch(err){
+      reject(err);
+    }
+  });
+}
+
+// Fallback: keep the exact legacy parse logic on main thread for safety
+function parseCoreOnMain(pText, rText){
+  const pData = Papa.parse(pText, { header: true, skipEmptyLines: true }).data;
+  const productMapEntries = [];
+  const giftMapEntries = [];
+  const products = pData.map((row, i) => {
+    const pick = (k) => {
+      const kk = String(k||'').replace(/^\uFEFF/,'').trim().toLowerCase();
+      const key = Object.keys(row).find(key => String(key||'').replace(/^\uFEFF/,'').trim().toLowerCase() === kk);
+      return (key ? row[key] : "") || "";
+    };
+    const code = String(pick("product_code")||"").trim();
+    const name = String(pick("product_name")||"").trim();
+    if(!code || !name) return null;
+    const isGift = String(pick("is_gift")||"").toLowerCase();
+
+    const _bool = (v) => {
+      const s = String(v||'').trim().toLowerCase();
+      return (s === 'true' || s === '1' || s === 'y' || s === 'yes' || s === 't');
+    };
+    const isNew = _bool(pick("is_new"));
+    const isHidden = _bool(pick("is_hidden"));
+    const groupCode = String(pick("group_code")||"").trim();
+
+    let bundle = [];
+    for(let k=1; k<=4; k++) {
+      let sn = String(pick(`spec_${k}`)||"").trim();
+      let sq = Number(pick(`spec_${k}_qty`)||1);
+      if(sn) {
+        sn = sn.replace(/^([A-Za-z0-9\-\.]+)\s+/, '').trim();
+        bundle.push({ name: sn, qty: sq });
+      }
+    }
+
+    if(isGift === 'true' || isGift.includes('是')) {
+      productMapEntries.push([code, { name, price: 0, bundle }]);
+      return null;
+    }
+    const p = {
+      _id: i, code: code, name: name, name_lc: name.toLowerCase(), code_lc: code.toLowerCase(), category: pick("category").trim(),
+      price: Number((pick("list_price")||"0").replace(/,/g,'')), spec: pick("spec"), photo: pick("photos url"), bundle: bundle,
+      is_new: isNew, is_hidden: isHidden, group_code: groupCode
+    };
+    productMapEntries.push([p.code, p]);
+    if(p.photo && p.photo.length > 5) giftMapEntries.push([p.code, [p.photo]]);
+    return p;
+  }).filter(x => x);
+
+  if(!products || products.length === 0) throw new Error("商品資料為空（可能是連線被擋 / 代理回傳異常）");
+
+  const rData = Papa.parse(rText, { header: true, skipEmptyLines: true }).data;
+  const rules = { tiers: [], bogo: [], spend: [], bundle: [], series_gift: [], flat_price: [], eligibility: [], uiNotes: {}, uiAccent: {}, uiCatStyle: {}, uiCfg: {}, uiPromoMarqueeCopy: {}, freeShipThreshold: null };
+  rData.forEach(row => {
+    const pick = (k) => {
+      const kk = String(k||'').replace(/^\uFEFF/,'').trim().toLowerCase();
+      const key = Object.keys(row).find(key => String(key||'').replace(/^\uFEFF/,'').trim().toLowerCase() === kk);
+      return (key ? row[key] : "") || "";
+    };
+    const type = String(pick("rule_type")||"").toLowerCase();
+    if(type.includes("tier")) rules.tiers.push({ zone: pick("zone").trim(), min: Number(pick("min_qty")), pct: Number(pick("percent_off")) });
+    else if(type.includes("bogo")) rules.bogo.push({ code: pick("product_code"), buy: Number(pick("buy")), get: Number(pick("get")) });
+    else if(type.includes("flat_price")) {
+      const zone = pick("zone").trim();
+      const code = String(pick("product_code")||"").trim();
+      const unit = Number(pick("unit_price")||pick("charge")||0);
+      if(zone && code && !Number.isNaN(unit)) rules.flat_price.push({ zone, code, unit });
+    }
+    else if(type.includes("eligibility")) {
+      const zone = pick("zone").trim();
+      const requires = String(pick("requires_any_zone_in")||"").trim();
+      const minQty = Number(pick("requires_min_qty")||pick("requires_min_qty ")||pick("requires_min_qty\t")||1);
+      if(zone) rules.eligibility.push({ zone, requires, minQty: (Number.isNaN(minQty) ? 1 : minQty) });
+    }
+    else if(type.includes("series_gift")) {
+      const mRaw = String(pick("multiples") || "").trim().toUpperCase();
+      const mult = (mRaw === "TRUE" || mRaw === "1" || mRaw === "YES");
+      rules.series_gift.push({ scope: pick("threshold_scope"), prefix: pick("zone_prefix"), amt: Number(pick("threshold_amount")), gift: pick("gift_code"), qty: Number(pick("gift_qty")), mult });
+    }
+    else if(type.includes("spend")) {
+      const mRaw = String(pick("multiples") || "").trim().toUpperCase();
+      const mult = (mRaw === "TRUE" || mRaw === "1" || mRaw === "YES");
+      rules.spend.push({ scope: pick("threshold_scope"), prefix: pick("zone_prefix"), amt: Number(pick("threshold_amount")), gift: pick("gift_code"), qty: Number(pick("gift_qty")), mult });
+    }
+    else if(type.includes("shipping_threshold")) {
+      const rawAmt = String(pick("threshold_amount")||"").trim().replace(/,/g,'');
+      const amt = Number(rawAmt);
+      if(isFinite(amt) && amt > 0) rules.freeShipThreshold = amt;
+    }
+    else if(type.includes("ui_accent")) {
+      const zone = String(pick("zone")||"").trim();
+      const c1 = String(pick("ui_accent")||"").trim();
+      const c2 = String(pick("ui_accent2")||"").trim();
+      if(zone && (c1 || c2)) rules.uiAccent[zone] = { c1, c2 };
+    }
+    else if(type.includes("ui_cat_style")) {
+      const zone = String(pick("zone")||"").trim();
+      const mm = zone.match(/^cat\|(.+)$/);
+      const catKey = mm ? String(mm[1]||'').trim() : zone.replace(/^cat\|/,'').trim();
+      const c1 = String(pick("ui_accent")||"").trim();
+      const c2 = String(pick("ui_accent2")||"").trim();
+      if(catKey && (c1 || c2)) rules.uiCatStyle[catKey] = { c1, c2 };
+    }
+    else if(type.includes("ui_config")) {
+      const key = String(pick("zone")||"").trim();
+      const txt = String(pick("ui_text")||"").trim();
+      const rawAmt = String(pick("threshold_amount")||"").trim().replace(/,/g,'');
+      const amt = Number(rawAmt);
+      if(key){
+        rules.uiCfg[key] = (txt ? txt : (isFinite(amt) ? amt : ""));
+      }
+    }
+    else if(type.includes("ui_note")) {
+      const zone = String(pick("zone")||"").trim();
+      const txt = String(pick("ui_text")||"").trim();
+      if(zone && txt) rules.uiNotes[zone] = txt;
+
+      try{
+        if(!rules.uiPromoMarqueeCopy) rules.uiPromoMarqueeCopy = {};
+        const z = String(zone||"").trim();
+        if(z.startsWith("cat_marquee|") || z.startsWith("marquee|")){
+          const t = z.split("|").slice(1).join("|").trim();
+          if(t && txt) rules.uiPromoMarqueeCopy[t] = String(txt).trim();
+        }else if(z.startsWith("cat_hint|")){
+          const t = z.substring("cat_hint|".length).trim();
+          const short = String(
+            pick("ui_text2") || pick("ui_text_short") || pick("ui_marquee_copy") || pick("ui_marquee") || pick("ui_text_marquee") || ""
+          ).trim();
+          if(t && short) rules.uiPromoMarqueeCopy[t] = short;
+        }
+      }catch(e){}
+    }
+    else if(type.includes("bundle")) rules.bundle.push({ code: pick("product_code"), price: Number(pick("unit_price")) });
+  });
+
+  return { ok:true, products, productMapEntries, giftMapEntries, rules };
+}
+
 async function initApp() {
   try{ setupViewportVars(); }catch(e){}
   try{ setBootConfigState('loading'); }catch(e){}
@@ -5094,149 +5456,26 @@ const [pText, rText, rankText, gText] = await Promise.all([
   fetchCsvTextSmart(SHEET_GIFTS_URL, "贈品圖片", { optional: true })
 ]);
 
-const pData = Papa.parse(pText, { header: true, skipEmptyLines: true }).data;
-    PRODUCTS = pData.map((row, i) => {
-      const pick = (k) => {
-        const kk = String(k||'').replace(/^\uFEFF/,'').trim().toLowerCase();
-        const key = Object.keys(row).find(key => String(key||'').replace(/^\uFEFF/,'').trim().toLowerCase() === kk);
-        return (key ? row[key] : "") || "";
-      };
-      const code = String(pick("product_code")||"").trim();
-      const name = String(pick("product_name")||"").trim();
-      if(!code || !name) return null;
-      const isGift = String(pick("is_gift")||"").toLowerCase();
 
-const _bool = (v) => {
-  const s = String(v||'').trim().toLowerCase();
-  return (s === 'true' || s === '1' || s === 'y' || s === 'yes' || s === 't');
-};
-const isNew = _bool(pick("is_new"));
-const isHidden = _bool(pick("is_hidden"));
-const groupCode = String(pick("group_code")||"").trim();
-
-
-      let bundle = [];
-      for(let k=1; k<=4; k++) {
-        let sn = String(pick(`spec_${k}`)||"").trim();
-        let sq = Number(pick(`spec_${k}_qty`)||1);
-        if(sn) {
-          // specs sometimes come as: "375358-12 VINATA緊緻活膚膠囊"
-          sn = sn.replace(/^([A-Za-z0-9\-\.]+)\s+/, '').trim();
-          bundle.push({ name: sn, qty: sq });
-        }
-      }
-
-      // V24.0+: gifts are NOT sellable items, but still keep full metadata for gifts-content/statistics
-      if(isGift === 'true' || isGift.includes('是')) {
-        PRODUCT_MAP.set(code, { name, price: 0, bundle });
-        return null;
-      }
-      const p = {
-        _id: i, code: code, name: name, name_lc: name.toLowerCase(), code_lc: code.toLowerCase(), category: pick("category").trim(),
-        price: Number((pick("list_price")||"0").replace(/,/g,'')), spec: pick("spec"), photo: pick("photos url"), bundle: bundle,
-        is_new: isNew, is_hidden: isHidden, group_code: groupCode
-      };
-      if(p.code) PRODUCT_MAP.set(p.code, p);
-      
-      // Gift Map Image (single source): use only "Photos url" to align with site-wide image logic
-      if(p.photo && p.photo.length > 5) {
-          GIFT_MAP.set(p.code, [p.photo]);
-      }
-      return p;
-    }).filter(x => x);
-
-    if(!PRODUCTS || PRODUCTS.length === 0) {
-      throw new Error("商品資料為空（可能是連線被擋 / 代理回傳異常）");
-    }
-
-    const rData = Papa.parse(rText, { header: true, skipEmptyLines: true }).data;
-    RULES = { tiers: [], bogo: [], spend: [], bundle: [], series_gift: [], flat_price: [], eligibility: [], uiNotes: {}, uiAccent: {}, uiCatStyle: {}, uiCfg: {}, uiPromoMarqueeCopy: {}, freeShipThreshold: null };
-    rData.forEach(row => {
-      const pick = (k) => {
-        const kk = String(k||'').replace(/^\uFEFF/,'').trim().toLowerCase();
-        const key = Object.keys(row).find(key => String(key||'').replace(/^\uFEFF/,'').trim().toLowerCase() === kk);
-        return (key ? row[key] : "") || "";
-      };
-      const type = pick("rule_type").toLowerCase();
-      if(type.includes("tier")) RULES.tiers.push({ zone: pick("zone").trim(), min: Number(pick("min_qty")), pct: Number(pick("percent_off")) });
-      else if(type.includes("bogo")) RULES.bogo.push({ code: pick("product_code"), buy: Number(pick("buy")), get: Number(pick("get")) });
-      else if(type.includes("flat_price")) {
-        const zone = pick("zone").trim();
-        const code = String(pick("product_code")||"").trim();
-        const unit = Number(pick("unit_price")||pick("charge")||0);
-        if(zone && code && !Number.isNaN(unit)) RULES.flat_price.push({ zone, code, unit });
-      }
-      else if(type.includes("eligibility")) {
-        const zone = pick("zone").trim();
-        const requires = String(pick("requires_any_zone_in")||"").trim();
-        const minQty = Number(pick("requires_min_qty")||pick("requires_min_qty ")||pick("requires_min_qty\t")||1);
-        if(zone) RULES.eligibility.push({ zone, requires, minQty: (Number.isNaN(minQty) ? 1 : minQty) });
-      }
-      else if(type.includes("series_gift")) {
-        const mRaw = String(pick("multiples") || "").trim().toUpperCase();
-        const mult = (mRaw === "TRUE" || mRaw === "1" || mRaw === "YES");
-        RULES.series_gift.push({ scope: pick("threshold_scope"), prefix: pick("zone_prefix"), amt: Number(pick("threshold_amount")), gift: pick("gift_code"), qty: Number(pick("gift_qty")), mult });
-      }
-      else if(type.includes("spend")) {
-        const mRaw = String(pick("multiples") || "").trim().toUpperCase();
-        const mult = (mRaw === "TRUE" || mRaw === "1" || mRaw === "YES");
-        RULES.spend.push({ scope: pick("threshold_scope"), prefix: pick("zone_prefix"), amt: Number(pick("threshold_amount")), gift: pick("gift_code"), qty: Number(pick("gift_qty")), mult });
-      }
-
-      else if(type.includes("shipping_threshold")) {
-        const rawAmt = String(pick("threshold_amount")||"").trim().replace(/,/g,'');
-        const amt = Number(rawAmt);
-        if(isFinite(amt) && amt > 0) RULES.freeShipThreshold = amt;
-      }
-      
-else if(type.includes("ui_accent")) {
-  const zone = String(pick("zone")||"").trim();
-  const c1 = String(pick("ui_accent")||"").trim();
-  const c2 = String(pick("ui_accent2")||"").trim();
-  if(zone && (c1 || c2)) RULES.uiAccent[zone] = { c1, c2 };
+// V41: Parse core datasets in Worker (fallback to main)
+let core;
+try{
+  try{ setBootConfigState('parsing'); }catch(e){}
+  core = await parseCoreInWorker(pText, rText);
+}catch(err){
+  console.warn('[V41] Worker parse failed, fallback to main:', err);
+  core = parseCoreOnMain(pText, rText);
 }
-else if(type.includes("ui_cat_style")) {
-  // zone format: cat|<分類標題>
-  const zone = String(pick("zone")||"").trim();
-  const mm = zone.match(/^cat\|(.+)$/);
-  const catKey = mm ? String(mm[1]||'').trim() : zone.replace(/^cat\|/,'').trim();
-  const c1 = String(pick("ui_accent")||"").trim();
-  const c2 = String(pick("ui_accent2")||"").trim();
-  if(catKey && (c1 || c2)) RULES.uiCatStyle[catKey] = { c1, c2 };
-}
-else if(type.includes("ui_config")) {
-  const key = String(pick("zone")||"").trim();
-  const txt = String(pick("ui_text")||"").trim();
-  const rawAmt = String(pick("threshold_amount")||"").trim().replace(/,/g,'');
-  const amt = Number(rawAmt);
-  if(key){
-    RULES.uiCfg[key] = (txt ? txt : (isFinite(amt) ? amt : ""));
-  }
-}
-else if(type.includes("ui_note")) {
-        const zone = String(pick("zone")||"").trim();
-        const txt = String(pick("ui_text")||"").trim();
-        if(zone && txt) RULES.uiNotes[zone] = txt;
 
-        // Promo Marquee copy (recommended: add a new column like ui_text2 for cat_hint rows)
-        try{
-          if(!RULES.uiPromoMarqueeCopy) RULES.uiPromoMarqueeCopy = {};
-          const z = String(zone||"").trim();
-          if(z.startsWith("cat_marquee|") || z.startsWith("marquee|")){
-            const t = z.split("|").slice(1).join("|").trim();
-            if(t && txt) RULES.uiPromoMarqueeCopy[t] = String(txt).trim();
-          }else if(z.startsWith("cat_hint|")){
-            const t = z.substring("cat_hint|".length).trim();
-            const short = String(
-              pick("ui_text2") || pick("ui_text_short") || pick("ui_marquee_copy") || pick("ui_marquee") || pick("ui_text_marquee") || ""
-            ).trim();
-            if(t && short) RULES.uiPromoMarqueeCopy[t] = short;
-          }
-        }catch(e){}
-      }
+PRODUCTS = core.products || [];
+RULES = core.rules || {};
+PRODUCT_MAP = new Map(core.productMapEntries || []);
+GIFT_MAP = new Map(core.giftMapEntries || []);
 
-            else if(type.includes("bundle")) RULES.bundle.push({ code: pick("product_code"), price: Number(pick("unit_price")) });
-    });
+if(!PRODUCTS || PRODUCTS.length === 0) {
+  throw new Error("商品資料為空（可能是連線被擋 / 代理回傳異常）");
+}
+
 if (gText) {
   const gData = Papa.parse(gText, { header: true, skipEmptyLines: true }).data;
   gData.forEach(row => {
