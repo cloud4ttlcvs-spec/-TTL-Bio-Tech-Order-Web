@@ -3500,8 +3500,10 @@ function initPromoMarqueeAutoScroll(){
             c._dragStartX = (ev.touches?ev.touches[0].clientX:ev.clientX);
             c._dragStartY = (ev.touches?ev.touches[0].clientY:ev.clientY);
             c._dragStartPos = c.x;
-            // capture pointer to keep receiving moves (Android stability)
-            try{ if(ev.pointerId!=null && viewport.setPointerCapture) viewport.setPointerCapture(ev.pointerId); }catch(e){}
+            // NOTE: Do NOT capture pointer on down; it breaks desktop click targeting.
+            // We capture only after we lock into horizontal drag.
+            c._pid = (ev.pointerId!=null ? ev.pointerId : null);
+            c._captured = false;
           }catch(e){}
         };
         const onMove = (ev)=>{
@@ -3521,9 +3523,12 @@ function initPromoMarqueeAutoScroll(){
                 c.dragging = true;
                 c.paused = true;
                 c.resumeAt = 0;
+                try{ if(!c._captured && c._pid!=null && viewport.setPointerCapture){ viewport.setPointerCapture(c._pid); c._captured = true; } }catch(e){}
               }else if(Math.abs(dy) > Math.abs(dx) * 1.15){
                 c._lock = 'v';
                 c._down = false; // release; allow page scroll
+                c._pid = null;
+                c._captured = false;
                 return;
               }else{
                 return;
@@ -3547,6 +3552,9 @@ function initPromoMarqueeAutoScroll(){
             const c=__PM_MARQ_CTRL__;
             if(!c) return;
             const wasH = (c._lock === 'h');
+            try{ if(c._captured && c._pid!=null && viewport.releasePointerCapture){ viewport.releasePointerCapture(c._pid); } }catch(e){}
+            c._captured = false;
+            c._pid = null;
             c._down = false;
             c._lock = null;
             if(wasH){
@@ -3629,19 +3637,34 @@ function renderPromoMarquee(){
             <div class="pm-name">${t}</div>
             <div class="pm-hint">${s}</div>
           `;
-          card.onclick = () => {
-            try{
-              const c = __PM_MARQ_CTRL__;
-              if(c && c._dragMoved){ c._dragMoved = false; return; }
-            }catch(e){}
-            try{ __PM_OPEN_FROM_MARQUEE__ = true; __PM_FOCUS_TITLE__ = it.title; }catch(e){}
-            try{ setPromoMapSeen(); }catch(e){}
-            try{ openPromoMap(); }catch(e){}
-          };
+          // Store title on element so cloned nodes remain clickable via event delegation
+          card.dataset.title = String(it.title || '');
           track.appendChild(card);
         }
       }
     }
+
+
+      // Bind click delegation once (works even after marquee clones nodes for seamless loop)
+      if(!track.dataset.clickBound){
+        track.dataset.clickBound = '1';
+        track.addEventListener('click', (ev)=>{
+          try{
+            const tgt = ev && ev.target ? ev.target : null;
+            const card = (tgt && tgt.closest) ? tgt.closest('.pm-card') : null;
+            if(!card) return;
+            try{
+              const c = __PM_MARQ_CTRL__;
+              if(c && c._dragMoved){ c._dragMoved = false; return; }
+            }catch(e){}
+            const title = String(card.dataset.title || '').trim() || String((card.querySelector('.pm-name')||{}).innerText||'').trim();
+            if(!title) return;
+            try{ __PM_OPEN_FROM_MARQUEE__ = true; __PM_FOCUS_TITLE__ = title; }catch(e){}
+            try{ setPromoMapSeen(); }catch(e){}
+            try{ openPromoMap(); }catch(e){}
+          }catch(e){}
+        }, {passive:true});
+      }
 
     try{
       const btn = document.getElementById("promoMapCtaBtn");
