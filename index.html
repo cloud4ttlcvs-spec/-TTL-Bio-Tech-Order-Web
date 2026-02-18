@@ -2002,83 +2002,39 @@ body.cfg-error .btn-bundle{
 const GIFT_IMAGES = {}; 
 
 /* ==========================================================
-   V39 (DEV) Feature Flags — Phase 0 Skeleton (V38 baseline)
-   - Same bundle delivery, staged enablement via flags.
-   - Sources (priority): URL ?ff=a,b  > localStorage ttl_ff
-   Debug: ?ffdebug=1 (or localStorage ttl_ffdebug=1)
+   V39 Feature Flags — Stable preset (P1–P5 always ON)
+   - This stable build hard-enables: p1_skel,p2_chunk,p3_lazyimg,p5_cv (no CSV cache)
+   - No URL/localStorage overrides in this build (rollback = redeploy previous version)
    ========================================================== */
 (function initFeatureFlags(){
-  const parseList = (s)=>{
-    if(!s) return [];
-    return String(s).split(/[,\s]+/).map(x=>x.trim()).filter(Boolean);
-  };
-  const q = new URLSearchParams(location.search);
-  const fromQuery = parseList(q.get('ff'));
-  const fromLS = parseList(localStorage.getItem('ttl_ff'));
-  const enabled = new Set([...fromLS, ...fromQuery]);
+  // Hard-default: Phase 1–3 & 5 always ON (Phase4 OFF) (no URL/localStorage overrides in this stable build)
+  const DEFAULT_FLAGS = ['p1_skel','p2_chunk','p3_lazyimg','p5_cv'];
+  const enabled = new Set(DEFAULT_FLAGS);
 
-  // Public API
-  const api = {
-    enabled,
-    sources: { query: fromQuery.slice(), localStorage: fromLS.slice() },
-    has: (name)=> enabled.has(String(name||"").trim()),
-    list: ()=> Array.from(enabled).sort(),
-    setLocal: (list)=>{
-      const arr = Array.isArray(list) ? list : parseList(list);
-      localStorage.setItem('ttl_ff', arr.join(','));
-    },
-    enable: (...names)=>{
-      names.flat().forEach(n=>{ n=parseList(n)[0]||n; if(n) enabled.add(String(n).trim()); });
-      api.setLocal(api.list());
-    },
-    disable: (...names)=>{
-      names.flat().forEach(n=>{ n=parseList(n)[0]||n; if(n) enabled.delete(String(n).trim()); });
-      api.setLocal(api.list());
-    }
-  };
-
-  // Safe runner for flagged blocks (prevents white screen on dev features)
+  // Safe runner for flagged blocks (prevents white screen if any dev feature throws)
   window.FF_SAFE_RUN = function(label, fn){
     try { return fn(); }
     catch(err){
       console.warn('[FF_SAFE_RUN]', label, err);
-      // Never throw — Phase 0 guarantee: new code cannot break V38 path.
       return null;
     }
   };
 
-  window.FF = api;
+  // Minimal public API
+  window.FF = {
+    enabled,
+    has: (name)=> enabled.has(String(name||"").trim()),
+    list: ()=> Array.from(enabled).sort()
+  };
 
   // Apply CSS classes for enabled flags (for styling tweaks per phase)
   try{
     const root = document.documentElement;
-    api.list().forEach(f=> root.classList.add('ff-' + String(f).replace(/[^a-zA-Z0-9_-]/g,'_')));
+    Array.from(enabled).forEach(f=> root.classList.add('ff-' + String(f).replace(/[^a-zA-Z0-9_-]/g,'_')));
   }catch(e){}
+})();;
 
-
-  // Optional small debug HUD
-  const debugOn = (q.get('ffdebug') === '1') || (localStorage.getItem('ttl_ffdebug') === '1');
-  if(debugOn){
-    const hud = document.createElement('div');
-    hud.id = 'ffHud';
-    hud.style.cssText = [
-      'position:fixed','left:10px','bottom:10px','z-index:99999',
-      'background:rgba(0,0,0,.72)','color:#fff','padding:10px 12px',
-      'border-radius:12px','font-size:12px','line-height:1.35',
-      'max-width:72vw','box-shadow:0 10px 30px rgba(0,0,0,.25)'
-    ].join(';');
-    const render = ()=>{
-      const flags = api.list();
-      hud.innerHTML = `<div style="font-weight:800;margin-bottom:4px">V39 Flags</div>
-        <div style="opacity:.9">Enabled: ${flags.length ? flags.join(', ') : '(none)'}</div>
-        <div style="opacity:.7;margin-top:2px">URL ff: ${api.sources.query.join(', ')||'(none)'} · LS: ${api.sources.localStorage.join(', ')||'(none)'}</div>`;
-    };
-    render();
-    document.addEventListener('DOMContentLoaded', ()=> document.body.appendChild(hud), {once:true});
-  }
-})();
-
-/* V39 (DEV) Smoke checks: append ?smoke=1 to run basic sanity tests */
+/* V39 Smoke checks: append ?smoke=1 to run basic sanity tests */
 (function initSmoke(){
   const q = new URLSearchParams(location.search);
   if(q.get('smoke') !== '1') return;
