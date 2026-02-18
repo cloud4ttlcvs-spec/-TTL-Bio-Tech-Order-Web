@@ -781,12 +781,14 @@ header { position: sticky; top: 0; z-index: 1000; background: rgba(255,255,255,0
 .skeleton { background: #f6f7f8; background-image: linear-gradient(to right, #f6f7f8 0%, #edeef1 20%, #f6f7f8 40%, #f6f7f8 100%); background-repeat: no-repeat; background-size: 800px 104px; animation: shimmer 1s linear infinite forwards; border-radius: 8px; }
 .sk-card { height: 280px;
 
-/* V39 Phase1/2: skeleton cards used by chunked renderer */
+/* V40: skeleton cards used by chunked renderer */
 .skel-card{ border: 1px solid #eef2f4; background: #fff; border-radius: 16px; overflow: hidden; }
 .skel-card .p-img-box{ background:#fafafa; }
 
 /* V39 Phase5: Smoothness kit (flag: p5_cv) */
 .ff-p5_cv .p-card{ contain: layout paint; }
+.ff-p5_cv .cat-section{ content-visibility:auto; contain-intrinsic-size: 1px 900px; }
+
 .ff-p5_cv .rank-list, .ff-p5_cv .cat-nav, .ff-p5_cv .pm-track, .ff-p5_cv #promoMarqueeTrack, .ff-p5_cv #starHeroList{ -webkit-overflow-scrolling: touch; }
  border-radius: 16px; background: #fff; padding: 12px; margin-bottom: 12px; }
 
@@ -2002,7 +2004,7 @@ body.cfg-error .btn-bundle{
 const GIFT_IMAGES = {}; 
 
 /* ==========================================================
-   V39 Feature Flags — Stable preset (P1–P5 always ON)
+   V40 Feature Flags — Stable preset (P1/2/3/5 ON, no CSV cache)
    - This stable build hard-enables: p1_skel,p2_chunk,p3_lazyimg,p5_cv (no CSV cache)
    - No URL/localStorage overrides in this build (rollback = redeploy previous version)
    ========================================================== */
@@ -5107,7 +5109,7 @@ const groupCode = String(pick("group_code")||"").trim();
         return null;
       }
       const p = {
-        _id: i, code: code, name: name, category: pick("category").trim(),
+        _id: i, code: code, name: name, name_lc: name.toLowerCase(), code_lc: code.toLowerCase(), category: pick("category").trim(),
         price: Number((pick("list_price")||"0").replace(/,/g,'')), spec: pick("spec"), photo: pick("photos url"), bundle: bundle,
         is_new: isNew, is_hidden: isHidden, group_code: groupCode
       };
@@ -5472,10 +5474,12 @@ function __makeProductSkeletonCard(){
   return d;
 }
 
-function __renderListChunkedNoSearch(grid){
-  // cancel previous chunked render
-  window.__RENDER_TOKEN__ = (window.__RENDER_TOKEN__||0) + 1;
-  const token = window.__RENDER_TOKEN__;
+function __renderListChunkedNoSearch(grid, token){
+  // Use caller-provided token for cancellation; if missing, start a new render token
+  if(!token){
+    window.__RENDER_TOKEN__ = (window.__RENDER_TOKEN__||0) + 1;
+    token = window.__RENDER_TOKEN__;
+  }
 
   if(sectionObserver) sectionObserver.disconnect();
 
@@ -5485,13 +5489,6 @@ function __renderListChunkedNoSearch(grid){
     topAnchor.id = 'cat-all-wrapper';
     grid.appendChild(topAnchor);
   }
-
-    if(window.FF && FF.has && FF.has('p2_chunk')){
-      FF_SAFE_RUN('renderListChunked', ()=> __renderListChunkedNoSearch(grid));
-      return;
-    }
-
-
   const catData = [];
   categories.forEach(cat => {
     const catProducts = PRODUCTS.filter(p => {
@@ -5534,15 +5531,6 @@ function __renderListChunkedNoSearch(grid){
     catData.push({ grid: gridContainer, products: catProducts });
   });
 
-  // content-visibility optimization (flag: p5_cv)
-  if(window.FF && FF.has && FF.has('p5_cv')){
-    try{
-      grid.querySelectorAll('.cat-section').forEach(sec=>{
-        sec.style.contentVisibility = 'auto';
-        sec.style.containIntrinsicSize = '1px 900px';
-      });
-    }catch(e){}
-  }
 
   let catIdx = 0;
   let prodIdx = 0;
@@ -5588,57 +5576,130 @@ function __renderListChunkedNoSearch(grid){
   requestAnimationFrame(step);
 }
 
+function __appendCardsChunked(container, arr, q, token){
+  let idx = 0;
+  const step = ()=>{
+    if(token !== window.__RENDER_TOKEN__) return; // cancelled
+    const t0 = performance.now();
+
+    if(container.dataset.hasSkel === '1'){
+      container.innerHTML = '';
+      delete container.dataset.hasSkel;
+    }
+
+    const frag = document.createDocumentFragment();
+    let wrote = 0;
+
+    while(idx < arr.length){
+      frag.appendChild(createProductCard(arr[idx], q));
+      idx++; wrote++;
+      if(wrote >= 8 && (performance.now() - t0) > 10) break;
+      if((performance.now() - t0) > 14) break;
+    }
+
+    container.appendChild(frag);
+
+    if(idx < arr.length){
+      requestAnimationFrame(step);
+    }
+  };
+  requestAnimationFrame(step);
+}
+
 function renderList() {
   // cancel any in-flight chunked render
   window.__RENDER_TOKEN__ = (window.__RENDER_TOKEN__||0) + 1;
+  const token = window.__RENDER_TOKEN__;
+
   const grid = document.getElementById("list");
   grid.innerHTML = "";
+
   const inp = document.getElementById("searchInp");
-  const q = inp.value.toLowerCase().trim();
-  
+  const q = String(inp && inp.value || "").toLowerCase().trim();
+
   document.getElementById("clearSearch").style.display = q.length > 0 ? 'block' : 'none';
-  
+
   if (q) {
     if(sectionObserver) sectionObserver.disconnect();
-    const filtered = PRODUCTS.filter(p => !p.is_hidden && (p.name.toLowerCase().includes(q) || p.code.toLowerCase().includes(q)));
+
+    const filtered = PRODUCTS.filter(p => {
+      if(!p || p.is_hidden) return false;
+      const nl = p.name_lc || (p.name ? p.name.toLowerCase() : "");
+      const cl = p.code_lc || (p.code ? p.code.toLowerCase() : "");
+      return (nl.includes(q) || cl.includes(q));
+    });
+
     document.getElementById("empty-state").style.display = filtered.length === 0 ? "block" : "none";
+    if(filtered.length === 0) return;
+
     const container = document.createElement("div");
     container.className = "grid-layout";
-    filtered.forEach(p => { container.appendChild(createProductCard(p, q)); });
+
+    // Phase1: skeleton placeholder (flag: p1_skel)
+    if(window.FF && FF.has && FF.has('p1_skel')){
+      const sk = Math.min(8, filtered.length);
+      for(let i=0;i<sk;i++) container.appendChild(__makeProductSkeletonCard());
+      container.dataset.hasSkel = '1';
+    }
+
     grid.appendChild(container);
+
+    // Phase2: chunked render (flag: p2_chunk)
+    if(window.FF && FF.has && FF.has('p2_chunk')){
+      FF_SAFE_RUN('renderListChunkedSearch', ()=> __appendCardsChunked(container, filtered, q, token));
+    }else{
+      filtered.forEach(p => { container.appendChild(createProductCard(p, q)); });
+    }
+
   } else {
     document.getElementById("empty-state").style.display = "none";
-    
+
+    // Phase2: chunked render path (flag: p2_chunk)
+    if(window.FF && FF.has && FF.has('p2_chunk')){
+      FF_SAFE_RUN('renderListChunked', ()=> __renderListChunkedNoSearch(grid, token));
+      return;
+    }
+
     const topAnchor = document.createElement("div");
     topAnchor.id = "cat-all-wrapper";
     grid.appendChild(topAnchor);
 
     categories.forEach(cat => {
-        const catProducts = PRODUCTS.filter(p => {
-            if(p.is_hidden) return false;
-            if (cat.includes("清潔-")) {
-                if (!p.category.includes("清潔")) return false;
-                if (cat === "清潔-洗潔" && !p.name.includes("洗潔")) return false;
-                if (cat === "清潔-洗衣" && !p.name.includes("洗衣")) return false;
-                if (cat === "清潔-皂" && !p.name.includes("皂")) return false;
-                return true;
-            } else { return p.category.includes(cat); }
-        });
-        if (catProducts.length > 0) {
-            const secId = `cat-${cat.replace(/\s+/g, '-')}`;
-            const section = document.createElement("div"); section.className = "cat-section"; section.id = secId;
-            const title = document.createElement("div"); title.className = "cat-section-title";
-            let displayName = cat.includes("清潔-") ? cat : cat.split(/[\s_]/)[0];
-            title.innerText = displayName;
-            section.appendChild(title);
-            const gridContainer = document.createElement("div"); gridContainer.className = "grid-layout";
-            catProducts.forEach(p => { gridContainer.appendChild(createProductCard(p, null)); });
-            section.appendChild(gridContainer);
-            grid.appendChild(section);
-        }
+      const catProducts = PRODUCTS.filter(p => {
+        if(p.is_hidden) return false;
+        if (cat.includes("清潔-")) {
+          if (!p.category.includes("清潔")) return false;
+          if (cat === "清潔-洗潔" && !p.name.includes("洗潔")) return false;
+          if (cat === "清潔-洗衣" && !p.name.includes("洗衣")) return false;
+          if (cat === "清潔-皂" && !p.name.includes("皂")) return false;
+          return true;
+        } else { return p.category.includes(cat); }
+      });
+      if (catProducts.length > 0) {
+        const secId = `cat-${cat.replace(/\s+/g, '-')}`;
+        const section = document.createElement("div"); section.className = "cat-section"; section.id = secId;
+        const title = document.createElement("div"); title.className = "cat-section-title";
+        let displayName = cat.includes("清潔-") ? cat : cat.split(/[\s_]/)[0];
+        title.innerText = displayName;
+        section.appendChild(title);
+        const gridContainer = document.createElement("div"); gridContainer.className = "grid-layout";
+        catProducts.forEach(p => { gridContainer.appendChild(createProductCard(p, null)); });
+        section.appendChild(gridContainer);
+        grid.appendChild(section);
+      }
     });
     setupScrollSpy();
   }
+}
+
+// V40: debounced search input (avoid rendering on every keystroke)
+let __searchDebounceTimer = null;
+function scheduleRenderList(){
+  clearTimeout(__searchDebounceTimer);
+  __searchDebounceTimer = setTimeout(()=>{
+    __searchDebounceTimer = null;
+    renderList();
+  }, 140);
 }
 
 
@@ -6187,7 +6248,6 @@ window.onpopstate = (e) => {
     handleRootBack();
 };
 window.onbeforeunload = (e) => { if(CART.length > 0) return "訂單尚未送出"; };
-document.getElementById("searchInp").addEventListener("input", renderList);
 
 // OPTIMIZATION 2: Clear Search Logic
 document.getElementById("clearSearch").addEventListener("click", () => {
@@ -6536,7 +6596,7 @@ document.querySelectorAll('input, select').forEach(input => {
     });
 });
 
-document.getElementById("searchInp").addEventListener("input", renderList);
+document.getElementById("searchInp").addEventListener("input", scheduleRenderList);
 window.onbeforeunload = (e) => { if(CART.length > 0) return "訂單尚未送出"; };
 
 initApp();
