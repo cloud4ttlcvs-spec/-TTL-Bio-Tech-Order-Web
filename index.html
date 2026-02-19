@@ -4897,14 +4897,13 @@ function jumpToProductByCode(code){
     if(!c) return;
     const p = (Array.isArray(PRODUCTS) ? PRODUCTS.find(x => x && String(x.code||'').trim()===c) : null);
     if(!p) return;
-    const el = document.getElementById(`p-${p._id}`);
-    if(el){
-      el.scrollIntoView({behavior:'smooth', block:'start'});
-      applyNavBreathe(el, 'star');
-      const _tpl = uiGet('star|nav_toast', '已帶你到主打商品：{name} ✨');
-      const _msg = _formatStarSubtitle(_tpl, p.name || p.product_name || p.name_zh || '');
-      showToast(_msg, 'info', 1600);
-    }
+
+    // Use VList-aware jump (in V42, products may not be in DOM until materialized)
+    jumpToProduct(p._id, 'star');
+
+    const _tpl = uiGet('star|nav_toast', '已帶你到主打商品：{name} ✨');
+    const _msg = _formatStarSubtitle(_tpl, p.name || p.product_name || p.name_zh || '');
+    showToast(_msg, 'info', 1600);
   }catch(e){}
 }
 
@@ -5017,25 +5016,70 @@ function animateGiftFly(giftName) {
   setTimeout(() => fly.remove(), 1600);
 }
 
+function __vlistNavToProduct(pid, source){
+  try{
+    const st = window.__VLIST_STATE__;
+    if(!st || st.mode !== 'cat' || !st.pidToSecId) return false;
+    const secId = st.pidToSecId.get(pid);
+    if(!secId) return false;
+
+    const sec = document.getElementById(secId);
+    if(!sec) return false;
+
+    // Scroll near the target section to trigger VList materialization
+    try{ sec.scrollIntoView({ behavior: "smooth", block: "start" }); }catch(e){}
+
+    const startAt = Date.now();
+    (function wait(){
+      const el = document.getElementById(`p-${pid}`);
+      if(el){
+        try{ el.scrollIntoView({ behavior: "smooth", block: "center" }); }catch(e){}
+        try{
+          if(source === 'rank'){
+            applyNavBreathe(el, 'rank');
+          }else if(source === 'star'){
+            applyNavBreathe(el, 'star');
+          }else{
+            el.classList.add("flash-highlight");
+            setTimeout(()=>el.classList.remove("flash-highlight"), 1300);
+          }
+        }catch(e){}
+        return;
+      }
+      if(Date.now() - startAt > 1800) return;
+      requestAnimationFrame(wait);
+    })();
+
+    return true;
+  }catch(e){ return false; }
+}
+
 function jumpToProduct(pid, source){
   const searchInp = document.getElementById("searchInp");
-  if(searchInp.value) {
+  if(searchInp && searchInp.value) {
     searchInp.value = "";
-    document.getElementById("clearSearch").style.display = 'none'; 
-    renderList(); 
+    try{ document.getElementById("clearSearch").style.display = 'none'; }catch(e){}
+    renderList();
   }
+
+  // V42: VList-aware navigation (fix ranking / star hero deep link reliability)
+  if(__vlistNavToProduct(pid, source)) return;
+
+  // Fallback (non-VList / legacy DOM)
   setTimeout(() => {
     const el = document.getElementById(`p-${pid}`);
     if(el) {
       el.scrollIntoView({ behavior: "smooth", block: "center" });
       if(source === 'rank'){
         applyNavBreathe(el, 'rank');
+      }else if(source === 'star'){
+        applyNavBreathe(el, 'star');
       }else{
         el.classList.add("flash-highlight");
         setTimeout(()=>el.classList.remove("flash-highlight"), 1300);
       }
     }
-  }, 100);
+  }, 120);
 }
 
 function jumpToGroupByCode(groupCode, source){
@@ -6094,6 +6138,17 @@ function __vlistRenderCategories(root, token){
     offsetsAt: 0,
     needOffsets: true
   };
+    // Build productId -> sectionId mapping for deep link (ranking / star hero)
+  try{
+    st.pidToSecId = new Map();
+    metas.forEach(m => {
+      try{
+        (m.products||[]).forEach(p => {
+          if(p && p._id != null) st.pidToSecId.set(p._id, m.secId);
+        });
+      }catch(e){}
+    });
+  }catch(e){}
   __VLIST_STATE__ = st;
 
   function recalcOffsets(){
