@@ -68,7 +68,12 @@ body.modal-open { overflow: hidden; height: 100vh; position: fixed; width: 100%;
 
 /* --- LAYOUT --- */
 main { padding: 12px; max-width: 900px; margin: 0 auto; margin-top: 10px; }
-.grid-layout { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; align-content: start; width: 100%; }
+.grid-layout { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; align-content: start; width: 100%; 
+/* --- V42 (Rebuild from V41.2): Category VList virtualization (row-based, deterministic) --- */
+.vlist-grid{ position: relative; }
+.vlist-inner{ position: relative; width: 100%; height: 0; }
+.vlist-abs{ position:absolute; }
+}
 
 /* --- Global: Two-stage checkout collapse (desktop + mobile) --- */
 .checkout-details{
@@ -1764,6 +1769,21 @@ body.cfg-error .btn-bundle{
   </div>
 </div>
 
+<script>
+/* Welcome fail-safe: keep '開始訂購' usable even if later scripts error */
+(function(){
+  if (typeof window.closeWelcome === 'function') return;
+  window.closeWelcome = function(){
+    var el = document.getElementById('welcome-overlay');
+    if(!el) return;
+    try{ el.classList.add('fade-out'); }catch(e){}
+    setTimeout(function(){
+      try{ el.style.display = 'none'; }catch(e){}
+      try{ if (typeof window.requestStarHeroAutoShow === 'function') window.requestStarHeroAutoShow(); }catch(e){}
+    }, 520);
+  };
+})();
+</script>
 
 <div id="starHeroOverlay" aria-hidden="true">
   <div class="star-hero-card" role="dialog" aria-modal="true" aria-label="主打星推薦">
@@ -2406,6 +2426,32 @@ function updateShipFreeBadge(total){
     badge.textContent = `差 ${diff.toLocaleString()} 免運`;
   }
 }
+
+// --- V42: Threshold crossing toast (Free Shipping) ---
+let __THRESH_BOOT__ = true;
+let __LAST_FS_OK__ = null;
+
+function __detectThresholdToasts(data){
+  try{
+    const thr = getFreeShipThreshold();
+    if(!thr) return;
+    const total = Number((data && data.finalTotal) || 0);
+    const ok = total >= thr;
+
+    if(__THRESH_BOOT__){
+      __LAST_FS_OK__ = ok;
+      __THRESH_BOOT__ = false;
+      return;
+    }
+
+    if(ok && __LAST_FS_OK__ === false){
+      try{ showToast("已達免運門檻 🎉"); }catch(e){}
+    }
+
+    __LAST_FS_OK__ = ok;
+  }catch(e){}
+}
+
 
 function syncDeliveryHeaderUI(){
   const wrap = document.querySelector('.delivery-toggle-wrap');
@@ -4897,13 +4943,13 @@ function jumpToProductByCode(code){
     if(!c) return;
     const p = (Array.isArray(PRODUCTS) ? PRODUCTS.find(x => x && String(x.code||'').trim()===c) : null);
     if(!p) return;
-
-    // Use VList-aware jump (in V42, products may not be in DOM until materialized)
-    jumpToProduct(p._id, 'star');
-
-    const _tpl = uiGet('star|nav_toast', '已帶你到主打商品：{name} ✨');
-    const _msg = _formatStarSubtitle(_tpl, p.name || p.product_name || p.name_zh || '');
-    showToast(_msg, 'info', 1600);
+    // V42: VList-aware navigation (do not depend on DOM presence)
+    const ok = (typeof vlistScrollToProduct === 'function') ? vlistScrollToProduct(p._id, 'star') : false;
+    if(ok){
+      const _tpl = uiGet('star|nav_toast', '已帶你到主打商品：{name} ✨');
+      const _msg = _formatStarSubtitle(_tpl, p.name || p.product_name || p.name_zh || '');
+      showToast(_msg, 'info', 1600);
+    }
   }catch(e){}
 }
 
@@ -5016,70 +5062,34 @@ function animateGiftFly(giftName) {
   setTimeout(() => fly.remove(), 1600);
 }
 
-function __vlistNavToProduct(pid, source){
-  try{
-    const st = window.__VLIST_STATE__;
-    if(!st || st.mode !== 'cat' || !st.pidToSecId) return false;
-    const secId = st.pidToSecId.get(pid);
-    if(!secId) return false;
-
-    const sec = document.getElementById(secId);
-    if(!sec) return false;
-
-    // Scroll near the target section to trigger VList materialization
-    try{ sec.scrollIntoView({ behavior: "smooth", block: "start" }); }catch(e){}
-
-    const startAt = Date.now();
-    (function wait(){
-      const el = document.getElementById(`p-${pid}`);
-      if(el){
-        try{ el.scrollIntoView({ behavior: "smooth", block: "center" }); }catch(e){}
-        try{
-          if(source === 'rank'){
-            applyNavBreathe(el, 'rank');
-          }else if(source === 'star'){
-            applyNavBreathe(el, 'star');
-          }else{
-            el.classList.add("flash-highlight");
-            setTimeout(()=>el.classList.remove("flash-highlight"), 1300);
-          }
-        }catch(e){}
-        return;
-      }
-      if(Date.now() - startAt > 1800) return;
-      requestAnimationFrame(wait);
-    })();
-
-    return true;
-  }catch(e){ return false; }
-}
-
 function jumpToProduct(pid, source){
   const searchInp = document.getElementById("searchInp");
-  if(searchInp && searchInp.value) {
+  if(searchInp.value) {
     searchInp.value = "";
-    try{ document.getElementById("clearSearch").style.display = 'none'; }catch(e){}
-    renderList();
+    document.getElementById("clearSearch").style.display = 'none'; 
+    renderList(); 
   }
-
-  // V42: VList-aware navigation (fix ranking / star hero deep link reliability)
-  if(__vlistNavToProduct(pid, source)) return;
-
-  // Fallback (non-VList / legacy DOM)
   setTimeout(() => {
+    // V42: Prefer VList-aware navigation when list is virtualized (no-search view)
+    try{
+      const inp = document.getElementById('searchInp');
+      const q = String(inp && inp.value || '').trim();
+      if(!q && typeof vlistScrollToProduct === 'function'){
+        const ok = vlistScrollToProduct(pid, source);
+        if(ok) return;
+      }
+    }catch(e){}
     const el = document.getElementById(`p-${pid}`);
     if(el) {
       el.scrollIntoView({ behavior: "smooth", block: "center" });
       if(source === 'rank'){
         applyNavBreathe(el, 'rank');
-      }else if(source === 'star'){
-        applyNavBreathe(el, 'star');
       }else{
         el.classList.add("flash-highlight");
         setTimeout(()=>el.classList.remove("flash-highlight"), 1300);
       }
     }
-  }, 120);
+  }, 100);
 }
 
 function jumpToGroupByCode(groupCode, source){
@@ -5812,7 +5822,7 @@ function __renderListChunkedNoSearch(grid, token){
   const catData = [];
   categories.forEach(cat => {
     const catProducts = PRODUCTS.filter(p => {
-      if(p.is_hidden) return false;
+      if(!p || p.is_hidden) return false;
       if (cat.includes('清潔-')) {
         if (!p.category.includes('清潔')) return false;
         if (cat === '清潔-洗潔' && !p.name.includes('洗潔')) return false;
@@ -5837,63 +5847,40 @@ function __renderListChunkedNoSearch(grid, token){
     section.appendChild(title);
 
     const gridContainer = document.createElement('div');
-    gridContainer.className = 'grid-layout';
+    gridContainer.className = 'grid-layout vlist-grid';
+    gridContainer.dataset.vcat = cat;
+    gridContainer.dataset.secId = secId;
 
-    // Phase1 skeleton per section (flag: p1_skel)
-    if(window.FF && FF.has && FF.has('p1_skel')){
-      const sk = Math.min(4, catProducts.length, 6);
-      for(let i=0;i<sk;i++) gridContainer.appendChild(__makeProductSkeletonCard());
-      gridContainer.dataset.hasSkel = '1';
-    }
+    // Placeholder: total height is deterministic by rows * rowStride; real cards are virtualized into inner.
+    const inner = document.createElement('div');
+    inner.className = 'vlist-inner';
+    gridContainer.appendChild(inner);
 
     section.appendChild(gridContainer);
     grid.appendChild(section);
-    catData.push({ grid: gridContainer, products: catProducts });
+
+    // Register category state for virtualization
+    __VLIST_CAT__[cat] = __VLIST_CAT__[cat] || {};
+    __VLIST_CAT__[cat].cat = cat;
+    __VLIST_CAT__[cat].secId = secId;
+    __VLIST_CAT__[cat].sectionEl = section;
+    __VLIST_CAT__[cat].titleEl = title;
+    __VLIST_CAT__[cat].gridEl = gridContainer;
+    __VLIST_CAT__[cat].innerEl = inner;
+    __VLIST_CAT__[cat].items = catProducts;
+
+    // Build pid -> position map (used by rank/star navigation)
+    catProducts.forEach((p, idx) => {
+      if(!p || !p._id) return;
+      __VLIST_PID_POS__[p._id] = { cat: cat, idx: idx, code: p.code };
+    });
   });
 
-
-  let catIdx = 0;
-  let prodIdx = 0;
-
-  const step = ()=>{
-    if(token !== window.__RENDER_TOKEN__) return; // cancelled
-    const start = performance.now();
-
-    while(catIdx < catData.length){
-      const block = catData[catIdx];
-      const cont = block.grid;
-      const arr = block.products;
-
-      if(cont.dataset.hasSkel === '1'){
-        cont.innerHTML = '';
-        delete cont.dataset.hasSkel;
-      }
-
-      const frag = document.createDocumentFragment();
-      let wrote = 0;
-      while(prodIdx < arr.length){
-        frag.appendChild(createProductCard(arr[prodIdx], null));
-        prodIdx++; wrote++;
-        if(wrote >= 6 && (performance.now() - start) > 10) break;
-        if((performance.now() - start) > 14) break;
-      }
-      cont.appendChild(frag);
-
-      if(prodIdx >= arr.length){
-        catIdx++; prodIdx = 0;
-        continue;
-      }
-      break; // yield
-    }
-
-    if(catIdx < catData.length){
-      requestAnimationFrame(step);
-    } else {
-      setupScrollSpy();
-    }
-  };
-
-  requestAnimationFrame(step);
+  // init row stride / columns and update initial window
+  __vlistInitLayout();
+  __vlistAttachScroll();
+  __vlistUpdateAll(true);
+  setupScrollSpy();
 }
 
 function __appendCardsChunked(container, arr, q, token){
@@ -5927,10 +5914,9 @@ function __appendCardsChunked(container, arr, q, token){
 }
 
 function renderList() {
-  // cancel any in-flight list render and tear down previous vlist listeners
+  // cancel any in-flight chunked render
   window.__RENDER_TOKEN__ = (window.__RENDER_TOKEN__||0) + 1;
   const token = window.__RENDER_TOKEN__;
-  __vlistStop();
 
   const grid = document.getElementById("list");
   grid.innerHTML = "";
@@ -5941,7 +5927,7 @@ function renderList() {
   document.getElementById("clearSearch").style.display = q.length > 0 ? 'block' : 'none';
 
   if (q) {
-    try{ if(sectionObserver) sectionObserver.disconnect(); }catch(e){}
+    if(sectionObserver) sectionObserver.disconnect();
 
     const filtered = PRODUCTS.filter(p => {
       if(!p || p.is_hidden) return false;
@@ -5953,464 +5939,68 @@ function renderList() {
     document.getElementById("empty-state").style.display = filtered.length === 0 ? "block" : "none";
     if(filtered.length === 0) return;
 
-    // V42: Virtualized windowed grid for search results
-    FF_SAFE_RUN('vlistSearch', ()=> __vlistRenderSearch(grid, filtered, q, token));
-    return;
+    const container = document.createElement("div");
+    container.className = "grid-layout";
+
+    // Phase1: skeleton placeholder (flag: p1_skel)
+    if(window.FF && FF.has && FF.has('p1_skel')){
+      const sk = Math.min(8, filtered.length);
+      for(let i=0;i<sk;i++) container.appendChild(__makeProductSkeletonCard());
+      container.dataset.hasSkel = '1';
+    }
+
+    grid.appendChild(container);
+
+    // Phase2: chunked render (flag: p2_chunk)
+    if(window.FF && FF.has && FF.has('p2_chunk')){
+      FF_SAFE_RUN('renderListChunkedSearch', ()=> __appendCardsChunked(container, filtered, q, token));
+    }else{
+      filtered.forEach(p => { container.appendChild(createProductCard(p, q)); });
+    }
 
   } else {
     document.getElementById("empty-state").style.display = "none";
 
-    // V42: Category-level VList (keeps section headers always in DOM; offscreen cards are purged)
-    FF_SAFE_RUN('vlistCategory', ()=> __vlistRenderCategories(grid, token));
-    return;
-  }
-}
-
-/* ---------------------------
-   V42: VList Virtualization
-   - Primary target: old iOS / low-end devices (content-visibility is not available on iOS, so DOM shrink matters most)
-   - New devices: minimal visual change, mostly memory/battery/scroll stability improvements
----------------------------- */
-
-let __VLIST_STATE__ = null;
-let __VLIST_SCROLL_HANDLER__ = null;
-let __VLIST_RESIZE_HANDLER__ = null;
-let __VLIST_SCROLL_RAF__ = 0;
-
-function __vlistStop(){
-  try{
-    if(__VLIST_SCROLL_HANDLER__) window.removeEventListener('scroll', __VLIST_SCROLL_HANDLER__);
-  }catch(e){}
-  try{
-    if(__VLIST_RESIZE_HANDLER__) window.removeEventListener('resize', __VLIST_RESIZE_HANDLER__);
-  }catch(e){}
-  __VLIST_SCROLL_HANDLER__ = null;
-  __VLIST_RESIZE_HANDLER__ = null;
-  if(__VLIST_SCROLL_RAF__){
-    try{ cancelAnimationFrame(__VLIST_SCROLL_RAF__); }catch(e){}
-  }
-  __VLIST_SCROLL_RAF__ = 0;
-  __VLIST_STATE__ = null;
-  try{ if(sectionObserver) sectionObserver.disconnect(); }catch(e){}
-}
-
-function __vlistGetGridMetrics(sampleGrid){
-  const fallback = { cols: 2, gap: 12, cardH: 286, rowStride: 298 };
-  try{
-    if(!sampleGrid) return fallback;
-    const cs = getComputedStyle(sampleGrid);
-    const cols = (cs.gridTemplateColumns||'').split(' ').filter(Boolean).length || 2;
-
-    let gap = 12;
-    try{
-      const g = cs.gap || cs.gridGap || '';
-      const g1 = parseFloat(String(g).split(' ')[0]);
-      if(isFinite(g1)) gap = g1;
-    }catch(e){}
-
-    // Offscreen measurement (skeleton card)
-    const measWrap = document.createElement('div');
-    measWrap.style.position = 'absolute';
-    measWrap.style.left = '-9999px';
-    measWrap.style.top = '0';
-    measWrap.style.visibility = 'hidden';
-    measWrap.style.pointerEvents = 'none';
-    measWrap.style.width = (sampleGrid.getBoundingClientRect().width || 360) + 'px';
-
-    const measGrid = document.createElement('div');
-    measGrid.className = 'grid-layout';
-    const sk = __makeProductSkeletonCard();
-    measGrid.appendChild(sk);
-    measWrap.appendChild(measGrid);
-    document.body.appendChild(measWrap);
-
-    const cardH = Math.max(240, Math.min(420, sk.getBoundingClientRect().height || 286));
-    document.body.removeChild(measWrap);
-
-    return { cols, gap, cardH, rowStride: cardH + gap };
-  }catch(e){
-    return fallback;
-  }
-}
-
-function __appendCardsChunkedWithDone(container, arr, q, token, done){
-  let idx = 0;
-  const step = ()=>{
-    if(token !== window.__RENDER_TOKEN__) return; // cancelled
-    const t0 = performance.now();
-
-    if(container.dataset.hasSkel === '1'){
-      container.innerHTML = '';
-      delete container.dataset.hasSkel;
-    }
-
-    const frag = document.createDocumentFragment();
-    let wrote = 0;
-
-    while(idx < arr.length){
-      frag.appendChild(createProductCard(arr[idx], q));
-      idx++; wrote++;
-      // small batches are enough under VList (DOM is bounded)
-      if(wrote >= 10 && (performance.now() - t0) > 10) break;
-      if((performance.now() - t0) > 14) break;
-    }
-
-    container.appendChild(frag);
-
-    if(idx < arr.length){
-      requestAnimationFrame(step);
-    }else{
-      try{ done && done(); }catch(e){}
-    }
-  };
-  requestAnimationFrame(step);
-}
-
-/* ---- VList: Categories (section virtualization) ---- */
-function __vlistRenderCategories(root, token){
-  // Build stable DOM: section headers always exist; product grids are rendered only near viewport
-  const topAnchor = document.createElement('div');
-  topAnchor.id = 'cat-all-wrapper';
-  root.appendChild(topAnchor);
-
-  const metas = [];
-  categories.forEach(cat => {
-    const catProducts = PRODUCTS.filter(p => {
-      if(!p || p.is_hidden) return false;
-      if (cat.includes('清潔-')) {
-        if (!p.category.includes('清潔')) return false;
-        if (cat === '清潔-洗潔' && !p.name.includes('洗潔')) return false;
-        if (cat === '清潔-洗衣' && !p.name.includes('洗衣')) return false;
-        if (cat === '清潔-皂' && !p.name.includes('皂')) return false;
-        return true;
-      } else {
-        return p.category.includes(cat);
-      }
-    });
-    if(catProducts.length <= 0) return;
-
-    const secId = `cat-${cat.replace(/\s+/g,'-')}`;
-    const section = document.createElement('div');
-    section.className = 'cat-section';
-    section.id = secId;
-
-    const title = document.createElement('div');
-    title.className = 'cat-section-title';
-    let displayName = cat.includes('清潔-') ? cat : cat.split(/[\s_]/)[0];
-    title.innerText = displayName;
-    section.appendChild(title);
-
-    const grid = document.createElement('div');
-    grid.className = 'grid-layout';
-    grid.dataset.vcat = cat;
-
-    section.appendChild(grid);
-    root.appendChild(section);
-
-    metas.push({
-      cat, secId,
-      section,
-      grid,
-      products: catProducts,
-      rendered: false,
-      renderedOnce: false,
-      estH: 0,
-      measuredH: 0
-    });
-  });
-
-  // Compute grid metrics once and set placeholder heights
-  const metrics = __vlistGetGridMetrics(metas[0] ? metas[0].grid : null);
-  metas.forEach(m => {
-    const rows = Math.max(1, Math.ceil(m.products.length / metrics.cols));
-    m.estH = rows * metrics.cardH + Math.max(0, rows - 1) * metrics.gap;
-    // keep scroll length stable even when cards are purged
-    m.grid.style.minHeight = m.estH + 'px';
-  });
-
-  const st = {
-    mode: 'cat',
-    token,
-    metas,
-    metrics,
-    bufferPx: Math.max(900, Math.floor(window.innerHeight * 1.6)),
-    offsets: [],
-    offsetsAt: 0,
-    needOffsets: true
-  };
-    // Build productId -> sectionId mapping for deep link (ranking / star hero)
-  try{
-    st.pidToSecId = new Map();
-    metas.forEach(m => {
-      try{
-        (m.products||[]).forEach(p => {
-          if(p && p._id != null) st.pidToSecId.set(p._id, m.secId);
-        });
-      }catch(e){}
-    });
-  }catch(e){}
-  __VLIST_STATE__ = st;
-
-  function recalcOffsets(){
-    if(!__VLIST_STATE__ || __VLIST_STATE__.token !== token) return;
-    const arr = [];
-    // Ranking anchor first (treat as "top section")
-    arr.push({ id: 'cat-all-wrapper', top: 0 });
-    metas.forEach(m => {
-      const el = m.section;
-      if(!el) return;
-      const top = el.getBoundingClientRect().top + window.pageYOffset;
-      arr.push({ id: m.secId, top });
-    });
-    st.offsets = arr;
-    st.offsetsAt = Date.now();
-    st.needOffsets = false;
-  }
-
-  function setActivePillById(id){
-    try{
-      const pills = document.querySelectorAll('.cat-pill');
-      pills.forEach(p => {
-        const isRank = (id === 'cat-all-wrapper' && p.innerText === '熱銷排行');
-        p.classList.toggle('active', isRank || p.dataset.target === id);
-      });
-      const activePill = document.querySelector('.cat-pill.active');
-      if(activePill) activePill.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
-    }catch(e){}
-  }
-
-  function updateActivePill(){
-    try{
-      if(st.needOffsets || !st.offsets || st.offsets.length === 0) recalcOffsets();
-      const y = window.pageYOffset + __mainScrollOffset() + 6;
-
-      // Find last section whose top <= y
-      let activeId = 'cat-all-wrapper';
-      for(let i=0;i<st.offsets.length;i++){
-        const it = st.offsets[i];
-        if(it && typeof it.top === 'number' && it.top <= y) activeId = it.id;
-        else break;
-      }
-      setActivePillById(activeId);
-    }catch(e){}
-  }
-
-  function ensureRendered(meta){
-    if(!meta || meta.rendered) return;
-    meta.rendered = true;
-
-    // optional skeleton (kept tiny; helps avoid "blank flash" on older devices)
-    if(window.FF && FF.has && FF.has('p1_skel')){
-      const sk = Math.min(meta.renderedOnce ? 4 : 6, meta.products.length);
-      meta.grid.innerHTML = '';
-      for(let i=0;i<sk;i++) meta.grid.appendChild(__makeProductSkeletonCard());
-      meta.grid.dataset.hasSkel = '1';
-    } else {
-      // keep placeholder height to avoid scroll collapse
-      meta.grid.innerHTML = '';
-    }
-
-    __appendCardsChunkedWithDone(meta.grid, meta.products, null, token, ()=>{
-      if(token !== window.__RENDER_TOKEN__) return;
-      meta.renderedOnce = true;
-      try{
-        meta.measuredH = Math.max(0, meta.grid.getBoundingClientRect().height || meta.measuredH || meta.estH);
-        if(meta.measuredH) meta.grid.style.minHeight = meta.measuredH + 'px';
-      }catch(e){}
-      // offsets can shift a bit after first materialization
-      st.needOffsets = true;
-      // re-run a tick to purge/render neighbors based on new heights
-      scheduleTick();
-    });
-  }
-
-  function purge(meta){
-    if(!meta || !meta.rendered) return;
-    meta.rendered = false;
-    meta.grid.innerHTML = '';
-    const h = meta.measuredH || meta.estH || 0;
-    if(h) meta.grid.style.minHeight = h + 'px';
-  }
-
-  function tick(){
-    __VLIST_SCROLL_RAF__ = 0;
-    if(!__VLIST_STATE__ || __VLIST_STATE__.token !== token) return;
-
-    const buf = st.bufferPx;
-    const topLimit = -buf;
-    const botLimit = window.innerHeight + buf;
-
-    for(const meta of metas){
-      const r = meta.section.getBoundingClientRect();
-      const inRange = (r.bottom >= topLimit && r.top <= botLimit);
-      if(inRange) ensureRendered(meta);
-      else purge(meta);
-    }
-
-    // update active pill (scrollspy)
-    updateActivePill();
-  }
-
-  function scheduleTick(){
-    if(__VLIST_SCROLL_RAF__) return;
-    __VLIST_SCROLL_RAF__ = requestAnimationFrame(tick);
-  }
-
-  __VLIST_SCROLL_HANDLER__ = scheduleTick;
-  window.addEventListener('scroll', __VLIST_SCROLL_HANDLER__, { passive: true });
-
-  __VLIST_RESIZE_HANDLER__ = ()=>{
-    // recompute metrics & offsets (columns can change)
-    try{
-      const m2 = __vlistGetGridMetrics(metas[0] ? metas[0].grid : null);
-      st.metrics = m2;
-      metas.forEach(m => {
-        const rows = Math.max(1, Math.ceil(m.products.length / m2.cols));
-        const est = rows * m2.cardH + Math.max(0, rows - 1) * m2.gap;
-        m.estH = est;
-        const base = m.measuredH || m.estH;
-        if(base) m.grid.style.minHeight = base + 'px';
-      });
-      st.bufferPx = Math.max(900, Math.floor(window.innerHeight * 1.6));
-      st.needOffsets = true;
-    }catch(e){}
-    scheduleTick();
-  };
-  window.addEventListener('resize', __VLIST_RESIZE_HANDLER__);
-
-  // initial
-  st.needOffsets = true;
-  scheduleTick();
-}
-
-/* ---- VList: Search (windowed virtualization) ---- */
-function __vlistRenderSearch(root, filtered, q, token){
-  // Wrapper blocks (spacers outside of grid to avoid messing with CSS grid)
-  const wrap = document.createElement('div');
-  wrap.className = 'vlist-search-wrap';
-
-  const topSp = document.createElement('div');
-  topSp.className = 'vlist-spacer';
-  const grid = document.createElement('div');
-  grid.className = 'grid-layout';
-  const botSp = document.createElement('div');
-  botSp.className = 'vlist-spacer';
-
-  wrap.appendChild(topSp);
-  wrap.appendChild(grid);
-  wrap.appendChild(botSp);
-  root.appendChild(wrap);
-
-  // skeleton once
-  if(window.FF && FF.has && FF.has('p1_skel')){
-    const sk = Math.min(10, filtered.length);
-    for(let i=0;i<sk;i++) grid.appendChild(__makeProductSkeletonCard());
-    grid.dataset.hasSkel = '1';
-  }
-
-  const metrics = __vlistGetGridMetrics(grid);
-  const totalRows = Math.max(1, Math.ceil(filtered.length / metrics.cols));
-  const rowStride = metrics.rowStride;
-  const overRows = 6;
-
-  const st = {
-    mode: 'search',
-    token,
-    wrap, topSp, grid, botSp,
-    filtered, q,
-    metrics, totalRows, rowStride,
-    lastStartRow: -1,
-    lastEndRow: -1
-  };
-  __VLIST_STATE__ = st;
-
-  function renderWindow(){
-    if(!__VLIST_STATE__ || __VLIST_STATE__.token !== token) return;
-
-    const wrapTop = wrap.getBoundingClientRect().top + window.pageYOffset;
-    const y = window.pageYOffset + __mainScrollOffset();
-    const rel = Math.max(0, y - wrapTop);
-
-    const viewRows = Math.ceil((window.innerHeight + st.bufferPx) / rowStride);
-    let startRow = Math.max(0, Math.floor(rel / rowStride) - overRows);
-    let endRow = Math.min(totalRows, startRow + viewRows + overRows*2);
-    startRow = Math.max(0, Math.min(startRow, totalRows-1));
-
-    if(startRow === st.lastStartRow && endRow === st.lastEndRow) return;
-    st.lastStartRow = startRow;
-    st.lastEndRow = endRow;
-
-    const startIdx = startRow * metrics.cols;
-    const endIdx = Math.min(filtered.length, endRow * metrics.cols);
-
-    topSp.style.height = (startRow * rowStride) + 'px';
-    botSp.style.height = ((totalRows - endRow) * rowStride) + 'px';
-
-    // Render bounded DOM
-    // Clear old window first (true virtualization: keep DOM bounded)
-    grid.innerHTML = '';
-    try{ delete grid.dataset.hasSkel; }catch(e){}
-    __appendCardsChunkedWithDone(grid, filtered.slice(startIdx, endIdx), q, token, ()=>{
-      // no-op
-    });
-  }
-
-  function tick(){
-    __VLIST_SCROLL_RAF__ = 0;
-    if(!__VLIST_STATE__ || __VLIST_STATE__.token !== token) return;
-    renderWindow();
-  }
-  function scheduleTick(){
-    if(__VLIST_SCROLL_RAF__) return;
-    __VLIST_SCROLL_RAF__ = requestAnimationFrame(tick);
-  }
-
-  __VLIST_SCROLL_HANDLER__ = scheduleTick;
-  window.addEventListener('scroll', __VLIST_SCROLL_HANDLER__, { passive: true });
-
-  __VLIST_RESIZE_HANDLER__ = ()=>{
-    try{
-      const m2 = __vlistGetGridMetrics(grid);
-      st.metrics = m2;
-      st.totalRows = Math.max(1, Math.ceil(filtered.length / m2.cols));
-      st.rowStride = m2.rowStride;
-      st.lastStartRow = -1;
-      st.lastEndRow = -1;
-    }catch(e){}
-    scheduleTick();
-  };
-  window.addEventListener('resize', __VLIST_RESIZE_HANDLER__);
-
-  // buffer used in viewRows calc
-  st.bufferPx = Math.max(600, Math.floor(window.innerHeight * 1.2));
-  scheduleTick();
-}
-
-// V42: override scrollspy to be vlist-aware (fallback to legacy IntersectionObserver)
-function setupScrollSpy(){
-  try{
-    if(__VLIST_STATE__ && (__VLIST_STATE__.mode === 'cat' || __VLIST_STATE__.mode === 'search')){
-      // vlist manages pills on scroll; run one sync tick now
-      if(__VLIST_SCROLL_HANDLER__) __VLIST_SCROLL_HANDLER__();
+    // Phase2: chunked render path (flag: p2_chunk)
+    if(window.FF && FF.has && FF.has('p2_chunk')){
+      FF_SAFE_RUN('renderListChunked', ()=> __renderListChunkedNoSearch(grid, token));
       return;
     }
-  }catch(e){}
-  // legacy path (should rarely be used under V42)
-  if (sectionObserver) sectionObserver.disconnect();
-  const options = { root: null, rootMargin: '-135px 0px -70% 0px', threshold: 0 };
-  sectionObserver = new IntersectionObserver((entries) => {
-    entries.forEach(entry => {
-      if (entry.isIntersecting) {
-        const id = entry.target.id;
-        document.querySelectorAll(".cat-pill").forEach(pill => {
-          pill.classList.toggle("active", pill.dataset.target === id || (id==='cat-all-wrapper' && pill.innerText==='熱銷排行'));
-        });
-        const activePill = document.querySelector(".cat-pill.active");
-        if(activePill) activePill.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+
+    const topAnchor = document.createElement("div");
+    topAnchor.id = "cat-all-wrapper";
+    grid.appendChild(topAnchor);
+
+    __vlistReset();
+    window.__VLIST_CAT__ = window.__VLIST_CAT__ || {};
+    window.__VLIST_PID_POS__ = window.__VLIST_PID_POS__ || {};
+
+    categories.forEach(cat => {
+      const catProducts = PRODUCTS.filter(p => {
+        if(p.is_hidden) return false;
+        if (cat.includes("清潔-")) {
+          if (!p.category.includes("清潔")) return false;
+          if (cat === "清潔-洗潔" && !p.name.includes("洗潔")) return false;
+          if (cat === "清潔-洗衣" && !p.name.includes("洗衣")) return false;
+          if (cat === "清潔-皂" && !p.name.includes("皂")) return false;
+          return true;
+        } else { return p.category.includes(cat); }
+      });
+      if (catProducts.length > 0) {
+        const secId = `cat-${cat.replace(/\s+/g, '-')}`;
+        const section = document.createElement("div"); section.className = "cat-section"; section.id = secId;
+        const title = document.createElement("div"); title.className = "cat-section-title";
+        let displayName = cat.includes("清潔-") ? cat : cat.split(/[\s_]/)[0];
+        title.innerText = displayName;
+        section.appendChild(title);
+        const gridContainer = document.createElement("div"); gridContainer.className = "grid-layout";
+        catProducts.forEach(p => { gridContainer.appendChild(createProductCard(p, null)); });
+        section.appendChild(gridContainer);
+        grid.appendChild(section);
       }
     });
-  }, options);
-  document.querySelectorAll('.cat-section').forEach(section => { sectionObserver.observe(section); });
+    setupScrollSpy();
+  }
 }
 
 // V40: debounced search input (avoid rendering on every keystroke)
@@ -6421,6 +6011,276 @@ function scheduleRenderList(){
     __searchDebounceTimer = null;
     renderList();
   }, 140);
+}
+
+
+
+/* --- V42 Rebuild (from V41.2): Category VList virtualization --- */
+let __VLIST_READY__ = false;
+let __VLIST_SCROLL_BOUND__ = false;
+let __VLIST_COLS__ = 2;
+let __VLIST_GAP__ = 12;
+let __VLIST_CARD_H__ = 260;
+let __VLIST_ROW_H__ = 272;
+let __VLIST_TITLE_H__ = 44;
+let __VLIST_OVERSCAN_ROWS__ = 3;
+let __VLIST_SCHED__ = 0;
+let __VLIST_LAST_VW__ = 0;
+
+// Per-category state
+window.__VLIST_CAT__ = window.__VLIST_CAT__ || {};      // cat -> state
+window.__VLIST_PID_POS__ = window.__VLIST_PID_POS__ || {}; // pid -> {cat, idx}
+
+function __vlistReset(){
+  window.__VLIST_CAT__ = {};
+  window.__VLIST_PID_POS__ = {};
+  __VLIST_READY__ = false;
+}
+
+function __vlistInitLayout(){
+  try{
+    // derive gap from CSS (.grid-layout { gap: 12px; })
+    const probe = document.createElement('div');
+    probe.className = 'grid-layout';
+    probe.style.position='absolute'; probe.style.left='-9999px'; probe.style.top='-9999px';
+    probe.style.width = '360px';
+    document.body.appendChild(probe);
+    const cs = getComputedStyle(probe);
+    const gap = parseFloat(cs.gap || cs.gridGap || '12') || 12;
+    __VLIST_GAP__ = gap;
+
+    // Create a sample card to measure height (card internals already clamp title + fixed aspect image)
+    let sampleP = null;
+    if(Array.isArray(PRODUCTS) && PRODUCTS.length){
+      sampleP = PRODUCTS.find(x=>x && !x.is_hidden) || PRODUCTS[0];
+    }
+    if(sampleP){
+      const card = createProductCard(sampleP, null);
+      card.style.width = '160px';
+      card.style.position = 'absolute';
+      card.style.left='-9999px'; card.style.top='-9999px';
+      document.body.appendChild(card);
+      const h = card.getBoundingClientRect().height;
+      if(h && isFinite(h) && h>150 && h<520){
+        __VLIST_CARD_H__ = Math.round(h);
+      }
+      card.remove();
+    }
+    probe.remove();
+
+    // title height from CSS (cat-section-title)
+    const t = document.createElement('div');
+    t.className = 'cat-section-title';
+    t.style.position='absolute'; t.style.left='-9999px'; t.style.top='-9999px';
+    t.textContent='測試';
+    document.body.appendChild(t);
+    const th = t.getBoundingClientRect().height;
+    if(th && isFinite(th) && th>24 && th<120) __VLIST_TITLE_H__ = Math.round(th);
+    t.remove();
+
+    __VLIST_ROW_H__ = __VLIST_CARD_H__ + __VLIST_GAP__;
+    __VLIST_READY__ = true;
+  }catch(e){
+    __VLIST_READY__ = true;
+  }
+
+  // Determine cols per category container by computed gridTemplateColumns once it is in DOM
+  try{
+    Object.values(window.__VLIST_CAT__||{}).forEach(st=>{
+      const el = st && st.gridEl;
+      if(!el) return;
+      const cols = __vlistGetCols(el);
+      st.cols = cols;
+      const total = Array.isArray(st.items)? st.items.length : 0;
+      st.totalRows = Math.ceil(total / cols);
+      st.rowH = __VLIST_ROW_H__;
+      st.gap = __VLIST_GAP__;
+      // set placeholder height so section offsets are stable
+      const inner = st.innerEl;
+      if(inner){
+        inner.style.height = (st.totalRows * st.rowH) + 'px';
+      }
+      st.rendered = {r0:-1,r1:-1};
+      st.pinned = null;
+    });
+  }catch(e){}
+}
+
+function __vlistGetCols(gridEl){
+  try{
+    const cs = getComputedStyle(gridEl);
+    const tpl = cs.gridTemplateColumns || '';
+    const cols = tpl.split(' ').filter(Boolean).length;
+    return Math.max(1, cols || 2);
+  }catch(e){ return 2; }
+}
+
+function __vlistAttachScroll(){
+  if(__VLIST_SCROLL_BOUND__) return;
+  __VLIST_SCROLL_BOUND__ = true;
+  window.addEventListener('scroll', ()=> __vlistScheduleUpdate(), {passive:true});
+  window.addEventListener('resize', ()=> __vlistScheduleUpdate(true), {passive:true});
+}
+
+function __vlistScheduleUpdate(force=false){
+  if(__VLIST_SCHED__) return;
+  __VLIST_SCHED__ = requestAnimationFrame(()=>{
+    __VLIST_SCHED__ = 0;
+    __vlistUpdateAll(force);
+  });
+}
+
+function __vlistUpdateAll(force=false){
+  if(!__VLIST_READY__) return;
+  const vh = window.innerHeight || 800;
+  const vw = window.innerWidth || 360;
+  if(force || Math.abs(vw-__VLIST_LAST_VW__)>10){
+    __VLIST_LAST_VW__ = vw;
+    // recompute cols + placeholder heights
+    __vlistInitLayout();
+  }
+
+  const y0 = window.pageYOffset || 0;
+  const y1 = y0 + vh;
+  const bufferPx = Math.max(420, vh*0.6);
+
+  Object.values(window.__VLIST_CAT__||{}).forEach(st=>{
+    if(!st || !st.sectionEl || !st.gridEl || !st.innerEl) return;
+
+    const rect = st.gridEl.getBoundingClientRect();
+    const top = rect.top + (window.pageYOffset||0);
+    const bottom = top + rect.height;
+    if(bottom < y0 - bufferPx || top > y1 + bufferPx){
+      // out of range: optionally clear to reduce DOM
+      if(st.rendered && st.rendered.r0!==-1){
+        st.innerEl.innerHTML = '';
+        st.rendered = {r0:-1,r1:-1};
+      }
+      return;
+    }
+
+    // Visible row range within this grid
+    const cols = st.cols || __vlistGetCols(st.gridEl);
+    st.cols = cols;
+    const rowH = st.rowH || __VLIST_ROW_H__;
+    const totalRows = st.totalRows || Math.ceil((st.items||[]).length / cols);
+
+    const viewTop = Math.max(0, (y0 - top));
+    const viewBot = Math.max(0, (y1 - top));
+    let r0 = Math.floor(viewTop / rowH) - __VLIST_OVERSCAN_ROWS__;
+    let r1 = Math.ceil(viewBot / rowH) + __VLIST_OVERSCAN_ROWS__;
+    r0 = Math.max(0, r0);
+    r1 = Math.min(totalRows-1, r1);
+
+    if(st.pinned){
+      r0 = Math.min(r0, st.pinned.r0);
+      r1 = Math.max(r1, st.pinned.r1);
+    }
+
+    if(!force && st.rendered && st.rendered.r0===r0 && st.rendered.r1===r1) return;
+    __vlistRenderRows(st, r0, r1);
+  });
+
+  try{ if(typeof updateScrollSpyByScroll==='function') updateScrollSpyByScroll(); }catch(e){}
+}
+
+function __vlistRenderRows(st, r0, r1){
+  const inner = st.innerEl;
+  if(!inner) return;
+  inner.innerHTML = '';
+  const cols = st.cols || 2;
+  const gap = st.gap || __VLIST_GAP__;
+  const rowH = st.rowH || __VLIST_ROW_H__;
+  const total = (st.items||[]).length;
+
+  const gridW = st.gridEl.clientWidth || st.gridEl.getBoundingClientRect().width || 360;
+  const cardW = (gridW - gap*(cols-1)) / cols;
+
+  for(let r=r0; r<=r1; r++){
+    for(let c=0; c<cols; c++){
+      const idx = r*cols + c;
+      if(idx>=total) break;
+      const p = st.items[idx];
+      if(!p) continue;
+      const card = createProductCard(p, null);
+      card.id = `p-${p._id}`;
+      card.classList.add('vlist-abs');
+      card.style.width = cardW + 'px';
+      card.style.left = (c*(cardW+gap)) + 'px';
+      card.style.top = (r*rowH) + 'px';
+      inner.appendChild(card);
+    }
+  }
+  st.rendered = {r0:r0,r1:r1};
+}
+
+
+
+function __vlistTryApplyHighlight(pid, source, maxMs=5200){
+  try{
+    const t0 = (performance && performance.now) ? performance.now() : Date.now();
+    const step = ()=>{
+      try{ __vlistScheduleUpdate(true); }catch(e){}
+      const el = document.getElementById(`p-${pid}`);
+      if(el){
+        try{ el.scrollIntoView({behavior:'smooth', block:'center'}); }catch(e){}
+        try{
+          if(source === 'rank') applyNavBreathe(el,'rank');
+          else if(source === 'star') applyNavBreathe(el,'star');
+          else {
+            el.classList.add('flash-highlight');
+            setTimeout(()=>{ try{ el.classList.remove('flash-highlight'); }catch(e){} }, 1200);
+          }
+        }catch(e){}
+        return;
+      }
+      const now = (performance && performance.now) ? performance.now() : Date.now();
+      if((now - t0) < maxMs){
+        requestAnimationFrame(step);
+      }
+    };
+    requestAnimationFrame(step);
+  }catch(e){}
+}
+function vlistScrollToCategory(cat){
+  try{
+    const st = (window.__VLIST_CAT__||{})[cat];
+    if(!st || !st.sectionEl) return false;
+    const header = document.getElementById('header');
+    const headerH = header ? header.getBoundingClientRect().height : 110;
+    const offset = Math.min(140, Math.max(78, (headerH || 110) - 18));
+    const y = st.sectionEl.getBoundingClientRect().top + window.pageYOffset - offset;
+    window.scrollTo({top: Math.max(0,y), behavior:'smooth'});
+    return true;
+  }catch(e){ return false; }
+}
+
+function vlistScrollToProduct(pid, source){
+  try{
+    const pos = (window.__VLIST_PID_POS__||{})[pid];
+    if(!pos) return false;
+    const st = (window.__VLIST_CAT__||{})[pos.cat];
+    if(!st || !st.gridEl) return false;
+    const cols = st.cols || __vlistGetCols(st.gridEl);
+    const row = Math.floor((pos.idx||0) / cols);
+
+    // pin rows around target for a short time
+    st.pinned = {r0: Math.max(0,row-4), r1: Math.min((st.totalRows||row)+0, row+6)};
+    setTimeout(()=>{ try{ st.pinned=null; }catch(e){} }, 5200);
+
+    const header = document.getElementById('header');
+    const headerH = header ? header.getBoundingClientRect().height : 110;
+    const offset = Math.min(140, Math.max(78, (headerH || 110) - 18));
+
+    const top = st.gridEl.getBoundingClientRect().top + window.pageYOffset;
+    const y = top + row * (st.rowH||__VLIST_ROW_H__) - offset;
+    window.scrollTo({top: Math.max(0,y), behavior:'smooth'});
+
+    // after scroll, ensure highlight once target row is materialized
+    setTimeout(()=>{ try{ __vlistTryApplyHighlight(pid, source); }catch(e){} }, 160);
+
+    return true;
+  }catch(e){ return false; }
 }
 
 
@@ -6894,6 +6754,8 @@ function refreshCart() {
 
   // Update宅配列右側免運提示（僅在展開時顯示）
   try { syncDeliveryHeaderUI(); } catch(e) {}
+
+  try { __detectThresholdToasts(data); } catch(e) {}
 
   return data;
 }
