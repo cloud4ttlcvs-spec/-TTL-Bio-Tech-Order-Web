@@ -2078,6 +2078,11 @@ const GIFT_IMAGES = {};
   }, {once:true});
 })();
 
+// ===== Build / Release =====
+const BUILD_ID = "V42_FINAL_r20260222_01";
+window.BUILD_ID = BUILD_ID;
+
+
 const SHEET_P = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQBtV8q3Ank7Bnhs83IbOb97U46juV-RKeL3NpdFiNcSu-ifI21fQYo1-io62S3JIrXEO5MiDArc1Lr/pub?gid=1623055155&single=true&output=csv";
 const SHEET_R = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQU95r9_TOPlQXY-lcBS_RH3tRc0mtRyuazxHHWljpRusbzBiWsEfm3Pa_HZmKW5Ob5TOq4W5O-vumI/pub?gid=2071879068&single=true&output=csv";
 const SHEET_RANK = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQj5QLrtaWikGcLNwMawbjiN8ZQDgFzW1RV7UECFgLzECWj16I2ugE_B6tzzLICCynsk1L6lAuJfccS/pub?gid=93142219&single=true&output=csv";
@@ -5529,9 +5534,11 @@ const [pText, rText, rankText, gText] = await Promise.all([
 let core;
 try{
   try{ setBootConfigState('parsing'); }catch(e){}
+  window.__PARSE_MODE__ = 'worker';
   core = await parseCoreInWorker(pText, rText);
 }catch(err){
   console.warn('[V41] Worker parse failed, fallback to main:', err);
+  window.__PARSE_MODE__ = 'main';
   core = parseCoreOnMain(pText, rText);
 }
 
@@ -5877,10 +5884,19 @@ function __renderListChunkedNoSearch(grid, token){
   });
 
   // init row stride / columns and update initial window
-  __vlistInitLayout();
-  __vlistAttachScroll();
-  __vlistUpdateAll(true);
-  setupScrollSpy();
+  try{
+    window.__VLIST_FALLBACK__ = false;
+    __vlistInitLayout();
+    __vlistAttachScroll();
+    __vlistUpdateAll(true);
+    setupScrollSpy();
+  }catch(e){
+    console.warn('[V42] vlist init failed, fallback to legacy list:', e);
+    window.__VLIST_FALLBACK__ = true;
+    try{ __vlistReset(); }catch(_e){}
+    try{ grid.innerHTML = ''; }catch(_e){}
+    try{ __renderListNoSearchLegacy(grid, token); }catch(_e){}
+  }
 }
 
 function __appendCardsChunked(container, arr, q, token){
@@ -6013,6 +6029,58 @@ function scheduleRenderList(){
   }, 140);
 }
 
+
+
+
+function __renderListNoSearchLegacy(grid, token){
+  try{
+    if(sectionObserver) sectionObserver.disconnect();
+  }catch(e){}
+  let topAnchor = document.getElementById('cat-all-wrapper');
+  if(!topAnchor){
+    topAnchor = document.createElement('div');
+    topAnchor.id = 'cat-all-wrapper';
+    grid.appendChild(topAnchor);
+  }
+
+  categories.forEach(cat => {
+    const catProducts = PRODUCTS.filter(p => {
+      if(!p || p.is_hidden) return false;
+      if (cat.includes('清潔-')) {
+        if (!p.category.includes('清潔')) return false;
+        if (cat === '清潔-洗潔' && !p.name.includes('洗潔')) return false;
+        if (cat === '清潔-洗衣' && !p.name.includes('洗衣')) return false;
+        if (cat === '清潔-皂' && !p.name.includes('皂')) return false;
+        return true;
+      } else {
+        return p.category.includes(cat);
+      }
+    });
+    if(catProducts.length <= 0) return;
+
+    const secId = `cat-${cat.replace(/\s+/g,'-')}`;
+    const section = document.createElement('div');
+    section.className = 'cat-section';
+    section.id = secId;
+
+    const title = document.createElement('div');
+    title.className = 'cat-section-title';
+    let displayName = cat.includes('清潔-') ? cat : cat.split(/[\s_]/)[0];
+    title.innerText = displayName;
+    section.appendChild(title);
+
+    const container = document.createElement('div');
+    container.className = 'grid-layout';
+    section.appendChild(container);
+
+    grid.appendChild(section);
+
+    // Use chunked append for safety on low-end devices
+    __appendCardsChunked(container, catProducts, null, token);
+  });
+
+  try{ setupScrollSpy(); }catch(e){}
+}
 
 
 /* --- V42 Rebuild (from V41.2): Category VList virtualization --- */
@@ -7181,6 +7249,64 @@ document.querySelectorAll('input, select').forEach(input => {
 
 document.getElementById("searchInp").addEventListener("input", scheduleRenderList);
 window.onbeforeunload = (e) => { if(CART.length > 0) return "訂單尚未送出"; };
+
+/* ===== Diag Panel (?diag=1) ===== */
+(function(){
+  try{
+    const qs = new URLSearchParams(location.search);
+    if(qs.get('diag') !== '1') return;
+    window.__DIAG_ON__ = true;
+
+    const box = document.createElement('div');
+    box.id = 'diagBox';
+    box.style.cssText = [
+      'position:fixed','right:10px','bottom:10px','z-index:999999',
+      'max-width:92vw','width:360px',
+      'background:rgba(15,17,22,.92)','backdrop-filter:blur(10px)',
+      'color:#fff','border:1px solid rgba(255,255,255,.12)',
+      'border-radius:14px','padding:10px 12px',
+      'font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
+      'font-size:12px','line-height:1.35',
+      'box-shadow:0 10px 30px rgba(0,0,0,.35)'
+    ].join(';');
+
+    const head = document.createElement('div');
+    head.style.cssText = 'display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;';
+    head.innerHTML = `<div style="font-weight:800;">DIAG</div>
+      <button id="diagCloseBtn" style="all:unset;cursor:pointer;padding:2px 8px;border-radius:10px;background:rgba(255,255,255,.12)">✕</button>`;
+    box.appendChild(head);
+
+    const pre = document.createElement('pre');
+    pre.style.cssText = 'margin:0;white-space:pre-wrap;word-break:break-word;';
+    box.appendChild(pre);
+
+    document.body.appendChild(box);
+    document.getElementById('diagCloseBtn').onclick = ()=>{ try{ box.remove(); }catch(e){} };
+
+    function safeNum(n){ return (typeof n==='number' && isFinite(n)) ? n : 0; }
+    function yesno(v){ return v ? 'Y' : 'N'; }
+
+    function update(){
+      const lines = [];
+      lines.push(`build: ${window.BUILD_ID || 'unknown'}`);
+      lines.push(`time: ${new Date().toLocaleString()}`);
+      lines.push(`ua: ${navigator.userAgent}`);
+      lines.push(`vw/vh: ${window.innerWidth} x ${window.innerHeight}`);
+      lines.push(`parse: ${window.__PARSE_MODE__ || 'unknown'}`);
+      lines.push(`products: ${safeNum(window.PRODUCTS && window.PRODUCTS.length)}`);
+      lines.push(`rules: ${yesno(window.RULES)}`);
+      lines.push(`cart items: ${safeNum(window.CART && window.CART.length)}`);
+      lines.push(`vlist-ready: ${yesno(window.__VLIST_READY__)}  fallback: ${yesno(window.__VLIST_FALLBACK__)}`);
+      lines.push(`vlist-cardH: ${safeNum(window.__VLIST_CARD_H__)}  rowH: ${safeNum(window.__VLIST_ROW_H__)}  overscanRows: ${safeNum(window.__VLIST_OVERSCAN_ROWS__)}`);
+      const catCount = window.__VLIST_CAT__ ? Object.keys(window.__VLIST_CAT__).length : 0;
+      lines.push(`vlist-cats: ${catCount}`);
+      pre.textContent = lines.join('\n');
+    }
+
+    update();
+    setInterval(update, 900);
+  }catch(e){}
+})();
 
 initApp();
 try{ __starCaptureTemplate(); }catch(e){}
