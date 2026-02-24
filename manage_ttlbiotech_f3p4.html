@@ -323,8 +323,9 @@ tr.active-row .prod-name-cell { color: #1b5e20; font-size: 17px; font-weight: 90
 .sc-btn.primary{background:var(--primary);border-color:var(--primary);color:#fff;}
 .sc-btn:active{transform:translateY(1px);}
 .options-list{border:1px solid #e6ecef;border-radius:16px;padding:12px;min-height:110px;max-height:60vh;overflow:hidden;overflow-y:auto;background:#fff;-webkit-overflow-scrolling:touch;touch-action:pan-y;overscroll-behavior:contain;scrollbar-gutter:stable;margin-top:8px;}
+#view-settings .options-list::after{content:'';display:block;height:calc(var(--bottom-nav-height) + env(safe-area-inset-bottom) + 18px);}
 
-#view-settings{overflow-y:auto;-webkit-overflow-scrolling:touch;padding-bottom:calc(var(--bottom-nav-height) + 24px);}
+#view-settings{overflow-y:auto;-webkit-overflow-scrolling:touch;padding-bottom:calc(var(--bottom-nav-height) + env(safe-area-inset-bottom) + 56px);scroll-padding-bottom:calc(var(--bottom-nav-height) + env(safe-area-inset-bottom) + 56px);}
 #payOptionsList{max-height:42vh;}
 .opt-row{display:grid;grid-template-columns:90px 1fr 80px 54px;gap:10px;align-items:center;padding:10px;border:1px solid #eef2f4;border-radius:14px;background:#fff;box-shadow:0 2px 8px rgba(0,0,0,0.04);margin-bottom:10px;}
 .opt-row:last-child{margin-bottom:0;}
@@ -394,7 +395,7 @@ tr.active-row .prod-name-cell { color: #1b5e20; font-size: 17px; font-weight: 90
 
 <div id="loading-mask">
   <div class="spinner"></div>
-  <div id="loading-text" style="font-weight:700;color:#546e7a;font-size:15px">系統初始化 (V98)...</div>
+  <div id="loading-text" style="font-weight:700;color:#546e7a;font-size:15px">系統初始化 (V98.5)...</div>
 </div>
 
 <div id="restoreWidget" onclick="toggleRestoreList(event)">
@@ -1278,6 +1279,7 @@ function switchTab(tab, pushToHistory = true, preserveState = false) {
         if (settingsView) settingsView.style.display = 'flex';
         backBtn.style.display = 'flex';
         document.getElementById('filter-btn').style.display = 'none';
+        updateRestoreWidgetVisibility('settings');
         ensureSettingsLoaded();
         return;
     }
@@ -1286,6 +1288,7 @@ function switchTab(tab, pushToHistory = true, preserveState = false) {
         document.getElementById('view-dashboard').style.display = 'flex';
         backBtn.style.display = 'none';
         updateDashboard();
+        updateRestoreWidgetVisibility('dashboard');
     } else {
         document.getElementById('view-table-container').style.display = 'flex';
         if (!PENDING_SEARCH && !preserveState) { 
@@ -1294,6 +1297,7 @@ function switchTab(tab, pushToHistory = true, preserveState = false) {
         }
         backBtn.style.display = 'flex';
         renderCurrentTable();
+        updateRestoreWidgetVisibility(tab);
     }
 }
 
@@ -1700,6 +1704,19 @@ function updateRestoreWidget() {
         list.classList.remove('open');
     }
 }
+
+function updateRestoreWidgetVisibility(activeTab){
+    const widget = document.getElementById('restoreWidget');
+    const list = document.getElementById('restoreList');
+    if(!widget) return;
+    if(activeTab === 'settings'){
+        widget.style.display = 'none';
+        if(list) list.classList.remove('open');
+        return;
+    }
+    updateRestoreWidget();
+}
+
 function toggleRestoreList(e) {
     document.getElementById('restoreList').classList.toggle('open');
     e.stopPropagation();
@@ -2453,7 +2470,8 @@ function callGAS(payload, msg, isDelete, isRetry=false) {
               } 
               closeModal(true); 
           } 
-          updateDashboard(); 
+          updateDashboard();
+        updateRestoreWidgetVisibility('dashboard'); 
           renderCurrentTable(); 
           showLoading(false); 
           // alert(msg); // 選擇性開啟提示
