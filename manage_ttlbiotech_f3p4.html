@@ -322,9 +322,7 @@ tr.active-row .prod-name-cell { color: #1b5e20; font-size: 17px; font-weight: 90
 .sc-btn{border:1px solid #cfd8dc;background:#fff;border-radius:10px;padding:8px 12px;cursor:pointer;font-weight:800;color:#37474f;}
 .sc-btn.primary{background:var(--primary);border-color:var(--primary);color:#fff;}
 .sc-btn:active{transform:translateY(1px);}
-.options-list{border:1px solid #e6ecef;border-radius:16px;padding:12px;min-height:110px;max-height:60vh;overflow:hidden;overflow-y:auto;background:#fff;-webkit-overflow-scrolling:touch;touch-action:pan-y;overscroll-behavior:contain;scrollbar-gutter:stable;margin-top:8px;}
-#view-settings .options-list::after{content:'';display:block;height:calc(var(--bottom-nav-height) + env(safe-area-inset-bottom) + 18px);}
-
+.options-list{border:1px solid #e6ecef;border-radius:16px;padding:12px;padding-bottom:calc(12px + var(--bottom-nav-height) + env(safe-area-inset-bottom) + 18px);min-height:110px;max-height:60vh;overflow:hidden;overflow-y:auto;background:#fff;-webkit-overflow-scrolling:touch;touch-action:pan-y;overscroll-behavior:contain;scrollbar-gutter:stable;margin-top:8px;}
 #view-settings{overflow-y:auto;-webkit-overflow-scrolling:touch;padding-bottom:calc(var(--bottom-nav-height) + env(safe-area-inset-bottom) + 56px);scroll-padding-bottom:calc(var(--bottom-nav-height) + env(safe-area-inset-bottom) + 56px);}
 #payOptionsList{max-height:42vh;}
 .opt-row{display:grid;grid-template-columns:90px 1fr 80px 54px;gap:10px;align-items:center;padding:10px;border:1px solid #eef2f4;border-radius:14px;background:#fff;box-shadow:0 2px 8px rgba(0,0,0,0.04);margin-bottom:10px;}
@@ -338,7 +336,7 @@ tr.active-row .prod-name-cell { color: #1b5e20; font-size: 17px; font-weight: 90
 @media (max-width: 520px){
   .settings-topbar{padding:14px 6px 8px 6px;}
   .settings-card{padding:20px 16px 22px 16px;}
-  .options-list{padding:14px;max-height:62vh;min-height:140px;}
+  .options-list{padding:14px;max-height:62vh;min-height:140px;padding-bottom:calc(14px + var(--bottom-nav-height) + env(safe-area-inset-bottom) + 18px);}
   .opt-row{
     grid-template-columns:1fr auto;
     grid-template-areas:
