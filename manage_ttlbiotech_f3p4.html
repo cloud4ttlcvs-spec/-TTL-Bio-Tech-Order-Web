@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"/>
-<title>TTL BIO-TECH 戰情中心 V98.4</title>
+<title>TTL BIO-TECH 戰情中心 V98.7.3</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&family=Roboto:wght@500;700;900&display=swap" rel="stylesheet">
 <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -397,7 +397,7 @@ tr.active-row .prod-name-cell { color: #1b5e20; font-size: 17px; font-weight: 90
 
 <div id="loading-mask">
   <div class="spinner"></div>
-  <div id="loading-text" style="font-weight:700;color:#546e7a;font-size:15px">系統初始化 (V98.5)...</div>
+  <div id="loading-text" style="font-weight:700;color:#546e7a;font-size:15px">系統初始化 (V98.7.3)...</div>
 </div>
 
 <div id="restoreWidget" onclick="toggleRestoreList(event)">
@@ -748,6 +748,13 @@ function denyAccessAndStop() {
 ADMIN_TOKEN = promptForToken(false);
 if (!ADMIN_TOKEN) denyAccessAndStop();
 
+const APP_VERSION = '98.7.3';
+try{
+  document.title = `TTL BIO-TECH 戰情中心 V${APP_VERSION}`;
+  const lt = document.getElementById('loading-text');
+  if(lt) lt.textContent = `系統初始化 (V${APP_VERSION})...`;
+} catch(e) {}
+
 const GAS_URL = "https://script.google.com/macros/s/AKfycbxQ9Etloak3ZNv6yfyMCK9KbjoLyDqjRQHHVlASY5iMwwy_c4NCPxWpMK1YkzSXstHN/exec";
 const SHEET_P_CSV = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQBtV8q3Ank7Bnhs83IbOb97U46juV-RKeL3NpdFiNcSu-ifI21fQYo1-io62S3JIrXEO5MiDArc1Lr/pub?gid=1623055155&single=true&output=csv";
 let PRODUCT_BUNDLE_MAP = new Map(); // 用來查表補全資訊
@@ -878,6 +885,7 @@ async function init() {
     });
 
     updateRestoreWidget();
+    try{ updateRestoreWidgetVisibility(CURRENT_TAB); }catch(e){}
     
     const viewDash = document.getElementById('view-dashboard');
     const onScroll = (e) => {
@@ -1223,10 +1231,6 @@ function processSales(rows) {
 function switchTab(tab, pushToHistory = true, preserveState = false) {
     // V96 UX: allow sidebar tab switch even when full chart is open
     const fcView = document.getElementById('view-full-chart');
-
-    // Hide restore (隱藏清單) widget on Settings tab
-    const restoreWidget = document.getElementById('restoreWidget');
-    if (restoreWidget) restoreWidget.style.display = (tab === 'settings') ? 'none' : '';
     if(fcView && fcView.style.display === 'flex') { fcView.style.display = 'none'; }
 
     if(pushToHistory && tab !== CURRENT_TAB) history.pushState({tab: tab}, '', '');
@@ -1650,7 +1654,7 @@ window.toggleHidden = function(code) {
     try{ showToast((HIDDEN_STOCK.has(code)?'已隱藏 ':'已顯示 ') + getNameByCode(code)); }catch(e){} 
     
     updateDashboard(); 
-    updateRestoreWidget();
+    updateRestoreWidgetVisibility(CURRENT_TAB);
     
     // Immediate Visual Update
     const btnM = document.querySelector(`#card-${code} .mc-icon-btn.hide`);
@@ -1688,6 +1692,13 @@ document.addEventListener('click', function(){
 });
 
 function updateRestoreWidget() {
+    try{ if(CURRENT_TAB === 'settings') {
+        const widget=document.getElementById('restoreWidget');
+        const list=document.getElementById('restoreList');
+        if(widget) widget.style.display='none';
+        if(list) list.classList.remove('open');
+        return;
+    } }catch(e){}
     const widget = document.getElementById('restoreWidget');
     const list = document.getElementById('restoreList');
     const count = HIDDEN_STOCK.size;
