@@ -111,7 +111,8 @@ header { height: var(--header-height); background: #fff; border-bottom: 1px soli
 
 .table-container { flex: 1; overflow: auto; position: relative; }
 table { width: 100%; border-collapse: collapse; font-size: 15px; }
-th { position: sticky; top: 0; background: #f5f5f5; z-index: 5; text-align: left; padding: 12px; font-weight: 700; color: var(--text-sub); border-bottom: 2px solid #ddd; white-space: nowrap; cursor: pointer; transition: background 0.2s; user-select: none; }
+th { position: sticky; top: 0; background: #f5f5f5; z-index: 5; text-align: left; padding: 12px; font-weight: 700; color: var(--text-sub); border-bottom: 2px solid #ddd; white-space: nowrap; cursor: pointer; transition: background 0.2s;
+    cursor: pointer; user-select: none; }
 th:hover { background: #e0e0e0; }
 td { padding: 12px; border-bottom: 1px solid #eee; vertical-align: middle; }
 tr:hover { background: #f9f9f9; }
@@ -321,7 +322,7 @@ tr.active-row .prod-name-cell { color: #1b5e20; font-size: 17px; font-weight: 90
 .sc-btn{border:1px solid #cfd8dc;background:#fff;border-radius:10px;padding:8px 12px;cursor:pointer;font-weight:800;color:#37474f;}
 .sc-btn.primary{background:var(--primary);border-color:var(--primary);color:#fff;}
 .sc-btn:active{transform:translateY(1px);}
-.options-list{border:1px dashed #eceff1;border-radius:14px;padding:8px;min-height:80px;max-height:52vh;overflow:auto;}
+.options-list{border:1px dashed #eceff1;border-radius:14px;padding:8px;min-height:80px;max-height:52vh;overflow:auto;-webkit-overflow-scrolling:touch;touch-action:pan-y;}
 .opt-row{display:grid;grid-template-columns:90px 1fr 80px 54px;gap:10px;align-items:center;padding:8px 8px;border-bottom:1px dashed #eceff1;}
 .opt-row:last-child{border-bottom:none;}
 .opt-row.inactive .opt-name{color:#90a4ae;text-decoration:line-through;}
@@ -334,13 +335,41 @@ tr.active-row .prod-name-cell { color: #1b5e20; font-size: 17px; font-weight: 90
   .opt-row{grid-template-columns:90px 1fr;grid-auto-rows:auto;}
   .opt-move{justify-content:flex-start;}
 }
+
+.toast{
+  position:fixed;
+  left:50%;
+  bottom:18px;
+  transform:translateX(-50%);
+  background:rgba(38,50,56,0.95);
+  color:#fff;
+  padding:10px 14px;
+  border-radius:999px;
+  font-weight:800;
+  font-size:13px;
+  z-index:4000;
+  opacity:0;
+  pointer-events:none;
+  transition:opacity .18s ease, transform .18s ease;
+  max-width:min(92vw,520px);
+  text-align:center;
+  box-shadow:0 6px 16px rgba(0,0,0,.22);
+}
+.toast.show{
+  opacity:1;
+  transform:translateX(-50%) translateY(-6px);
+}
+@media (max-width:768px){
+  .toast{ bottom:76px; }
+}
+
 </style>
 </head>
 <body>
 
 <div id="loading-mask">
   <div class="spinner"></div>
-  <div id="loading-text" style="font-weight:700;color:#546e7a;font-size:15px">系統初始化 (V96)...</div>
+  <div id="loading-text" style="font-weight:700;color:#546e7a;font-size:15px">系統初始化 (V98)...</div>
 </div>
 
 <div id="restoreWidget" onclick="toggleRestoreList(event)">
@@ -348,6 +377,8 @@ tr.active-row .prod-name-cell { color: #1b5e20; font-size: 17px; font-weight: 90
     <span id="hiddenCount">0</span>
     <div id="restoreList" onclick="event.stopPropagation()"></div>
 </div>
+
+<div id="toast" class="toast"></div>
 
 <div id="scrollTopBtn" onclick="scrollToTop()">
     <span class="material-icons-round">arrow_upward</span>
@@ -746,6 +777,7 @@ let OS_SORT_MODE = 'months';
 
 const ALL_STATUSES = ['缺貨', '低位', '留意', '充足', '積壓', '滯銷'];
 let SELECTED_STATUSES = new Set(ALL_STATUSES);
+let SELECTED_ORDER_FILTERS = new Set(JSON.parse(localStorage.getItem('admin_order_filters') || '[]'));
 // Visibility Filter (Hidden / Visible) - V96
 const VISIBILITY_OPTIONS = [
   { k: 'visible', l: '非隱藏' },
@@ -1166,6 +1198,7 @@ function switchTab(tab, pushToHistory = true, preserveState = false) {
     if(fcView && fcView.style.display === 'flex') { fcView.style.display = 'none'; }
 
     if(pushToHistory && tab !== CURRENT_TAB) history.pushState({tab: tab}, '', '');
+    const rl = document.getElementById('restoreList'); if(rl) rl.classList.remove('open');
     
     CURRENT_TAB = tab; ACTIVE_FILTER = ''; 
     if(!preserveState) { AUTO_EXPAND_CODE = null; }
@@ -1198,8 +1231,7 @@ function switchTab(tab, pushToHistory = true, preserveState = false) {
     } else if(tab === 'sales') {
         fbtn.classList.toggle('active', !setEquals(SELECTED_VISIBILITY.sales, DEFAULT_VIS_SET));
     } else if(tab === 'orders') {
-        // keep existing behavior (active only after apply)
-        fbtn.classList.remove('active');
+        fbtn.classList.toggle('active', (SELECTED_ORDER_FILTERS.size > 0));
     } else {
         fbtn.classList.remove('active');
     }
@@ -1578,7 +1610,9 @@ function splitLabel(str) { return str.length > 18 ? [str.substring(0, 18), str.s
 // V83: Fixed Toggle logic to update specific button without full re-render
 window.toggleHidden = function(code) { 
     if(HIDDEN_STOCK.has(code)) HIDDEN_STOCK.delete(code); else HIDDEN_STOCK.add(code); 
-    localStorage.setItem('admin_hidden_stock', JSON.stringify([...HIDDEN_STOCK])); 
+    localStorage.setItem('admin_hidden_stock', JSON.stringify([...HIDDEN_STOCK]));
+    // UX: toast
+    try{ showToast((HIDDEN_STOCK.has(code)?'已隱藏 ':'已顯示 ') + getNameByCode(code)); }catch(e){} 
     
     updateDashboard(); 
     updateRestoreWidget();
@@ -1595,6 +1629,28 @@ window.toggleHidden = function(code) {
     if(CURRENT_TAB === 'inventory' || CURRENT_TAB === 'sales') { renderCurrentTable(); }
 if(document.getElementById('view-full-chart').style.display === 'flex') renderFullChart();
 }
+
+function showToast(msg, ms=1800){
+    const t = document.getElementById('toast');
+    if(!t) return;
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(window.__toastTimer);
+    window.__toastTimer = setTimeout(()=>{ t.classList.remove('show'); }, ms);
+}
+function getNameByCode(code){
+    const inv = (DATA && DATA.inventory) ? DATA.inventory.find(i=>String(i.code)===String(code)) : null;
+    if(inv && inv.name) return inv.name;
+    const sa = (DATA && DATA.sales) ? DATA.sales.find(s=>String(s.code)===String(code)) : null;
+    if(sa && sa.name) return sa.name;
+    return String(code);
+}
+
+// Close hidden list when clicking outside
+document.addEventListener('click', function(){
+    const rl = document.getElementById('restoreList');
+    if(rl && rl.classList.contains('open')) rl.classList.remove('open');
+});
 
 function updateRestoreWidget() {
     const widget = document.getElementById('restoreWidget');
@@ -1730,7 +1786,8 @@ function openFilterSheet() {
                 return;
             }
             const isAll = opt === "(全選)";
-            const isChecked = isAll ? false : SELECTED_STATUSES.has(opt);
+            const defaultAll = (SELECTED_ORDER_FILTERS.size === 0);
+            const isChecked = isAll ? false : (defaultAll ? true : SELECTED_ORDER_FILTERS.has(opt));
 
             const div = document.createElement('div');
             div.className = "filter-row";
@@ -1767,12 +1824,32 @@ function toggleAllFilters(enable, group='status') {
 }
 
 function applyFilter() {
-    // Status filter (inventory/orders)
-    if(CURRENT_TAB === 'inventory' || CURRENT_TAB === 'orders') {
+    // Status filter (inventory)
+    if(CURRENT_TAB === 'inventory') {
         const chks = document.querySelectorAll('.filter-chk');
         SELECTED_STATUSES.clear();
         chks.forEach(c => { if(c.checked) SELECTED_STATUSES.add(c.value); });
-        if(CURRENT_TAB === 'inventory' && SELECTED_STATUSES.size === 0) SELECTED_STATUSES = new Set(ALL_STATUSES); // guard
+        if(SELECTED_STATUSES.size === 0) SELECTED_STATUSES = new Set(ALL_STATUSES); // guard
+    }
+
+    // Orders filter (dept / pickup) - empty set means "no restriction"
+    if(CURRENT_TAB === 'orders') {
+        const chks = document.querySelectorAll('.filter-chk');
+        const picked = new Set();
+        chks.forEach(c => { if(c.checked) picked.add(c.value); });
+
+        const depts = [...new Set(DATA.orders.map(o => o.dept))].filter(Boolean);
+        const pickups = ['自取', '宅配'];
+        const allVals = new Set([...pickups, ...depts]);
+
+        // Guard: if nothing selected OR everything selected => treat as "all"
+        if(picked.size === 0 || picked.size === allVals.size) {
+            SELECTED_ORDER_FILTERS = new Set();
+            localStorage.removeItem('admin_order_filters');
+        } else {
+            SELECTED_ORDER_FILTERS = picked;
+            localStorage.setItem('admin_order_filters', JSON.stringify([...SELECTED_ORDER_FILTERS]));
+        }
     }
 
     // Visibility filter (inventory/sales)
@@ -1797,7 +1874,7 @@ function applyFilter() {
     } else if(CURRENT_TAB === 'sales') {
         active = !setEquals(SELECTED_VISIBILITY.sales, DEFAULT_VIS_SET);
     } else if(CURRENT_TAB === 'orders') {
-        active = (SELECTED_STATUSES.size > 0);
+        active = (SELECTED_ORDER_FILTERS.size > 0);
     }
     if(active) btn.classList.add('active'); else btn.classList.remove('active');
 
@@ -1860,6 +1937,10 @@ function renderCurrentTable() {
         list = DATA.orders.filter(o => o.id.toLowerCase().includes(q) || o.name.includes(q));
         if (q.length === 8 && !isNaN(q)) list = DATA.orders.filter(o => o.id.includes(q) || o.time.replace(/\D/g,'').startsWith(q));
     }
+        // Orders filter (dept / pickup)
+        if (SELECTED_ORDER_FILTERS && SELECTED_ORDER_FILTERS.size > 0) {
+            list = list.filter(o => SELECTED_ORDER_FILTERS.has(o.dept) || SELECTED_ORDER_FILTERS.has(o.pickup));
+        }
     if(SORT.key) list.sort((a,b) => (a[SORT.key]>b[SORT.key]?1:-1)*(SORT.asc?1:-1));
 
     if (isMobile) {
@@ -1942,6 +2023,7 @@ function renderCurrentTable() {
                                 <div style="font-size:10px;color:#999">YoY</div>
                             </div>
                         </div>
+                        </div>
                         <div class="mc-sales-detail">
                             <div class="mc-row"><span>料號</span><span class="mc-row-val">${s.code}</span></div>
                             <div class="mc-row"><span>今年銷量</span><span class="mc-row-val">${s.thisQty}</span></div>
@@ -1962,7 +2044,7 @@ function renderCurrentTable() {
             list.forEach(o => {
                 const card = document.createElement('div');
                 card.className = 'm-compact-card';
-                card.id = 'card-' + s.code;
+                card.id = 'card-' + o.id;
                 card.onclick = () => openOrderModal(o.id, 'view');
                 card.innerHTML = `
                     <div class="m-status-strip" style="background:#00897b"></div>
@@ -2010,9 +2092,9 @@ function renderCurrentTable() {
             list.forEach(s => { html += `<tr id="row-${s.code}"><td style="font-size:14px;color:#888">${s.code} <span class="material-icons-round mc-icon-btn hide ${HIDDEN_STOCK.has(s.code) ? 'active' : '' }" onclick="event.stopPropagation(); toggleHidden('${s.code}')" style="font-size:16px;vertical-align:middle;margin-left:4px" title="隱藏/顯示">visibility_off</span></td><td class="prod-name-cell">${s.name}</td><td class="${s.yoy>=0?'val-up':'val-down'}">${s.yoy}%</td><td>$${s.lastRev.toLocaleString()}</td><td>$${s.thisRev.toLocaleString()}</td><td>${s.lastQty}</td><td>${s.thisQty}</td></tr>`; });
         }
                 else if (CURRENT_TAB === 'orders') {
-            // [Mod] 篩選邏輯更新：支援部門與取貨
-            if (SELECTED_STATUSES.size > 0 && !SELECTED_STATUSES.has('缺貨')) { // 簡單判斷是否為預設狀態
-                list = list.filter(o => SELECTED_STATUSES.has(o.dept) || SELECTED_STATUSES.has(o.pickup));
+            // 篩選：部門 / 取貨（Orders 專用；空集合代表不限制）
+            if (SELECTED_ORDER_FILTERS && SELECTED_ORDER_FILTERS.size > 0) {
+                list = list.filter(o => SELECTED_ORDER_FILTERS.has(o.dept) || SELECTED_ORDER_FILTERS.has(o.pickup));
             }
 
             // [New] 計算篩選後的總金額
