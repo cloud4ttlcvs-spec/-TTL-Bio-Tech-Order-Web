@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"/>
-<title>TTL BIO-TECH 戰情中心 V98.7.4</title>
+<title>TTL BIO-TECH 戰情中心 V98.8.1</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&family=Roboto:wght@500;700;900&display=swap" rel="stylesheet">
 <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -432,7 +432,7 @@ tr.active-row .prod-name-cell { color: #1b5e20; font-size: 17px; font-weight: 90
 
 <div id="loading-mask">
   <div class="spinner"></div>
-  <div id="loading-text" style="font-weight:700;color:#546e7a;font-size:15px">系統初始化 (V98.7.4)...</div>
+  <div id="loading-text" style="font-weight:700;color:#546e7a;font-size:15px">系統初始化 (V98.8.1)...</div>
 </div>
 
 <div id="restoreWidget" onclick="toggleRestoreList(event)">
@@ -779,6 +779,9 @@ function saveToken(token) {
   try {
     localStorage.setItem(TOKEN_STORAGE_KEY, JSON.stringify({ token: String(token), ts: Date.now() }));
   } catch(e) {}
+
+const STOCK_UNI_COLOR = "#1e88e5";
+const AVG_GRAY_COLOR = "#90a4ae";
 }
 
 function clearSavedToken() {
@@ -805,7 +808,7 @@ function denyAccessAndStop() {
 ADMIN_TOKEN = promptForToken(false);
 if (!ADMIN_TOKEN) denyAccessAndStop();
 
-const APP_VERSION = "98.8.0";
+const APP_VERSION = "98.8.1";
 try{
   document.title = `TTL BIO-TECH 戰情中心 V${APP_VERSION}`;
   const lt = document.getElementById('loading-text');
@@ -1505,11 +1508,6 @@ function renderFullChart() {
         }
         return res;
     };
-
-    const STOCK_UNI_COLOR = '#1e88e5';
-    const AVG_GRAY_COLOR = '#90a4ae';
-
-    
     let chartConfig = {};
     
     if (FULL_CHART_SOURCE === 'stock') {
