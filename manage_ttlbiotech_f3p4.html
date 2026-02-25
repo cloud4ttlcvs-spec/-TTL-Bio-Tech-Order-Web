@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"/>
-<title>TTL BIO-TECH 戰情中心 V98.9.1</title>
+<title>TTL BIO-TECH 戰情中心 V98.10.0</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&family=Roboto:wght@500;700;900&display=swap" rel="stylesheet">
 <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -62,6 +62,32 @@ header { height: var(--header-height); background: #fff; border-bottom: 1px soli
 .alert-badge{color:#fff;font-weight:900;border-radius:999px;padding:2px 8px;font-size:12px;}
 .alert-num{background:#eceff1;border-radius:999px;padding:2px 8px;}
 
+.alert-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;}
+.alert-hide{flex:0 0 auto;color:#b0bec5;cursor:pointer;border-radius:10px;padding:4px;line-height:1;-webkit-tap-highlight-color:transparent;}
+.alert-hide:active{background:#eceff1;}
+.alert-hide:hover{color:#78909c;}
+
+.full-chart-layout{display:flex;gap:14px;align-items:flex-start;}
+.fc-side{width:300px;flex:0 0 300px;background:#fff;border:1px solid #e0e0e0;border-radius:14px;overflow:hidden;position:sticky;top:120px;max-height:calc(100vh - 150px);box-shadow:0 6px 18px rgba(0,0,0,0.06);}
+.fc-side-head{padding:10px 12px;background:#fafafa;border-bottom:1px solid #eee;font-weight:900;color:#37474f;display:flex;align-items:center;justify-content:space-between;}
+.fc-side-list{overflow-y:auto;max-height:calc(100vh - 190px);padding:8px;}
+.fc-item{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;padding:10px;border:1px solid #eceff1;border-radius:12px;background:#fff;cursor:pointer;}
+.fc-item:hover{background:#fafafa;}
+.fc-item-left{min-width:0;display:flex;flex-direction:column;gap:6px;}
+.fc-item-name{font-weight:900;font-size:13px;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.fc-item-meta{display:flex;flex-wrap:wrap;gap:6px;color:#607d8b;font-size:12px;font-weight:700;}
+.fc-pill{background:#eceff1;border-radius:999px;padding:2px 8px;}
+.fc-hide{flex:0 0 auto;color:#b0bec5;cursor:pointer;border-radius:10px;padding:4px;}
+.fc-hide:active{background:#eceff1;}
+.fc-hide:hover{color:#78909c;}
+
+@media (max-width: 980px){
+  .full-chart-layout{flex-direction:column;}
+  .fc-side{width:100%;flex:0 0 auto;position:static;top:auto;max-height:260px;}
+  .fc-side-list{max-height:200px;}
+}
+
+
 @media (max-width:768px){
   .dashboard-grid{grid-template-columns:1fr;}
   .dashboard-right{flex-direction:column;}
@@ -74,6 +100,7 @@ header { height: var(--header-height); background: #fff; border-bottom: 1px soli
 #backBtn:hover { background: var(--primary); }
 
 .content-box { flex: 1; display: flex; flex-direction: column; padding: 15px; overflow: hidden; gap: 15px; position: relative;  min-height: 0; }
+.content-box.dashboard-scroll{overflow-y:auto;-webkit-overflow-scrolling:touch;}
 
 /* KPI Cards */
 .kpi-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; flex-shrink: 0; }
@@ -315,25 +342,39 @@ tr.active-row .prod-name-cell { color: #1b5e20; font-size: 17px; font-weight: 90
     .b-nav-item span { font-size: 24px; }
 
     #main { margin-bottom: var(--bottom-nav-height); }
-    header { padding: 0 10px; position: sticky; top: 0; height: 45px; } 
+    header { padding: 0 10px; position: sticky; top: 0; height: 45px; }
+
+    header { z-index: 1100; }
+    /* Mobile padding modes to remove top blank on table pages */
+    .content-box{padding:10px;}
+    .content-box.mobile-table{padding:0 10px 10px 10px;}
+    .content-box.mobile-dashboard{padding:10px;}
+
     .page-title { font-size: 15px; }
     
     #view-dashboard { overflow-y: auto !important; -webkit-overflow-scrolling: touch; padding-bottom: calc(var(--bottom-nav-height) + env(safe-area-inset-bottom) + 16px); }
     .kpi-row { grid-template-columns: 1fr 1fr; gap: 8px; }
-    .dashboard-grid{grid-template-columns:1fr !important; gap:15px;}
+    .dashboard-grid{grid-template-columns:1fr !important; gap:15px; flex:none !important;}
     .kpi-card { padding: 10px; flex-direction: column; align-items: flex-start; gap: 6px; }
     .kpi-icon { align-self: flex-end; position: absolute; bottom: 8px; right: 8px; font-size: 24px; }
     .kpi-val { font-size: 18px; }
     
     .chart-section { grid-template-columns: 1fr; gap: 15px; display: block; } 
-    .chart-card { min-height: auto; margin-bottom: 15px; } 
+    .chart-card { min-height: auto; margin-bottom: 15px; }
+
+    .chart-card.stock-main{min-height:420px;}
+    .chart-card.alert-card{min-height:280px;}
+    .chart-card.overstock-card{min-height:380px;}
+    .c-head{padding:10px 12px;}
+    .c-body{padding:8px;}
+
     .overstock-layout { flex-direction: column; }
     .os-chart-area { border-right: none; border-bottom: 1px dashed #eee; padding-right: 0; padding-bottom: 10px; flex: 1; min-height: 250px; }
     .os-list-area { padding-left: 0; padding-top: 10px; max-height: 200px; }
 
     .data-panel { border: none; background: transparent; display: flex; flex-direction: column; }
     
-    .panel-head { position: fixed; top: 0; left: 0; right: 0; height: 50px; z-index: 100; padding: 8px 10px; border-bottom: 1px solid #ddd; background: #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.05); display: flex; gap: 8px; align-items: center; }
+    .panel-head { position: fixed; top: 45px; left: 0; right: 0; height: 50px; z-index: 100; padding: 8px 10px; border-bottom: 1px solid #ddd; background: #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.05); display: flex; gap: 8px; align-items: center; }
     .search-wrap { flex: 1; width: auto; }
     .search-wrap input { padding: 8px 30px 8px 34px; font-size: 14px; height: 34px; }
     .search-wrap .icon { font-size: 18px; left: 8px; }
@@ -621,8 +662,17 @@ tr.active-row .prod-name-cell { color: #1b5e20; font-size: 17px; font-weight: 90
             <span class="l-item"><div class="l-dot" style="background:#d32f2f"></div>缺貨(<2)</span>
         </div>
         <div class="full-chart-body">
-            <div class="full-chart-container" id="fcContainer">
-                <canvas id="fullChart"></canvas>
+            <div class="full-chart-layout">
+                <div class="full-chart-container" id="fcContainer">
+                    <canvas id="fullChart"></canvas>
+                </div>
+                <div class="fc-side" id="fcSide">
+                    <div class="fc-side-head">
+                        <span>品項（可隱藏）</span>
+                        <span style="font-size:12px;color:#90a4ae;font-weight:800">點品名可定位</span>
+                    </div>
+                    <div class="fc-side-list" id="fullChartList"></div>
+                </div>
             </div>
         </div>
     </div>
@@ -811,7 +861,7 @@ function denyAccessAndStop() {
 ADMIN_TOKEN = promptForToken(false);
 if (!ADMIN_TOKEN) denyAccessAndStop();
 
-const APP_VERSION = "98.9.1";
+const APP_VERSION = "98.10.0";
 try{
   document.title = `TTL BIO-TECH 戰情中心 V${APP_VERSION}`;
   const lt = document.getElementById('loading-text');
@@ -1299,7 +1349,22 @@ function switchTab(tab, pushToHistory = true, preserveState = false) {
     if(pushToHistory && tab !== CURRENT_TAB) history.pushState({tab: tab}, '', '');
     const rl = document.getElementById('restoreList'); if(rl) rl.classList.remove('open');
     
-    CURRENT_TAB = tab; ACTIVE_FILTER = ''; 
+    CURRENT_TAB = tab; ACTIVE_FILTER = '';
+    // Mobile layout classes (avoid top blank + enable dashboard scrolling)
+    try{
+        const cb = document.querySelector('.content-box');
+        if(cb && window.innerWidth <= 768){
+            cb.classList.toggle('mobile-dashboard', tab === 'dashboard');
+            cb.classList.toggle('dashboard-scroll', tab === 'dashboard');
+            cb.classList.toggle('mobile-table', ['inventory','sales','orders'].includes(tab));
+            if(tab !== 'dashboard') cb.classList.remove('dashboard-scroll');
+        } else if(cb){
+            cb.classList.remove('mobile-dashboard');
+            cb.classList.remove('mobile-table');
+            cb.classList.remove('dashboard-scroll');
+        }
+    }catch(e){}
+
     if(!preserveState) { AUTO_EXPAND_CODE = null; }
 
     // V94: Set Default Sort per Tab (Auto Sort) - Logic Added
@@ -1563,6 +1628,70 @@ function renderFullChart() {
     }
     
     CHARTS.full = new Chart(ctx, chartConfig);
+    try{ renderFullChartList(items); }catch(e){}
+}
+
+
+function renderFullChartList(items){
+    const list = document.getElementById('fullChartList');
+    if(!list) return;
+
+    const isStock = (FULL_CHART_SOURCE === 'stock');
+    const isRevMode = (FULL_CHART_MODE === 'revenue');
+
+    const fmtMonth = (n) => {
+        if(typeof n !== 'number' || !isFinite(n)) return '—';
+        const v = Math.round(n*10)/10;
+        return String(v).replace(/\.0$/,'');
+    };
+    const fmtInt = (n) => {
+        if(typeof n !== 'number' || !isFinite(n)) return '—';
+        return Math.round(n).toLocaleString();
+    };
+    const fmtMoney = (n) => {
+        if(typeof n !== 'number' || !isFinite(n)) return '—';
+        return '$' + Math.round(n).toLocaleString();
+    };
+
+    const safeItems = (items || []).slice(0, 220);
+
+    list.innerHTML = safeItems.map(i => {
+        const code = escapeHtml(String(i.code));
+        const name = escapeHtml(String(i.name || i.code));
+        const color = i.statusColor || '#546e7a';
+
+        let pills = '';
+        if(isStock){
+            const sm = fmtMonth(i.supplyMonths);
+            if(isRevMode){
+                pills += `<span class="fc-pill">${fmtMoney(i.tempRev)}</span>`;
+                pills += `<span class="fc-pill">可供 ${sm}月</span>`;
+            } else {
+                const avgVal = (typeof i.avg === 'number' && isFinite(i.avg) && i.avg > 0) ? fmtInt(i.avg) : '—';
+                pills += `<span class="fc-pill">庫存 ${fmtInt(i.stock)}</span>`;
+                pills += `<span class="fc-pill">月均 ${avgVal}</span>`;
+                pills += `<span class="fc-pill">可供 ${sm}月</span>`;
+            }
+        } else {
+            const sm = fmtMonth(i.supplyMonths);
+            if(isRevMode){
+                pills += `<span class="fc-pill">${fmtMoney(i.tempRev)}</span>`;
+                pills += `<span class="fc-pill">可供 ${sm}月</span>`;
+            } else {
+                pills += `<span class="fc-pill">可供 ${sm}月</span>`;
+                pills += `<span class="fc-pill">${fmtMoney(i.tempRev)}</span>`;
+            }
+        }
+
+        return `
+        <div class="fc-item" onclick="navigateToProduct('${code}','')">
+            <div class="fc-item-left">
+                <div class="fc-item-name" style="color:${color}">${name}</div>
+                <div class="fc-item-meta">${pills}</div>
+            </div>
+            <span class="material-icons-round fc-hide" onclick="event.stopPropagation(); toggleHidden('${code}')" title="隱藏此品項">visibility_off</span>
+        </div>`;
+    }).join('');
 }
 
 function handleChartClick(e, els, items) {
@@ -1840,13 +1969,18 @@ function renderQuickAlerts() {
     const items = (DATA.inventory || [])
         .filter(i => !HIDDEN_STOCK.has(i.code) && !String(i.cat).includes('贈品') && ['缺貨','低位','留意'].includes(i.status))
         .sort((a,b) => {
+            // Primary: 月均銷量 (desc)
+            const aa = (typeof a.avg === 'number' && isFinite(a.avg)) ? a.avg : -1;
+            const bb = (typeof b.avg === 'number' && isFinite(b.avg)) ? b.avg : -1;
+            if(bb !== aa) return bb - aa;
+            // Secondary: 狀態嚴重度
             const sa = severity[a.status] ?? 9;
             const sb = severity[b.status] ?? 9;
-            if(sa != sb) return sa - sb;
+            if(sa !== sb) return sa - sb;
+            // Tertiary: 可供月數 (asc)
             const ma = (typeof a.supplyMonths === 'number' && isFinite(a.supplyMonths)) ? a.supplyMonths : 9999;
             const mb = (typeof b.supplyMonths === 'number' && isFinite(b.supplyMonths)) ? b.supplyMonths : 9999;
-            if(ma != mb) return ma - mb;
-            return (b.avg || 0) - (a.avg || 0);
+            return ma - mb;
         })
         .slice(0, 12);
 
@@ -1859,7 +1993,10 @@ function renderQuickAlerts() {
         const avg = (typeof i.avg === 'number' && isFinite(i.avg) && i.avg > 0) ? i.avg : '—';
         return `
         <div class="alert-row" onclick="navigateToProduct('${escapeHtml(i.code)}','')">
+            <div class="alert-top">
             <div class="alert-name" style="color:${i.statusColor}">${escapeHtml(i.name)}</div>
+            <span class="material-icons-round alert-hide" onclick="event.stopPropagation(); toggleHidden('${escapeHtml(i.code)}')" title="隱藏此品項">visibility_off</span>
+            </div>
             <div class="alert-meta">
                 <span class="alert-badge" style="background:${i.statusColor}">${escapeHtml(i.status)}</span>
                 <span class="alert-num">庫存 ${escapeHtml(i.stock)}</span>
