@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"/>
-<title>TTL BIO-TECH 戰情中心 V98.10.0</title>
+<title>TTL BIO-TECH 戰情中心 V98.10.3</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&family=Roboto:wght@500;700;900&display=swap" rel="stylesheet">
 <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -128,7 +128,7 @@ header { height: var(--header-height); background: #fff; border-bottom: 1px soli
 .l-dot { width:8px; height:8px; border-radius:2px; }
 
 .overstock-layout { display: flex; height: 100%; width: 100%; }
-/* V98.9.1: remove cramped side list; show values on bars instead */
+/* V98.10.3: remove cramped side list; show values on bars instead */
 .os-chart-area { flex: 1; padding-right: 0; border-right: none; position: relative; min-width: 0; }
 .os-list-area { display:none !important; }
 .os-item { display: flex; justify-content: space-between; align-items: center; padding: 8px 10px; background: #fff; border: 1px solid #eee; border-radius: 4px; font-size: 12px; }
@@ -475,7 +475,7 @@ tr.active-row .prod-name-cell { color: #1b5e20; font-size: 17px; font-weight: 90
 
 <div id="loading-mask">
   <div class="spinner"></div>
-  <div id="loading-text" style="font-weight:700;color:#546e7a;font-size:15px">系統初始化 (V98.8.1)...</div>
+  <div id="loading-text" style="font-weight:700;color:#546e7a;font-size:15px">系統初始化 (V98.10.3)...</div>
 </div>
 
 <div id="restoreWidget" onclick="toggleRestoreList(event)">
@@ -861,7 +861,7 @@ function denyAccessAndStop() {
 ADMIN_TOKEN = promptForToken(false);
 if (!ADMIN_TOKEN) denyAccessAndStop();
 
-const APP_VERSION = "98.10.2";
+const APP_VERSION = "98.10.3";
 try{
   document.title = `TTL BIO-TECH 戰情中心 V${APP_VERSION}`;
   const lt = document.getElementById('loading-text');
@@ -1342,33 +1342,74 @@ function processInventory(rows) {
 
 // V79: Revert to V69's Robust Logic
 function processSales(rows) {
-  let hIdx = -1;
-  for(let i=0; i<Math.min(rows.length, 10); i++) { if(JSON.stringify(rows[i]).includes("今年") && JSON.stringify(rows[i]).includes("金額")) { hIdx = i; break; } }
-  if(hIdx === -1) hIdx = 3; 
-  
+  // Robust header/data-start detection for QUERY outputs (prevents skipping the first data row)
+  const clean = (v) => (v || "").toString().trim();
+  const looksLikeCode = (v) => /^\d{6,}(-\d+)?$/.test(clean(v));
+
+  // 1) Prefer explicit header row containing "物料/料號"
+  let headerIdx = -1;
+  for (let i = 0; i < Math.min(rows.length, 20); i++) {
+    const r = rows[i] || [];
+    const a0 = clean(r[0]);
+    if (a0.includes("物料") || a0.includes("料號")) { headerIdx = i; break; }
+    // 2) Fallback: row that looks like a header (years + sales keywords)
+    const s = JSON.stringify(r);
+    if ((s.includes("實銷") || s.includes("金額")) && (s.includes("2024") || s.includes("2025"))) { headerIdx = i; break; }
+  }
+
+  // Determine where actual data starts
+  let dataStart = -1;
+  if (headerIdx >= 0) {
+    dataStart = headerIdx + 1;
+  } else {
+    // Fallback: find first row that looks like a SKU + name
+    for (let i = 0; i < rows.length; i++) {
+      const r = rows[i] || [];
+      const a = clean(r[0]);
+      const b = clean(r[1]);
+      if (looksLikeCode(a) && b) { dataStart = i; break; }
+    }
+    if (dataStart < 0) dataStart = 0;
+  }
+
   const nameToCodeMap = new Map();
   DATA.inventory.forEach(i => nameToCodeMap.set(normalizeStr(i.name), i.code));
-  DATA.sales = rows.slice(hIdx + 1).map(r => {
-    const name = (r[1] || r[0] || "").trim();
-    if(!name) return null;
-    const matchedCode = nameToCodeMap.get(normalizeStr(name));
-    const code = matchedCode || normCode((r[0] || "-"));
-    const lastRev = (Number((r[2]||"0").replace(/,/g,'')) || 0);
-    const thisRev = (Number((r[3]||"0").replace(/,/g,'')) || 0);
-    const lastQty = (Number((r[4]||"0").replace(/,/g,'')) || 0);
-    const thisQty = (Number((r[5]||"0").replace(/,/g,'')) || 0);
-    const yoy = lastRev > 0 ? ((thisRev - lastRev)/lastRev*100).toFixed(1) : (thisRev>0?100:0);
-    return { code, name, lastRev, thisRev, lastQty, thisQty, yoy: Number(yoy) };
-  }).filter(x => x);
+
+  const num = (x) => (Number((x || "0").toString().replace(/,/g, '')) || 0);
+
+  DATA.sales = [];
+  for (let i = dataStart; i < rows.length; i++) {
+    const r = rows[i] || [];
+    const rawCode = clean(r[0]);
+    const rawName = clean(r[1] || r[0] || "");
+    if (!rawCode && !rawName) continue;
+    if (rawCode.includes("物料") || rawCode.includes("料號")) continue;
+
+    const matchedCode = nameToCodeMap.get(normalizeStr(rawName));
+    const code = matchedCode || normCode(rawCode || "-");
+    if (!code) continue;
+
+    const lastRev = num(r[2]);
+    const thisRev = num(r[3]);
+    const lastQty = num(r[4]);
+    const thisQty = num(r[5]);
+    const yoyVal = lastRev > 0 ? ((thisRev - lastRev) / lastRev * 100) : (thisRev > 0 ? 100 : 0);
+    const yoy = Number(yoyVal.toFixed(1));
+
+    DATA.sales.push({ code, name: rawName || "", lastRev, thisRev, lastQty, thisQty, yoy });
+  }
+
   // Build lookup map for robust code matching
   DATA.salesMap = new Map();
-  DATA.sales.forEach(s=>{
+  DATA.sales.forEach(s => {
     const k = normCode(s.code);
-    if(k) DATA.salesMap.set(k, s);
+    if (k) DATA.salesMap.set(k, s);
     const b = baseCode(s.code);
-    if(b && !DATA.salesMap.has(b)) DATA.salesMap.set(b, s);
+    if (b && !DATA.salesMap.has(b)) DATA.salesMap.set(b, s);
   });
 }
+
+
 
 function switchTab(tab, pushToHistory = true, preserveState = false) {
     // V96 UX: allow sidebar tab switch even when full chart is open
@@ -3116,6 +3157,54 @@ async function refreshOrdersOnly(silent = true) {
   }
 }
 
+async function refreshAllData(silent = true) {
+  try {
+    const editModal = document.getElementById('editModal');
+    if(editModal && editModal.classList.contains('open')) return;
+
+    showLoading(true, '更新中...');
+
+    // Load products in parallel (enhances bundle rendering, non-blocking)
+    const prodsPromise = fetchCSV(SHEET_P_CSV, { cacheBust: true })
+      .then(prods => { processProducts(prods); return true; })
+      .catch(e => { console.warn('Product CSV load failed:', e); return false; });
+
+    const [ord, inv, sales] = await Promise.all([
+      fetchCSV(getOrdersCsvUrl(), { cacheBust: true }),
+      fetchCSV(INVENTORY_CSV, { cacheBust: true }),
+      fetchCSV(SALES_CSV, { cacheBust: true })
+    ]);
+
+    processOrders(ord);
+    processInventory(inv);
+    processSales(sales);
+
+    updateDashboard();
+    renderCurrentTable();
+    updateRestoreWidget();
+    try{ updateRestoreWidgetVisibility(CURRENT_TAB); }catch(e){}
+
+    const lu = document.getElementById('lastUpdate');
+    if(lu) lu.innerText = "更新: " + new Date().toLocaleTimeString();
+
+    updateLastSyncText();
+    showLoading(false);
+    if(!silent) showToast('已更新');
+
+    prodsPromise.then(ok => {
+      if(ok) {
+        try { renderCurrentTable(); updateDashboard(); } catch(e) {}
+      }
+    });
+  } catch(e) {
+    console.error('refreshAllData failed', e);
+    showLoading(false);
+    if(!silent) alert('更新資料失敗，請確認網路或 CSV 設定。');
+  }
+}
+
+
+
 function startAutoRefresh() {
   if(AUTO_REFRESH_TIMER) clearInterval(AUTO_REFRESH_TIMER);
   AUTO_REFRESH_TIMER = setInterval(() => {
@@ -3125,7 +3214,7 @@ function startAutoRefresh() {
 }
 
 function bindMetaButtons() {
-  const doRefresh = () => refreshOrdersOnly(false);
+  const doRefresh = () => refreshAllData(false);
   const doLogout = () => {
     clearSavedToken();
     alert('已清除後台密碼。重新整理後會再次要求輸入。');
