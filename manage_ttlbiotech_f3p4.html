@@ -779,10 +779,13 @@ function saveToken(token) {
   try {
     localStorage.setItem(TOKEN_STORAGE_KEY, JSON.stringify({ token: String(token), ts: Date.now() }));
   } catch(e) {}
+}
 
+// === Chart palette ===
+// 現有庫存（統一色）與月均銷量（灰）為視覺基準；狀態顏色用在「品名」上
 const STOCK_UNI_COLOR = "#1e88e5";
 const AVG_GRAY_COLOR = "#90a4ae";
-}
+
 
 function clearSavedToken() {
   try { localStorage.removeItem(TOKEN_STORAGE_KEY); } catch(e) {}
@@ -808,7 +811,7 @@ function denyAccessAndStop() {
 ADMIN_TOKEN = promptForToken(false);
 if (!ADMIN_TOKEN) denyAccessAndStop();
 
-const APP_VERSION = "98.8.1";
+const APP_VERSION = "98.8.2";
 try{
   document.title = `TTL BIO-TECH 戰情中心 V${APP_VERSION}`;
   const lt = document.getElementById('loading-text');
