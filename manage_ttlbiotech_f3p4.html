@@ -3,11 +3,13 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"/>
-<link rel="manifest" href="manifest.json"/>
-<meta name="theme-color" content="#00796b"/>
-<link rel="apple-touch-icon" href="icons/icon-192.png"/>
-
-<title>TTL BIO-TECH 戰情中心 V98.11.2</title>
+<title>TTL BIO-TECH 戰情中心 V98.10.3</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#00897b">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<meta name="mobile-web-app-capable" content="yes">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&family=Roboto:wght@500;700;900&display=swap" rel="stylesheet">
 <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -473,26 +475,131 @@ tr.active-row .prod-name-cell { color: #1b5e20; font-size: 17px; font-weight: 90
   .toast{ bottom:76px; }
 }
 
+/* --- PWA INSTALL (Android + iOS guide) --- */
+#installWidget{
+  position: fixed;
+  bottom: 135px;
+  right: 20px;
+  width: 45px;
+  height: 45px;
+  border-radius: 50%;
+  background: #263238;
+  color: #ffeb3b;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 2000;
+  -webkit-tap-highlight-color: transparent;
+}
+#installWidget:active{ transform: scale(0.92); }
 
-/* Orders auto refresh controls (Orders tab only) */
-.orders-auto-wrap{display:none; align-items:center; gap:6px; margin-left:8px;}
-.auto-btn{display:flex; align-items:center; justify-content:center; width:36px; height:36px; border-radius:50%; background:#fff3e0; color:#e65100; cursor:pointer; transition:0.2s; border:1px solid #ffe0b2;}
-.auto-btn:hover{filter:brightness(0.98);}
-.auto-btn.on{background:#e8f5e9; color:#2e7d32; border-color:#c8e6c9;}
-.auto-interval{font-size:12px; padding:7px 10px; border:1px solid #cfd8dc; border-radius:999px; background:#fff; cursor:pointer; color:#455a64; line-height:1;}
-.auto-interval:hover{background:#fafafa;}
-@media (max-width:520px){
-  .orders-auto-wrap{gap:4px; margin-left:6px;}
-  .auto-interval{padding:6px 8px; font-size:11px;}
+#iosInstallPrompt{
+  display:none;
+  position: fixed;
+  bottom: 26px;
+  bottom: calc(26px + env(safe-area-inset-bottom));
+  left: 50%;
+  transform: translateX(-50%) translateY(18px);
+  width: 92%;
+  max-width: 380px;
+  background: rgba(38, 50, 56, 0.95);
+  backdrop-filter: blur(10px);
+  color: #fff;
+  border-radius: 16px;
+  padding: 16px 18px 14px 18px;
+  box-shadow: 0 10px 40px rgba(0,0,0,0.35);
+  z-index: 6000;
+  opacity: 0;
+  transition: opacity .35s ease, transform .35s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+#iosInstallPrompt.visible{ display:block; }
+#iosInstallPrompt.animate-in{ opacity:1; transform: translateX(-50%) translateY(0); }
+
+#iosInstallPrompt .ios-close{
+  position:absolute;
+  top: 8px;
+  right: 8px;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255,255,255,0.08);
+  color: #cfd8dc;
+  cursor: pointer;
+}
+#iosInstallPrompt .ios-close:active{ transform: scale(0.92); }
+
+#iosInstallPrompt .ios-title{
+  font-weight: 900;
+  font-size: 14px;
+  margin: 0 0 8px 0;
+  letter-spacing: 0.5px;
+}
+#iosInstallPrompt .ios-text{
+  font-size: 13px;
+  line-height: 1.55;
+  color: #fff;
+}
+#iosInstallPrompt .ios-sub{
+  margin-top: 8px;
+  font-size: 12px;
+  color: #b0bec5;
+}
+#iosInstallPrompt .icon-anim{
+  vertical-align: middle;
+  font-size: 20px;
+  color: #4fc3f7;
+  margin: 0 3px;
+  display:inline-block;
+  animation: iconPulse 1.5s infinite ease-in-out;
+}
+@keyframes iconPulse{
+  0%{ transform: scale(1); filter: drop-shadow(0 0 0 rgba(79,195,247,0)); }
+  50%{ transform: scale(1.15); filter: drop-shadow(0 0 6px rgba(79,195,247,0.6)); }
+  100%{ transform: scale(1); filter: drop-shadow(0 0 0 rgba(79,195,247,0)); }
 }
 
+/* --- SW UPDATE TOAST --- */
+#updateToast{
+  position: fixed;
+  left: 50%;
+  bottom: 82px;
+  transform: translateX(-50%) translateY(40px);
+  background: #37474f;
+  color: #fff;
+  border-radius: 999px;
+  padding: 10px 14px;
+  display: none;
+  align-items: center;
+  gap: 10px;
+  z-index: 6100;
+  box-shadow: 0 8px 28px rgba(0,0,0,0.28);
+  font-weight: 800;
+  font-size: 13px;
+}
+#updateToast.show{
+  display:flex;
+  transform: translateX(-50%) translateY(0);
+}
+#updateToast .btn-update{
+  border:none;
+  border-radius: 999px;
+  padding: 5px 12px;
+  background: #ffeb3b;
+  color: #263238;
+  font-weight: 900;
+  cursor: pointer;
+}
+#updateToast .btn-update:active{ transform: scale(0.94); }
 </style>
 </head>
 <body>
 
 <div id="loading-mask">
   <div class="spinner"></div>
-  <div id="loading-text" style="font-weight:700;color:#546e7a;font-size:15px">系統初始化 (V98.11.2)...</div>
+  <div id="loading-text" style="font-weight:700;color:#546e7a;font-size:15px">系統初始化 (V98.10.3)...</div>
 </div>
 
 <div id="restoreWidget" onclick="toggleRestoreList(event)">
@@ -502,6 +609,29 @@ tr.active-row .prod-name-cell { color: #1b5e20; font-size: 17px; font-weight: 90
 </div>
 
 <div id="toast" class="toast"></div>
+
+<div id="installWidget" onclick="installApp(event)" title="安裝到主畫面">
+  <span class="material-icons-round">install_mobile</span>
+</div>
+
+<div id="iosInstallPrompt">
+  <button class="ios-close" onclick="closeIosInstallPrompt()" aria-label="關閉">
+    <span class="material-icons-round">close</span>
+  </button>
+  <div class="ios-title">加入主畫面（iPhone / iPad）</div>
+  <div class="ios-text">
+    點擊工具列上的 <span class="material-icons-round icon-anim">ios_share</span> 分享<br>
+    並選擇 <b>「加入主畫面」</b>
+  </div>
+  <div class="ios-sub">建議使用 Safari 開啟，以獲得完整安裝體驗</div>
+</div>
+
+<div id="updateToast">
+  <span class="material-icons-round" style="color:#ffeb3b">system_update</span>
+  <span>發現新版本</span>
+  <button class="btn-update" onclick="updateApp()">更新</button>
+</div>
+
 
 <div id="scrollTopBtn" onclick="scrollToTop()">
     <span class="material-icons-round">arrow_upward</span>
@@ -704,13 +834,6 @@ tr.active-row .prod-name-cell { color: #1b5e20; font-size: 17px; font-weight: 90
             <span id="searchClear" class="material-icons-round search-clear" onclick="clearSearch()">close</span>
           </div>
           <div id="filter-btn" class="filter-btn" onclick="openFilterSheet()"><span class="material-icons-round" style="font-size:20px">filter_alt</span></div>
-          <div id="ordersAutoWrap" class="orders-auto-wrap">
-            <div id="ordersAutoToggle" class="auto-btn" title="訂單自動更新（可選）" onclick="toggleOrdersAuto()">
-              <span class="material-icons-round" style="font-size:20px">autorenew</span>
-            </div>
-            <div id="ordersAutoInterval" class="auto-interval" title="切換自動更新間隔" onclick="cycleOrdersAutoInterval()">120s</div>
-          </div>
-
           <div id="mobile-sort-btn" onclick="openSortSheet()"><span class="material-icons-round" style="font-size:20px">sort</span></div>
           <span id="mobile-del-all" class="material-icons-round" style="display:none; color:#d32f2f; margin-left:10px; cursor:pointer;" onclick="deleteAllOrders()">delete_sweep</span>
         </div>
@@ -885,7 +1008,7 @@ function denyAccessAndStop() {
 ADMIN_TOKEN = promptForToken(false);
 if (!ADMIN_TOKEN) denyAccessAndStop();
 
-const APP_VERSION = "98.11.2";
+const APP_VERSION = "98.11.3";
 try{
   document.title = `TTL BIO-TECH 戰情中心 V${APP_VERSION}`;
   const lt = document.getElementById('loading-text');
@@ -1506,8 +1629,6 @@ function switchTab(tab, pushToHistory = true, preserveState = false) {
         backBtn.style.display = 'flex';
         document.getElementById('filter-btn').style.display = 'none';
         updateRestoreWidgetVisibility('settings');
-        stopOrdersAutoRefresh();
-        updateOrdersAutoUI();
         ensureSettingsLoaded();
         return;
     }
@@ -1517,8 +1638,6 @@ function switchTab(tab, pushToHistory = true, preserveState = false) {
         backBtn.style.display = 'none';
         updateDashboard();
         updateRestoreWidgetVisibility('dashboard');
-        stopOrdersAutoRefresh();
-        updateOrdersAutoUI();
     } else {
         document.getElementById('view-table-container').style.display = 'flex';
         if (!PENDING_SEARCH && !preserveState) { 
@@ -1528,9 +1647,6 @@ function switchTab(tab, pushToHistory = true, preserveState = false) {
         backBtn.style.display = 'flex';
         renderCurrentTable();
         updateRestoreWidgetVisibility(tab);
-        // Orders-only auto refresh (optional)
-        if(tab === 'orders' && ORDERS_AUTO_ENABLED) startOrdersAutoRefresh(); else stopOrdersAutoRefresh();
-        updateOrdersAutoUI();
     }
 }
 
@@ -2848,9 +2964,7 @@ function callGAS(payload, msg, isDelete, isRetry=false) {
               closeModal(true); 
           } 
           updateDashboard();
-        updateRestoreWidgetVisibility('dashboard');
-        stopOrdersAutoRefresh();
-        updateOrdersAutoUI(); 
+        updateRestoreWidgetVisibility('dashboard'); 
           renderCurrentTable(); 
           showLoading(false); 
           // alert(msg); // 選擇性開啟提示
@@ -3161,11 +3275,8 @@ function showItemStats() {
 
 window.addEventListener('resize', () => { renderCurrentTable(); updateDashboard(); });
 
-// === Orders auto refresh (Orders tab only; default OFF) + last sync UI ===
-let ORDERS_AUTO_TIMER = null;
-let ORDERS_AUTO_ENABLED = JSON.parse(localStorage.getItem("orders_auto_enabled") || "false");
-let ORDERS_AUTO_INTERVAL = parseInt(localStorage.getItem("orders_auto_interval") || "120", 10);
-if(![60,120].includes(ORDERS_AUTO_INTERVAL)) ORDERS_AUTO_INTERVAL = 120;
+// === Orders auto refresh (30s) + last sync UI ===
+let AUTO_REFRESH_TIMER = null;
 
 function updateLastSyncText() {
   const el = document.getElementById('lastSyncText');
@@ -3241,52 +3352,12 @@ async function refreshAllData(silent = true) {
 
 
 
-function stopOrdersAutoRefresh(){
-  if(ORDERS_AUTO_TIMER){ clearInterval(ORDERS_AUTO_TIMER); ORDERS_AUTO_TIMER = null; }
-}
-
-function startOrdersAutoRefresh(){
-  stopOrdersAutoRefresh();
-  if(!ORDERS_AUTO_ENABLED) return;
-  ORDERS_AUTO_TIMER = setInterval(() => {
+function startAutoRefresh() {
+  if(AUTO_REFRESH_TIMER) clearInterval(AUTO_REFRESH_TIMER);
+  AUTO_REFRESH_TIMER = setInterval(() => {
     if(document.visibilityState !== 'visible') return;
-    if(CURRENT_TAB !== 'orders') return;
     refreshOrdersOnly(true);
-  }, ORDERS_AUTO_INTERVAL * 1000);
-}
-
-function updateOrdersAutoUI(){
-  const wrap = document.getElementById('ordersAutoWrap');
-  if(!wrap) return;
-  wrap.style.display = (CURRENT_TAB === 'orders') ? 'flex' : 'none';
-  const t = document.getElementById('ordersAutoToggle');
-  const itv = document.getElementById('ordersAutoInterval');
-  if(t) t.classList.toggle('on', !!ORDERS_AUTO_ENABLED);
-  if(itv) itv.textContent = `${ORDERS_AUTO_INTERVAL}s`;
-}
-
-function toggleOrdersAuto(){
-  ORDERS_AUTO_ENABLED = !ORDERS_AUTO_ENABLED;
-  localStorage.setItem("orders_auto_enabled", JSON.stringify(ORDERS_AUTO_ENABLED));
-  showToast(ORDERS_AUTO_ENABLED ? `訂單自動更新：開啟（${ORDERS_AUTO_INTERVAL}s）` : '訂單自動更新：關閉');
-  if(ORDERS_AUTO_ENABLED) startOrdersAutoRefresh(); else stopOrdersAutoRefresh();
-  updateOrdersAutoUI();
-}
-
-function cycleOrdersAutoInterval(){
-  ORDERS_AUTO_INTERVAL = (ORDERS_AUTO_INTERVAL === 60) ? 120 : 60;
-  localStorage.setItem("orders_auto_interval", String(ORDERS_AUTO_INTERVAL));
-  showToast(`自動更新間隔：${ORDERS_AUTO_INTERVAL}s`);
-  if(ORDERS_AUTO_ENABLED) startOrdersAutoRefresh();
-  updateOrdersAutoUI();
-}
-
-
-function registerServiceWorker(){
-  if(!('serviceWorker' in navigator)) return;
-  try{
-    navigator.serviceWorker.register('./sw.js', {scope: './'}).catch(()=>{});
-  }catch(e){}
+  }, 30000);
 }
 
 function bindMetaButtons() {
@@ -3315,14 +3386,146 @@ function ensureValidTokenAndRetry(payload, msg, isDelete) {
   callGAS(payload, msg, isDelete, true);
 }
 
+// --- PWA INSTALL GUIDANCE (Android + iOS) ---
+let deferredInstallPrompt = null;
+let swWaitingWorker = null;
+
+function isStandaloneMode(){
+  return (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || window.navigator.standalone === true;
+}
+function isIosDevice(){
+  const ua = (navigator.userAgent || '').toLowerCase();
+  const iOS = /iphone|ipad|ipod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  return iOS;
+}
+function isSafariOnIos(){
+  const ua = (navigator.userAgent || '').toLowerCase();
+  const isIos = isIosDevice();
+  // iOS: Safari contains 'safari' and not 'crios' (Chrome), not 'fxios' (Firefox)
+  return isIos && ua.includes('safari') && !ua.includes('crios') && !ua.includes('fxios');
+}
+
+function showInstallWidget(){
+  const w = document.getElementById('installWidget');
+  if(w) w.style.display = 'flex';
+}
+function hideInstallWidget(){
+  const w = document.getElementById('installWidget');
+  if(w) w.style.display = 'none';
+}
+
+window.addEventListener('beforeinstallprompt', (e) => {
+  // Android/Chromium install prompt
+  e.preventDefault();
+  deferredInstallPrompt = e;
+  if(!isStandaloneMode()) showInstallWidget();
+});
+
+window.addEventListener('appinstalled', () => {
+  hideInstallWidget();
+  try { showToast('已安裝至主畫面'); } catch(e) {}
+});
+
+async function installApp(ev){
+  try { ev && ev.stopPropagation(); } catch(e) {}
+  if(!deferredInstallPrompt){
+    // If on iOS, guide user
+    if(isIosDevice() && !isStandaloneMode()){
+      openIosInstallPrompt();
+      return;
+    }
+    try { showToast('此裝置暫無法自動安裝'); } catch(e) {}
+    return;
+  }
+  deferredInstallPrompt.prompt();
+  const { outcome } = await deferredInstallPrompt.userChoice;
+  deferredInstallPrompt = null;
+  hideInstallWidget();
+  if(outcome === 'accepted'){
+    try { showToast('安裝中…'); } catch(e) {}
+  }
+}
+
+// iOS A2HS guide (Safari Share -> Add to Home Screen)
+function openIosInstallPrompt(){
+  if(isStandaloneMode()) return;
+  const key = 'ttl_admin_ios_a2hs_dismissed';
+  if(localStorage.getItem(key) === '1') return;
+  const p = document.getElementById('iosInstallPrompt');
+  if(!p) return;
+  p.classList.add('visible');
+  requestAnimationFrame(()=>p.classList.add('animate-in'));
+}
+function closeIosInstallPrompt(){
+  const key = 'ttl_admin_ios_a2hs_dismissed';
+  localStorage.setItem(key,'1');
+  const p = document.getElementById('iosInstallPrompt');
+  if(!p) return;
+  p.classList.remove('animate-in');
+  setTimeout(()=>p.classList.remove('visible'), 250);
+}
+
+// Auto show iOS guide (Safari only) after boot
+function maybeShowIosGuide(){
+  if(!isIosDevice()) return;
+  if(isStandaloneMode()) return;
+  // Show guide primarily in Safari; in other iOS browsers still may work, but keep it non-intrusive
+  if(!isSafariOnIos()) return;
+  setTimeout(()=>openIosInstallPrompt(), 900);
+}
+
+// --- Service Worker (App Shell only; all Sheets CSV remain network-only) ---
+function showUpdateToast(){
+  const t = document.getElementById('updateToast');
+  if(t) t.classList.add('show');
+}
+function hideUpdateToast(){
+  const t = document.getElementById('updateToast');
+  if(t) t.classList.remove('show');
+}
+function updateApp(){
+  if(swWaitingWorker){
+    swWaitingWorker.postMessage({ type: 'SKIP_WAITING' });
+  }
+}
+
+function registerServiceWorker(){
+  if(!('serviceWorker' in navigator)) return;
+  navigator.serviceWorker.register('./sw.js', { scope: './' }).then(reg => {
+    if(reg.waiting){
+      swWaitingWorker = reg.waiting;
+      showUpdateToast();
+    }
+    reg.addEventListener('updatefound', () => {
+      const w = reg.installing;
+      if(!w) return;
+      w.addEventListener('statechange', () => {
+        if(w.state === 'installed' && navigator.serviceWorker.controller){
+          swWaitingWorker = w;
+          showUpdateToast();
+        }
+      });
+    });
+  }).catch(err => {
+    console.warn('SW register failed', err);
+  });
+
+  let refreshing = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if(refreshing) return;
+    refreshing = true;
+    hideUpdateToast();
+    window.location.reload();
+  });
+}
+
 async function boot() {
   bindMetaButtons();
   registerServiceWorker();
+  maybeShowIosGuide();
   await init();
   updateLastSyncText();
-  updateOrdersAutoUI();
-  // default OFF: auto refresh starts only if user enabled it previously
-  if(ORDERS_AUTO_ENABLED) startOrdersAutoRefresh();
+  startAutoRefresh();
 }
 
 boot();
