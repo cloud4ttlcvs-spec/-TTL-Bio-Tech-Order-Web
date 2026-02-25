@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"/>
-<title>TTL BIO-TECH 戰情中心 V98.9.0</title>
+<title>TTL BIO-TECH 戰情中心 V98.9.1</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&family=Roboto:wght@500;700;900&display=swap" rel="stylesheet">
 <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -101,8 +101,9 @@ header { height: var(--header-height); background: #fff; border-bottom: 1px soli
 .l-dot { width:8px; height:8px; border-radius:2px; }
 
 .overstock-layout { display: flex; height: 100%; width: 100%; }
-.os-chart-area { flex: 1.5; padding-right: 10px; border-right: 1px dashed #eee; position: relative; min-width: 0; }
-.os-list-area { flex: 1; padding-left: 10px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; }
+/* V98.9.1: remove cramped side list; show values on bars instead */
+.os-chart-area { flex: 1; padding-right: 0; border-right: none; position: relative; min-width: 0; }
+.os-list-area { display:none !important; }
 .os-item { display: flex; justify-content: space-between; align-items: center; padding: 8px 10px; background: #fff; border: 1px solid #eee; border-radius: 4px; font-size: 12px; }
 .os-item:hover { background: #f5f5f5; }
 .os-btn { cursor: pointer; color: #90a4ae; font-size: 18px; padding: 0 4px; }
@@ -598,7 +599,6 @@ tr.active-row .prod-name-cell { color: #1b5e20; font-size: 17px; font-weight: 90
             </div>
           </div>
       </div>
-      </div>
     </div>
 
     <div id="view-full-chart" class="view-section">
@@ -811,7 +811,7 @@ function denyAccessAndStop() {
 ADMIN_TOKEN = promptForToken(false);
 if (!ADMIN_TOKEN) denyAccessAndStop();
 
-const APP_VERSION = "98.9.0";
+const APP_VERSION = "98.9.1";
 try{
   document.title = `TTL BIO-TECH 戰情中心 V${APP_VERSION}`;
   const lt = document.getElementById('loading-text');
@@ -1649,7 +1649,7 @@ function updateDashboard() {
         },
         options: { 
             indexAxis: 'y', responsive:true, maintainAspectRatio:false,
-            layout: { padding: { left: 5, right: 25 } }, 
+            layout: { padding: { left: 5, right: 60 } }, 
             scales: { x: { beginAtZero: true }, y: { ticks: { color: (ctx) => (safetyItems[ctx.index] ? safetyItems[ctx.index].statusColor : '#263238'), font: { weight: 'bold', size: isMobile?11:14, lineHeight: 1.2 }, autoSkip: false } } },
             plugins: { 
                 tooltip: { 
@@ -1675,7 +1675,37 @@ function updateDashboard() {
     document.getElementById('overstockChartContainer').style.height = chartHeight;
 
     const isRev = OS_SORT_MODE === 'rev';
-    CHARTS.overstock = new Chart(document.getElementById('overstockChart'), {
+    // V98.9.1: draw values next to bars (replace cramped side list)
+    const osValueLabelPlugin = {
+        id: 'osValueLabelPlugin',
+        afterDatasetsDraw(chart, args, opts) {
+            try {
+                const {ctx, chartArea} = chart;
+                if(!chartArea) return;
+                const right = chartArea.right;
+                const meta = chart.getDatasetMeta(0);
+                const ds = chart.data.datasets[0];
+                ctx.save();
+                ctx.textBaseline = 'middle';
+                ctx.fillStyle = '#455a64';
+                ctx.font = (opts && opts.font) ? opts.font : (isMobile ? '700 11px Noto Sans TC' : '700 12px Noto Sans TC');
+                meta.data.forEach((bar, i) => {
+                    const raw = ds.data[i];
+                    if(raw === null || raw === undefined || !isFinite(raw)) return;
+                    const valText = (isRev) ? ('$' + Number(raw).toLocaleString()) : (Number(raw).toFixed(1).replace(/\.0$/,'') + '月');
+                    let x = (bar.x || 0) + 6;
+                    const y = (bar.y || 0);
+                    const w = ctx.measureText(valText).width;
+                    if(x + w > right - 2) x = right - w - 2;
+                    ctx.fillText(valText, x, y);
+                });
+                ctx.restore();
+            } catch(e) {}
+        }
+    };
+
+CHARTS.overstock = new Chart(document.getElementById('overstockChart'), {
+        plugins: [osValueLabelPlugin],
         type: 'bar',
         data: {
             labels: overstockItems.map(i => formatLabel(i.name)),
@@ -1687,7 +1717,7 @@ function updateDashboard() {
         },
         options: { 
             responsive:true, maintainAspectRatio:false, indexAxis: 'y',
-            layout: { padding: { left: 5, right: 25 } },
+            layout: { padding: { left: 5, right: 60 } },
             scales: { y: { ticks: { color: (ctx) => (overstockItems[ctx.index] ? overstockItems[ctx.index].statusColor : '#263238'), font: { weight: 'bold', size: isMobile?11:14, lineHeight: 1.2 }, autoSkip: false } } },
             plugins: { 
                 tooltip: { 
@@ -1701,7 +1731,8 @@ function updateDashboard() {
             onClick: (e, els) => { if(els.length > 0) navigateToProduct(overstockItems[els[0].index].code, overstockItems[els[0].index].name); }
         }
     });
-    renderOverstockControl(overstockItems);
+    // V98.9.1: remove side list (values rendered on bars)
+    try{ const osBox=document.getElementById('osListControl'); if(osBox) osBox.innerHTML=''; }catch(e){}
     renderQuickAlerts();
 }
 
@@ -1797,18 +1828,9 @@ function toggleRestoreList(e) {
 }
 
 function renderOverstockControl(activeItems) {
+    // V98.9.1: side list removed to avoid cramped duplicate names
     const box = document.getElementById('osListControl');
-    if(!box) return;
-    const isRev = OS_SORT_MODE === 'rev';
-    let html = `<div style="font-size:12px;color:#999;margin-bottom:6px">Top 15 明細</div>`;
-    (activeItems || []).slice(0, 12).forEach(i => {
-        const val = isRev ? `$${(i.tempRev||0).toLocaleString()}` : `${i.supplyMonths} 月`;
-        html += `<div class="os-item" style="cursor:pointer" onclick="navigateToProduct('${escapeHtml(i.code)}','')">` +
-                `<span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:900;color:${i.statusColor}">${escapeHtml(i.name)}</span>` +
-                `<span style="font-weight:900;color:#455a64;font-size:12px">${val}</span>` +
-                `</div>`;
-    });
-    box.innerHTML = html;
+    if(box) box.innerHTML = '';
 }
 
 function renderQuickAlerts() {
