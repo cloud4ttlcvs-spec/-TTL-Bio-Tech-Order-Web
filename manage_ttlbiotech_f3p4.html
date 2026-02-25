@@ -55,7 +55,7 @@ header { height: var(--header-height); background: #fff; border-bottom: 1px soli
 .legend-row{padding:8px 15px;border-bottom:1px solid #eee;background:#fff;flex-shrink:0;}
 .legend-compact{justify-content:flex-start;font-weight:700;}
 .alert-body{flex:1;min-height:0;overflow-y:auto;padding:10px;}
-.alert-row{display:flex;flex-direction:column;gap:6px;padding:10px 10px;border:1px solid #eceff1;border-radius:10px;background:#fff;cursor:pointer;}
+.alert-row{display:flex;flex-direction:column;gap:6px;padding:7px 10px;border:1px solid #eceff1;border-radius:10px;background:#fff;cursor:pointer;}
 .alert-row:hover{background:#fafafa;}
 .alert-name{font-weight:900;font-size:13px;line-height:1.25;}
 .alert-meta{display:flex;gap:8px;flex-wrap:wrap;align-items:center;color:#607d8b;font-size:12px;font-weight:700;}
@@ -649,7 +649,7 @@ tr.active-row .prod-name-cell { color: #1b5e20; font-size: 17px; font-weight: 90
                 <span style="font-weight:900;font-size:16px;color:#263238">完整庫存分析</span>
             </div>
             <div class="fc-controls">
-                <div id="fc-btn-stock" class="fc-toggle-btn active" onclick="switchFullChartMode('stock')">依庫存月數</div>
+                <div id="fc-btn-stock" class="fc-toggle-btn active" onclick="switchFullChartMode('stock')">依月均銷量</div>
                 <div id="fc-btn-rev" class="fc-toggle-btn" onclick="switchFullChartMode('revenue')">依銷售貢獻</div>
             </div>
         </div>
@@ -861,7 +861,7 @@ function denyAccessAndStop() {
 ADMIN_TOKEN = promptForToken(false);
 if (!ADMIN_TOKEN) denyAccessAndStop();
 
-const APP_VERSION = "98.10.0";
+const APP_VERSION = "98.10.2";
 try{
   document.title = `TTL BIO-TECH 戰情中心 V${APP_VERSION}`;
   const lt = document.getElementById('loading-text');
@@ -955,7 +955,28 @@ function setEquals(aSet, arrDefault) {
 let FULL_CHART_MODE = 'stock';
 let FULL_CHART_SOURCE = 'stock'; 
 
-function normalizeStr(s) { return String(s || "").replace(/\s+/g, '').toLowerCase(); }
+function normalizeStr(s) {
+  // Robust normalization: remove whitespace + common punctuation (including fullwidth)
+  return String(s || "")
+    .replace(/[\s\u3000]+/g, '')
+    .replace(/[\(\)\（\）\[\]【】「」『』《》<>\-－–—_+＋=~`!！?？:：;；,，.。\/／\\|｜\"'“”‘’·•]+/g, '')
+    .toLowerCase();
+}
+
+function normCode(c){
+  return String(c||'').trim().replace(/[－–—]/g,'-').replace(/\s+/g,'');
+}
+function baseCode(c){
+  const s = normCode(c);
+  return s.replace(/-\d+$/,'');
+}
+function getSalesRowByCode(code){
+  try{
+    if(!DATA || !DATA.salesMap) return null;
+    const n = normCode(code);
+    return DATA.salesMap.get(n) || DATA.salesMap.get(baseCode(n)) || null;
+  }catch(e){ return null; }
+}
 function getTodayDigits() {
     const d = new Date();
     return `${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}`;
@@ -1331,14 +1352,22 @@ function processSales(rows) {
     const name = (r[1] || r[0] || "").trim();
     if(!name) return null;
     const matchedCode = nameToCodeMap.get(normalizeStr(name));
-    const code = matchedCode || (r[0] || "-");
-    const lastRev = Number((r[2]||"0").replace(/,/g,''));
-    const thisRev = Number((r[3]||"0").replace(/,/g,''));
-    const lastQty = Number((r[4]||"0").replace(/,/g,''));
-    const thisQty = Number((r[5]||"0").replace(/,/g,''));
+    const code = matchedCode || normCode((r[0] || "-"));
+    const lastRev = (Number((r[2]||"0").replace(/,/g,'')) || 0);
+    const thisRev = (Number((r[3]||"0").replace(/,/g,'')) || 0);
+    const lastQty = (Number((r[4]||"0").replace(/,/g,'')) || 0);
+    const thisQty = (Number((r[5]||"0").replace(/,/g,'')) || 0);
     const yoy = lastRev > 0 ? ((thisRev - lastRev)/lastRev*100).toFixed(1) : (thisRev>0?100:0);
     return { code, name, lastRev, thisRev, lastQty, thisQty, yoy: Number(yoy) };
   }).filter(x => x);
+  // Build lookup map for robust code matching
+  DATA.salesMap = new Map();
+  DATA.sales.forEach(s=>{
+    const k = normCode(s.code);
+    if(k) DATA.salesMap.set(k, s);
+    const b = baseCode(s.code);
+    if(b && !DATA.salesMap.has(b)) DATA.salesMap.set(b, s);
+  });
 }
 
 function switchTab(tab, pushToHistory = true, preserveState = false) {
@@ -1502,7 +1531,7 @@ function openFullChart(source) {
     history.pushState({fullchart: true}, '', '');
     
     if (source === 'stock') {
-        document.getElementById('fc-btn-stock').innerText = "依庫存月數";
+        document.getElementById('fc-btn-stock').innerText = "依月均銷量";
         document.getElementById('fc-btn-rev').innerText = "依銷售貢獻";
     } else {
         document.getElementById('fc-btn-stock').innerText = "依預估月數";
@@ -1536,12 +1565,12 @@ function calcChartXMin(values) {
 function renderFullChart() {
     let items = [];
     DATA.inventory.forEach(i => {
-        const s = DATA.sales.find(x => x.code === i.code) || { thisRev: 0 };
+        const s = getSalesRowByCode(i.code) || { thisRev: 0 };
         i.tempRev = s.thisRev;
     });
 
     if (FULL_CHART_SOURCE === 'stock') {
-        items = DATA.inventory.filter(i => !String(i.name).includes("0.33") && !String(i.name).includes("麥汁") && !String(i.cat).includes("贈品") && !HIDDEN_STOCK.has(i.code));
+        items = DATA.inventory.filter(i => !String(i.cat).includes("贈品") && !HIDDEN_STOCK.has(i.code));
     } else {
         items = DATA.inventory.filter(i => i.supplyMonths >= 11 && !String(i.cat).includes("贈品") && !HIDDEN_STOCK.has(i.code));
     }
@@ -1749,11 +1778,11 @@ function updateDashboard() {
     };
 
     DATA.inventory.forEach(i => {
-        const s = DATA.sales.find(x => x.code === i.code) || { thisRev: 0 };
+        const s = getSalesRowByCode(i.code) || { thisRev: 0 };
         i.tempRev = s.thisRev;
     });
 
-    let safetyItems = DATA.inventory.filter(i => !String(i.name).includes("0.33") && !String(i.name).includes("麥汁") && !String(i.cat).includes("贈品") && !HIDDEN_STOCK.has(i.code));
+    let safetyItems = DATA.inventory.filter(i => !String(i.cat).includes("贈品") && !HIDDEN_STOCK.has(i.code));
     
     if (SS_SORT_MODE === 'qty') {
         safetyItems.sort((a,b) => b.avg - a.avg);
@@ -1901,7 +1930,7 @@ function showToast(msg, ms=1800){
 function getNameByCode(code){
     const inv = (DATA && DATA.inventory) ? DATA.inventory.find(i=>String(i.code)===String(code)) : null;
     if(inv && inv.name) return inv.name;
-    const sa = (DATA && DATA.sales) ? DATA.sales.find(s=>String(s.code)===String(code)) : null;
+    const sa = getSalesRowByCode(code);
     if(sa && sa.name) return sa.name;
     return String(code);
 }
@@ -2397,7 +2426,7 @@ function renderCurrentTable() {
             html = `<thead><tr><th style="width:50px"><span class="material-icons-round close-all-btn" onclick="closeAllRegions()">indeterminate_check_box</span></th>${getSortHeader('code','物料')}${getSortHeader('name','產品')}${getSortHeader('monthAccum','本月')}${getSortHeader('monthDiff','月銷波動')}${getSortHeader('avg','月銷')}${getSortHeader('stock','總庫存(M)')}${getSortHeader('supplyMonths','預估供銷月')}${getSortHeader('statusVal','狀態')}</tr></thead><tbody>`;
             list.forEach((i) => {
                 const isOpen = (String(i.code) === String(AUTO_EXPAND_CODE));
-                const salesRec = DATA.sales.find(s => (i.code && s.code === i.code) || (normalizeStr(s.name) === normalizeStr(i.name))) || { lastQty:0, thisQty:0, yoy:0, lastRev:0, thisRev:0 };
+                const salesRec = getSalesRowByCode(i.code) || DATA.sales.find(s => (normalizeStr(s.name) === normalizeStr(i.name))) || { lastQty:0, thisQty:0, yoy:0, lastRev:0, thisRev:0 };
                 const maxVal = Math.max(salesRec.lastQty, salesRec.thisQty, 1);
                 
                 let salesHtml = `<div class="card-title">銷售分析 (YoY)</div><div class="info-line"><span>去年營收</span><b>$${salesRec.lastRev.toLocaleString()}</b></div><div class="info-line"><span>今年營收</span><b>$${salesRec.thisRev.toLocaleString()}</b></div><div class="info-line"><span>去年銷量</span><b>${salesRec.lastQty}</b></div><div class="info-line"><span>今年銷量</span><b>${salesRec.thisQty}</b></div><div class="info-line"><span>YoY 成長率</span><b class="${salesRec.yoy>=0?'val-up':'val-down'}">${salesRec.yoy}%</b></div><div class="comp-container"><div class="comp-row"><span class="comp-label">去年</span><div class="comp-track"><div class="comp-bar" style="width:${(salesRec.lastQty/maxVal)*100}%;background:#9e9e9e"></div></div><span class="comp-val">${salesRec.lastQty}</span></div><div class="comp-row"><span class="comp-label">今年</span><div class="comp-track"><div class="comp-bar" style="width:${(salesRec.thisQty/maxVal)*100}%;background:${salesRec.thisQty>=salesRec.lastQty?'#d32f2f':'#0288d1'}"></div></div><span class="comp-val">${salesRec.thisQty}</span></div></div>`;
@@ -2503,7 +2532,7 @@ function openInfoModal(type, code) {
     
     if(!item) return;
 
-    const sales = DATA.sales.find(s => String(s.code).trim() === target) || { lastQty:0, thisQty:0, yoy:0, lastRev:0, thisRev:0 };
+    const sales = getSalesRowByCode(target) || DATA.sales.find(s => (normalizeStr(s.name)===normalizeStr(target))) || { lastQty:0, thisQty:0, yoy:0, lastRev:0, thisRev:0 };
     const body = document.getElementById('info-body');
     const title = document.getElementById('info-title');
     
