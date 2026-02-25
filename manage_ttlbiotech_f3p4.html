@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"/>
-<title>TTL BIO-TECH 戰情中心 V98.8.1</title>
+<title>TTL BIO-TECH 戰情中心 V98.9.0</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&family=Roboto:wght@500;700;900&display=swap" rel="stylesheet">
 <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -48,7 +48,8 @@ header { height: var(--header-height); background: #fff; border-bottom: 1px soli
 }
 
 /* --- Battle Center Dashboard Layout (Route B) --- */
-.dashboard-grid{flex:1;display:grid;grid-template-columns:2.1fr 1fr;gap:12px;min-height:0;}
+.dashboard-grid{flex:1;display:grid;grid-template-columns:8fr 5fr 7fr;gap:12px;min-height:0;align-items:stretch;}
+.dashboard-grid > .chart-card{min-height:0;}
 .dashboard-right{display:flex;flex-direction:column;gap:12px;min-height:0;}
 .dashboard-right .chart-card{flex:1;min-height:0;}
 .legend-row{padding:8px 15px;border-bottom:1px solid #eee;background:#fff;flex-shrink:0;}
@@ -72,7 +73,7 @@ header { height: var(--header-height); background: #fff; border-bottom: 1px soli
 #backBtn { display: none; cursor: pointer; font-size: 14px; color: #fff; background: var(--text-sub); padding: 5px 14px; border-radius: 20px; align-items: center; gap: 4px; transition: 0.2s; }
 #backBtn:hover { background: var(--primary); }
 
-.content-box { flex: 1; display: flex; flex-direction: column; padding: 15px; overflow: hidden; gap: 15px; position: relative; }
+.content-box { flex: 1; display: flex; flex-direction: column; padding: 15px; overflow: hidden; gap: 15px; position: relative;  min-height: 0; }
 
 /* KPI Cards */
 .kpi-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; flex-shrink: 0; }
@@ -313,12 +314,12 @@ tr.active-row .prod-name-cell { color: #1b5e20; font-size: 17px; font-weight: 90
     .b-nav-item span { font-size: 24px; }
 
     #main { margin-bottom: var(--bottom-nav-height); }
-    body.mobile-list-view header { display: none; }
     header { padding: 0 10px; position: sticky; top: 0; height: 45px; } 
     .page-title { font-size: 15px; }
     
-    #view-dashboard { overflow-y: auto !important; -webkit-overflow-scrolling: touch; padding-bottom: 20px; }
+    #view-dashboard { overflow-y: auto !important; -webkit-overflow-scrolling: touch; padding-bottom: calc(var(--bottom-nav-height) + env(safe-area-inset-bottom) + 16px); }
     .kpi-row { grid-template-columns: 1fr 1fr; gap: 8px; }
+    .dashboard-grid{grid-template-columns:1fr !important; gap:15px;}
     .kpi-card { padding: 10px; flex-direction: column; align-items: flex-start; gap: 6px; }
     .kpi-icon { align-self: flex-end; position: absolute; bottom: 8px; right: 8px; font-size: 24px; }
     .kpi-val { font-size: 18px; }
@@ -570,8 +571,15 @@ tr.active-row .prod-name-cell { color: #1b5e20; font-size: 17px; font-weight: 90
           </div>
         </div>
 
-        <div class="dashboard-right">
-          <div class="chart-card overstock-card">
+        <div class="chart-card alert-card">
+            <div class="c-head">
+               <span>⚡ 補貨優先清單 (缺/低/留意)</span>
+               <div class="see-more-btn" onclick="navigateTo('inventory', 'alert')">看庫存 <span class="material-icons-round" style="font-size:14px">arrow_forward</span></div>
+            </div>
+            <div class="alert-body" id="alertListBox"></div>
+          </div>
+
+        <div class="chart-card overstock-card">
             <div class="c-head">
                <span>⚠️ 滯銷/積壓品項 (Top 15)</span>
                <div class="chart-toggles">
@@ -589,15 +597,7 @@ tr.active-row .prod-name-cell { color: #1b5e20; font-size: 17px; font-weight: 90
                <div class="os-list-area" id="osListControl"></div>
             </div>
           </div>
-
-          <div class="chart-card alert-card">
-            <div class="c-head">
-               <span>⚡ 補貨優先清單 (缺/低/留意)</span>
-               <div class="see-more-btn" onclick="navigateTo('inventory', 'alert')">看庫存 <span class="material-icons-round" style="font-size:14px">arrow_forward</span></div>
-            </div>
-            <div class="alert-body" id="alertListBox"></div>
-          </div>
-        </div>
+      </div>
       </div>
     </div>
 
@@ -811,7 +811,7 @@ function denyAccessAndStop() {
 ADMIN_TOKEN = promptForToken(false);
 if (!ADMIN_TOKEN) denyAccessAndStop();
 
-const APP_VERSION = "98.8.2";
+const APP_VERSION = "98.9.0";
 try{
   document.title = `TTL BIO-TECH 戰情中心 V${APP_VERSION}`;
   const lt = document.getElementById('loading-text');
@@ -1315,10 +1315,8 @@ function switchTab(tab, pushToHistory = true, preserveState = false) {
     if(document.querySelectorAll('.b-nav-item')[map[tab]]) document.querySelectorAll('.b-nav-item')[map[tab]].classList.add('active');
     
     if(window.innerWidth <= 768) {
-        document.body.classList.add('mobile-list-view');
         document.getElementById('pageTitle').innerText = (tab === 'dashboard') ? 'TTL Bio-Tech' : {'orders':'訂單管理', 'inventory':'庫存總表', 'sales':'銷售總表', 'settings':'系統設定'}[tab];
     } else {
-        document.body.classList.remove('mobile-list-view');
         document.getElementById('pageTitle').innerText = (tab === 'dashboard') ? '總覽儀表板' : {'orders':'訂單管理', 'inventory':'庫存總表', 'sales':'銷售總表', 'settings':'系統設定'}[tab];
     }
     
@@ -1799,12 +1797,18 @@ function toggleRestoreList(e) {
 }
 
 function renderOverstockControl(activeItems) {
-    let html = `<div style="font-size:12px;color:#999;margin-bottom:4px">顯示中 (Top 15)</div>`;
-    activeItems.forEach(i => { html += `<div class="os-item"><span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:900;color:${i.statusColor}">${i.name}</span><span class="os-btn material-icons-round" onclick="toggleHidden('${i.code}')">remove_circle_outline</span></div>`; });
-    if(HIDDEN_STOCK.size > 0) {
-        html += `<div style="font-size:11px;color:#999;margin:8px 0 2px">已隱藏 (${HIDDEN_STOCK.size})</div>`;
-    }
-    document.getElementById('osListControl').innerHTML = html;
+    const box = document.getElementById('osListControl');
+    if(!box) return;
+    const isRev = OS_SORT_MODE === 'rev';
+    let html = `<div style="font-size:12px;color:#999;margin-bottom:6px">Top 15 明細</div>`;
+    (activeItems || []).slice(0, 12).forEach(i => {
+        const val = isRev ? `$${(i.tempRev||0).toLocaleString()}` : `${i.supplyMonths} 月`;
+        html += `<div class="os-item" style="cursor:pointer" onclick="navigateToProduct('${escapeHtml(i.code)}','')">` +
+                `<span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:900;color:${i.statusColor}">${escapeHtml(i.name)}</span>` +
+                `<span style="font-weight:900;color:#455a64;font-size:12px">${val}</span>` +
+                `</div>`;
+    });
+    box.innerHTML = html;
 }
 
 function renderQuickAlerts() {
