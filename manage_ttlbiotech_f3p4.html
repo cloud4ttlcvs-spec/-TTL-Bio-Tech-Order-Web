@@ -3,9 +3,10 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"/>
-<title>TTL BIO-TECH 戰情中心 V98.10.3</title>
+<title>TTL BIO-TECH 戰情中心 V98.11.5</title>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#00897b">
+  <meta name="apple-mobile-web-app-title" content="TTL-Bio Dashboard">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="apple-touch-icon" href="icons/icon-192.png">
@@ -174,6 +175,20 @@ header { height: var(--header-height); background: #fff; border-bottom: 1px soli
 /* Table View */
 .data-panel { background: #fff; border-radius: 8px; border: 1px solid #e0e0e0; display: flex; flex-direction: column; flex: 1; overflow: hidden; }
 .panel-head { padding: 12px 15px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; background: #fafafa; }
+
+.panel-actions{ display:flex; align-items:center; gap:10px; }
+.oar{ display:flex; align-items:center; gap:6px; }
+.oar-btn{ border:1px solid #cfd8dc; background:#fff; border-radius:10px; padding:6px 8px; cursor:pointer; display:flex; align-items:center; justify-content:center; }
+.oar-btn .material-icons-round{ font-size:20px; color:#607d8b; }
+.oar-btn.on{ background:#e0f2f1; border-color: var(--primary); }
+.oar-btn.on .material-icons-round{ color: var(--primary); }
+.oar-pill{ border:1px solid #cfd8dc; background:#fff; border-radius:999px; padding:6px 10px; cursor:pointer; font-weight:900; color:#455a64; font-size:12px; }
+@media(max-width:520px){
+  .panel-actions{ gap:8px; }
+  .oar-pill{ padding:6px 8px; }
+  .oar-btn{ padding:6px 7px; }
+}
+
 .search-wrap { position: relative; width: 280px; }
 .search-wrap input { width: 100%; padding: 8px 34px 8px 34px; border: 1px solid #ccc; border-radius: 20px; font-size: 14px; outline: none; }
 .search-wrap .icon { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); font-size: 18px; color: #999; }
@@ -407,6 +422,18 @@ tr.active-row .prod-name-cell { color: #1b5e20; font-size: 17px; font-weight: 90
 .sc-btn.primary{background:var(--primary);border-color:var(--primary);color:#fff;}
 .sc-btn:active{transform:translateY(1px);}
 .options-list{border:1px solid #e6ecef;border-radius:16px;padding:12px;min-height:110px;max-height:60vh;overflow:hidden;overflow-y:auto;background:#fff;-webkit-overflow-scrolling:touch;touch-action:pan-y;overscroll-behavior:contain;scrollbar-gutter:stable;margin-top:8px;}
+
+.health-panel{padding:6px 2px; display:flex; flex-direction:column; gap:10px;}
+.health-row{border:1px solid #eceff1;border-radius:14px;padding:10px 12px;background:#fafafa;}
+.health-row.ok{border-color:#d0f2ea;background:#f3fffb;}
+.health-row.warn{border-color:#ffe0b2;background:#fffaf3;}
+.health-name{font-weight:900;color:#263238;display:flex;align-items:center;justify-content:space-between;gap:10px;}
+.health-badge{font-weight:900;font-size:11px;padding:3px 8px;border-radius:999px;}
+.health-badge.ok{background:#e0f2f1;color:#00695c;}
+.health-badge.warn{background:#fff3e0;color:#e65100;}
+.health-meta{margin-top:6px;color:#607d8b;font-size:12px;line-height:1.35;}
+.health-err{margin-top:6px;color:#c62828;font-weight:800;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+
 #view-settings .options-list::after{content:'';display:block;height:calc(var(--bottom-nav-height) + env(safe-area-inset-bottom) + 18px);}
 
 #view-settings{overflow-y:auto;-webkit-overflow-scrolling:touch;padding-bottom:calc(var(--bottom-nav-height) + env(safe-area-inset-bottom) + 56px);scroll-padding-bottom:calc(var(--bottom-nav-height) + env(safe-area-inset-bottom) + 56px);}
@@ -599,7 +626,7 @@ tr.active-row .prod-name-cell { color: #1b5e20; font-size: 17px; font-weight: 90
 
 <div id="loading-mask">
   <div class="spinner"></div>
-  <div id="loading-text" style="font-weight:700;color:#546e7a;font-size:15px">系統初始化 (V98.10.3)...</div>
+  <div id="loading-text" style="font-weight:700;color:#546e7a;font-size:15px">系統初始化 (V98.11.6)...</div>
 </div>
 
 <div id="restoreWidget" onclick="toggleRestoreList(event)">
@@ -623,8 +650,7 @@ tr.active-row .prod-name-cell { color: #1b5e20; font-size: 17px; font-weight: 90
     點擊工具列上的 <span class="material-icons-round icon-anim">ios_share</span> 分享<br>
     並選擇 <b>「加入主畫面」</b>
   </div>
-  <div class="ios-sub">建議使用 Safari 開啟，以獲得完整安裝體驗</div>
-</div>
+  </div>
 
 <div id="updateToast">
   <span class="material-icons-round" style="color:#ffeb3b">system_update</span>
@@ -833,9 +859,17 @@ tr.active-row .prod-name-cell { color: #1b5e20; font-size: 17px; font-weight: 90
             <input id="tableSearch" type="text" placeholder="搜尋..." oninput="handleSearchInput()">
             <span id="searchClear" class="material-icons-round search-clear" onclick="clearSearch()">close</span>
           </div>
-          <div id="filter-btn" class="filter-btn" onclick="openFilterSheet()"><span class="material-icons-round" style="font-size:20px">filter_alt</span></div>
-          <div id="mobile-sort-btn" onclick="openSortSheet()"><span class="material-icons-round" style="font-size:20px">sort</span></div>
-          <span id="mobile-del-all" class="material-icons-round" style="display:none; color:#d32f2f; margin-left:10px; cursor:pointer;" onclick="deleteAllOrders()">delete_sweep</span>
+          <div class="panel-actions">
+            <div id="filter-btn" class="filter-btn" onclick="openFilterSheet()"><span class="material-icons-round" style="font-size:20px">filter_alt</span></div>
+            <div id="ordersAutoRefresh" class="oar" style="display:none;">
+              <button id="oarToggle" class="oar-btn" onclick="toggleOrdersAutoRefresh()" title="訂單自動更新" aria-label="訂單自動更新">
+                <span class="material-icons-round">autorenew</span>
+              </button>
+              <button id="oarInterval" class="oar-pill" onclick="cycleOrdersAutoInterval()" title="切換自動更新間隔" aria-label="切換自動更新間隔">120s</button>
+            </div>
+            <div id="mobile-sort-btn" onclick="openSortSheet()"><span class="material-icons-round" style="font-size:20px">sort</span></div>
+            <span id="mobile-del-all" class="material-icons-round" style="display:none; color:#d32f2f; margin-left:10px; cursor:pointer;" onclick="deleteAllOrders()">delete_sweep</span>
+          </div>
         </div>
         <div class="table-container" id="tableContainer">
           <table id="mainTable"></table>
@@ -878,6 +912,17 @@ tr.active-row .prod-name-cell { color: #1b5e20; font-size: 17px; font-weight: 90
             註：停用的支付方式會在此以刪除線顯示，前台不再提供選擇（符合你描述的「勾選後會畫上刪除線，使用者不能選擇」效果）。
           </div>
         </div>
+      </div>
+
+      <div class="settings-card" style="border:1px solid #e0e0e0;">
+        <div class="settings-card-head">
+          <div class="sc-title">資料源狀態</div>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <button class="sc-btn" onclick="renderHealthPanel()">刷新</button>
+            <button class="sc-btn" onclick="clearHealth()">清除紀錄</button>
+          </div>
+        </div>
+        <div id="healthPanel" class="health-panel"></div>
       </div>
 
       <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 2px;">
@@ -1008,7 +1053,7 @@ function denyAccessAndStop() {
 ADMIN_TOKEN = promptForToken(false);
 if (!ADMIN_TOKEN) denyAccessAndStop();
 
-const APP_VERSION = "98.11.3";
+const APP_VERSION = '98.11.6';
 try{
   document.title = `TTL BIO-TECH 戰情中心 V${APP_VERSION}`;
   const lt = document.getElementById('loading-text');
@@ -1134,14 +1179,14 @@ async function init() {
     // V2 Sprint1: staged loading
     // - core (orders/inventory/sales) renders ASAP
     // - product bundle map loads in parallel and enhances UI after
-    const prodsPromise = fetchCSV(SHEET_P_CSV)
+    const prodsPromise = fetchCSV(SHEET_P_CSV, { healthKey: 'products' })
       .then(prods => { processProducts(prods); return true; })
       .catch(e => { console.warn('Product CSV load failed:', e); return false; });
 
     const [ord, inv, sales] = await Promise.all([
-      fetchCSV(getOrdersCsvUrl()),
-      fetchCSV(INVENTORY_CSV),
-      fetchCSV(SALES_CSV)
+      fetchCSV(getOrdersCsvUrl(), { healthKey: 'orders' }),
+      fetchCSV(INVENTORY_CSV, { healthKey: 'inventory' }),
+      fetchCSV(SALES_CSV, { healthKey: 'sales' })
     ]);
 
     processOrders(ord);
@@ -1228,8 +1273,83 @@ function scrollToTop() {
     else window.scrollTo({top:0, behavior:'smooth'});
 }
 
+
+// === Data Source Health (for維運) ===
+const HEALTH_LS_KEY = 'ttl_admin_data_health_v1';
+let DATA_HEALTH = (() => {
+  try { return JSON.parse(localStorage.getItem(HEALTH_LS_KEY) || '{}') || {}; }
+  catch(e){ return {}; }
+})();
+
+function recordHealth(key, ok, detail){
+  if(!key) return;
+  const now = Date.now();
+  if(!DATA_HEALTH[key]) DATA_HEALTH[key] = { okCount:0, failCount:0, lastOk:0, lastFail:0, lastError:'' };
+  const it = DATA_HEALTH[key];
+  if(ok){
+    it.okCount = (it.okCount||0) + 1;
+    it.lastOk = now;
+    it.lastError = '';
+  } else {
+    it.failCount = (it.failCount||0) + 1;
+    it.lastFail = now;
+    it.lastError = String(detail || '');
+  }
+  try{ localStorage.setItem(HEALTH_LS_KEY, JSON.stringify(DATA_HEALTH)); }catch(e){}
+  try{
+    if(typeof CURRENT_TAB !== 'undefined' && CURRENT_TAB === 'settings') renderHealthPanel();
+  }catch(e){}
+}
+
+function _fmtHealthTime(ts){
+  if(!ts) return '--';
+  try{ return new Date(ts).toLocaleString(); }catch(e){ return '--'; }
+}
+
+function renderHealthPanel(){
+  const el = document.getElementById('healthPanel');
+  if(!el) return;
+  const items = [
+    ['orders','Orders（訂單）'],
+    ['inventory','Inventory（庫存）'],
+    ['sales','Sales（銷售）'],
+    ['products','Products（商品）'],
+    ['config','Config（下拉選單）'],
+  ];
+  const rows = items.map(([k,label])=>{
+    const it = DATA_HEALTH[k] || {};
+    const okAt = _fmtHealthTime(it.lastOk);
+    const failAt = _fmtHealthTime(it.lastFail);
+    const failCnt = it.failCount || 0;
+    const okCnt = it.okCount || 0;
+    const status = (failCnt>0 && (!it.lastOk || it.lastFail>it.lastOk)) ? 'warn' : 'ok';
+    const badge = status==='ok' ? 'OK' : 'WARN';
+    const err = (status==='warn' && it.lastError) ? `<div class="health-err">${escapeHtml(it.lastError).slice(0,120)}</div>` : '';
+    return `<div class="health-row ${status}">
+      <div class="health-name">${label}<span class="health-badge ${status}">${badge}</span></div>
+      <div class="health-meta">
+        <div>成功：${okAt}（${okCnt}）</div>
+        <div>失敗：${failAt}（${failCnt}）</div>
+        ${err}
+      </div>
+    </div>`;
+  }).join('');
+  el.innerHTML = rows || "<div style='color:#90a4ae;font-weight:800;padding:10px'>尚無紀錄</div>";
+}
+
+function clearHealth(){
+  DATA_HEALTH = {};
+  try{ localStorage.removeItem(HEALTH_LS_KEY); }catch(e){}
+  renderHealthPanel();
+  showToast('已清除資料源狀態紀錄');
+}
+
+
+
+
 async function fetchCSV(url, opts = {}) {
   const cacheBust = opts.cacheBust !== false;
+  const healthKey = opts.healthKey || null;
   let finalUrl = url;
   try {
     const u = new URL(url);
@@ -1239,10 +1359,20 @@ async function fetchCSV(url, opts = {}) {
     // keep original url
   }
 
-  const res = await fetch(finalUrl, { cache: 'no-store' });
-  if (!res.ok) throw new Error("Network response was not ok");
-  return Papa.parse(await res.text(), { header: false }).data; 
+  const t0 = performance.now();
+  try{
+    const res = await fetch(finalUrl, { cache: 'no-store' });
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    const txt = await res.text();
+    const data = Papa.parse(txt, { header: false }).data;
+    recordHealth(healthKey, true, `ok ${(performance.now()-t0).toFixed(0)}ms`);
+    return data;
+  } catch(err){
+    recordHealth(healthKey, false, err && err.message ? err.message : String(err));
+    throw err;
+  }
 }
+
 
 function showLoading(show, text) {
     const el = document.getElementById('loading-mask');
@@ -1567,6 +1697,7 @@ function switchTab(tab, pushToHistory = true, preserveState = false) {
     const rl = document.getElementById('restoreList'); if(rl) rl.classList.remove('open');
     
     CURRENT_TAB = tab; ACTIVE_FILTER = '';
+    try{ applyOrdersAutoRefresh(); }catch(e){}
     // Mobile layout classes (avoid top blank + enable dashboard scrolling)
     try{
         const cb = document.querySelector('.content-box');
@@ -1630,6 +1761,7 @@ function switchTab(tab, pushToHistory = true, preserveState = false) {
         document.getElementById('filter-btn').style.display = 'none';
         updateRestoreWidgetVisibility('settings');
         ensureSettingsLoaded();
+        try{ renderHealthPanel(); }catch(e){}
         return;
     }
 
@@ -3029,13 +3161,16 @@ async function ensureSettingsLoaded(force = false) {
 
       renderConfigUI();
       SETTINGS_LOADED = true;
+      recordHealth('config', true);
       setConfigStatus("狀態：已載入（" + new Date().toLocaleTimeString() + "）");
     } else {
+      recordHealth('config', false, (res && res.error) ? res.error : '未知錯誤');
       setConfigStatus("狀態：載入失敗");
       alert("設定載入失敗：" + ((res && res.error) ? res.error : "未知錯誤"));
     }
   } catch(e) {
     console.error(e);
+    recordHealth('config', false, e && e.message ? e.message : '連線錯誤');
     setConfigStatus("狀態：載入失敗");
     alert("設定載入失敗：連線錯誤");
   }
@@ -3275,8 +3410,15 @@ function showItemStats() {
 
 window.addEventListener('resize', () => { renderCurrentTable(); updateDashboard(); });
 
-// === Orders auto refresh (30s) + last sync UI ===
-let AUTO_REFRESH_TIMER = null;
+// === Orders auto refresh (optional; Orders tab only) ===
+let ORDERS_AUTO_TIMER = null;
+const ORDERS_AUTO_ENABLED_KEY = 'ttl_admin_orders_autorefresh_enabled';
+const ORDERS_AUTO_INTERVAL_KEY = 'ttl_admin_orders_autorefresh_interval';
+let ORDERS_AUTO_ENABLED = localStorage.getItem(ORDERS_AUTO_ENABLED_KEY) === 'true';
+let ORDERS_AUTO_INTERVAL = parseInt(localStorage.getItem(ORDERS_AUTO_INTERVAL_KEY) || '120', 10);
+if(![60,120].includes(ORDERS_AUTO_INTERVAL)) ORDERS_AUTO_INTERVAL = 120;
+
+// === last sync UI ===
 
 function updateLastSyncText() {
   const el = document.getElementById('lastSyncText');
@@ -3293,7 +3435,7 @@ async function refreshOrdersOnly(silent = true) {
     const editModal = document.getElementById('editModal');
     if(editModal && editModal.classList.contains('open')) return;
 
-    const ord = await fetchCSV(getOrdersCsvUrl(), { cacheBust: true });
+    const ord = await fetchCSV(getOrdersCsvUrl(), { cacheBust: true, healthKey: 'orders' });
     processOrders(ord);
     updateDashboard();
     renderCurrentTable();
@@ -3312,14 +3454,14 @@ async function refreshAllData(silent = true) {
     showLoading(true, '更新中...');
 
     // Load products in parallel (enhances bundle rendering, non-blocking)
-    const prodsPromise = fetchCSV(SHEET_P_CSV, { cacheBust: true })
+    const prodsPromise = fetchCSV(SHEET_P_CSV, { cacheBust: true, healthKey: 'products' })
       .then(prods => { processProducts(prods); return true; })
       .catch(e => { console.warn('Product CSV load failed:', e); return false; });
 
     const [ord, inv, sales] = await Promise.all([
-      fetchCSV(getOrdersCsvUrl(), { cacheBust: true }),
-      fetchCSV(INVENTORY_CSV, { cacheBust: true }),
-      fetchCSV(SALES_CSV, { cacheBust: true })
+      fetchCSV(getOrdersCsvUrl(), { cacheBust: true, healthKey: 'orders' }),
+      fetchCSV(INVENTORY_CSV, { cacheBust: true, healthKey: 'inventory' }),
+      fetchCSV(SALES_CSV, { cacheBust: true, healthKey: 'sales' })
     ]);
 
     processOrders(ord);
@@ -3352,12 +3494,68 @@ async function refreshAllData(silent = true) {
 
 
 
-function startAutoRefresh() {
-  if(AUTO_REFRESH_TIMER) clearInterval(AUTO_REFRESH_TIMER);
-  AUTO_REFRESH_TIMER = setInterval(() => {
+function renderOrdersAutoControls(){
+  const wrap = document.getElementById('ordersAutoRefresh');
+  if(wrap) wrap.style.display = (CURRENT_TAB === 'orders') ? 'flex' : 'none';
+  const t = document.getElementById('oarToggle');
+  const p = document.getElementById('oarInterval');
+  if(t){ t.classList.toggle('on', !!ORDERS_AUTO_ENABLED); }
+  if(p){ p.textContent = `${ORDERS_AUTO_INTERVAL}s`; }
+}
+
+function stopOrdersAutoRefresh(){
+  if(ORDERS_AUTO_TIMER){ clearInterval(ORDERS_AUTO_TIMER); ORDERS_AUTO_TIMER = null; }
+}
+
+function applyOrdersAutoRefresh(){
+  // show/hide controls
+  renderOrdersAutoControls();
+
+  // only run on Orders tab
+  if(CURRENT_TAB !== 'orders' || !ORDERS_AUTO_ENABLED || document.visibilityState !== 'visible'){
+    stopOrdersAutoRefresh();
+    return;
+  }
+  if(ORDERS_AUTO_TIMER) return;
+  ORDERS_AUTO_TIMER = setInterval(() => {
+    if(CURRENT_TAB !== 'orders') return;
     if(document.visibilityState !== 'visible') return;
     refreshOrdersOnly(true);
-  }, 30000);
+  }, ORDERS_AUTO_INTERVAL * 1000);
+}
+
+function setOrdersAutoEnabled(enabled){
+  ORDERS_AUTO_ENABLED = !!enabled;
+  localStorage.setItem(ORDERS_AUTO_ENABLED_KEY, ORDERS_AUTO_ENABLED ? 'true' : 'false');
+  renderOrdersAutoControls();
+  stopOrdersAutoRefresh();
+  if(ORDERS_AUTO_ENABLED && CURRENT_TAB === 'orders'){
+    refreshOrdersOnly(true);
+  }
+  applyOrdersAutoRefresh();
+}
+
+function toggleOrdersAutoRefresh(){
+  setOrdersAutoEnabled(!ORDERS_AUTO_ENABLED);
+  showToast(`訂單自動更新：${ORDERS_AUTO_ENABLED ? '開啟' : '關閉'}`);
+}
+
+function cycleOrdersAutoInterval(){
+  ORDERS_AUTO_INTERVAL = (ORDERS_AUTO_INTERVAL === 60) ? 120 : 60;
+  localStorage.setItem(ORDERS_AUTO_INTERVAL_KEY, String(ORDERS_AUTO_INTERVAL));
+  renderOrdersAutoControls();
+  stopOrdersAutoRefresh();
+  applyOrdersAutoRefresh();
+  showToast(`自動更新間隔：${ORDERS_AUTO_INTERVAL}s`);
+}
+
+function startAutoRefresh(){
+  // legacy entry point for boot
+  if(!window.__ordersAutoBound){
+    window.__ordersAutoBound = true;
+    document.addEventListener('visibilitychange', applyOrdersAutoRefresh);
+  }
+  applyOrdersAutoRefresh();
 }
 
 function bindMetaButtons() {
@@ -3465,13 +3663,11 @@ function closeIosInstallPrompt(){
   setTimeout(()=>p.classList.remove('visible'), 250);
 }
 
-// Auto show iOS guide (Safari only) after boot
+// Auto show iOS guide after boot
 function maybeShowIosGuide(){
   if(!isIosDevice()) return;
   if(isStandaloneMode()) return;
-  // Show guide primarily in Safari; in other iOS browsers still may work, but keep it non-intrusive
-  if(!isSafariOnIos()) return;
-  setTimeout(()=>openIosInstallPrompt(), 900);
+    setTimeout(()=>openIosInstallPrompt(), 900);
 }
 
 // --- Service Worker (App Shell only; all Sheets CSV remain network-only) ---
