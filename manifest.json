@@ -1,6 +1,6 @@
 {
-  "name": "TTL 戰情中心",
-  "short_name": "TTL戰情",
+  "name": "TTL-Bio Dashboard",
+  "short_name": "TTL-Bio Dashboard",
   "start_url": "./manage_ttlbiotech_f3p4.html",
   "scope": "./",
   "display": "standalone",

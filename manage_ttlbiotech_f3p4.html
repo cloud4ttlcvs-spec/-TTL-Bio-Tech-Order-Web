@@ -6,6 +6,7 @@
 <title>TTL BIO-TECH 戰情中心 V98.10.3</title>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#00897b">
+  <meta name="apple-mobile-web-app-title" content="TTL-Bio Dashboard">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="apple-touch-icon" href="icons/icon-192.png">
@@ -623,8 +624,7 @@ tr.active-row .prod-name-cell { color: #1b5e20; font-size: 17px; font-weight: 90
     點擊工具列上的 <span class="material-icons-round icon-anim">ios_share</span> 分享<br>
     並選擇 <b>「加入主畫面」</b>
   </div>
-  <div class="ios-sub">建議使用 Safari 開啟，以獲得完整安裝體驗</div>
-</div>
+  </div>
 
 <div id="updateToast">
   <span class="material-icons-round" style="color:#ffeb3b">system_update</span>
@@ -1008,7 +1008,7 @@ function denyAccessAndStop() {
 ADMIN_TOKEN = promptForToken(false);
 if (!ADMIN_TOKEN) denyAccessAndStop();
 
-const APP_VERSION = "98.11.3";
+const APP_VERSION = '98.11.4';
 try{
   document.title = `TTL BIO-TECH 戰情中心 V${APP_VERSION}`;
   const lt = document.getElementById('loading-text');
@@ -3465,13 +3465,11 @@ function closeIosInstallPrompt(){
   setTimeout(()=>p.classList.remove('visible'), 250);
 }
 
-// Auto show iOS guide (Safari only) after boot
+// Auto show iOS guide after boot
 function maybeShowIosGuide(){
   if(!isIosDevice()) return;
   if(isStandaloneMode()) return;
-  // Show guide primarily in Safari; in other iOS browsers still may work, but keep it non-intrusive
-  if(!isSafariOnIos()) return;
-  setTimeout(()=>openIosInstallPrompt(), 900);
+    setTimeout(()=>openIosInstallPrompt(), 900);
 }
 
 // --- Service Worker (App Shell only; all Sheets CSV remain network-only) ---
