@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"/>
-<title>TTL BIO-TECH 戰情中心 V98.11.7</title>
+<title>TTL BIO-TECH 戰情中心 V98.11.8</title>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#00897b">
   <meta name="apple-mobile-web-app-title" content="TTL-Bio Dashboard">
@@ -444,10 +444,56 @@ tr.active-row .prod-name-cell { color: #1b5e20; font-size: 17px; font-weight: 90
   padding:14px;
   min-height:260px;
   max-height:min(56vh, 560px);
-  overflow:hidden;overflow-y:auto;background:#fff;
+  overflow:hidden;overflow-y:auto;background:#f7fafb;
   -webkit-overflow-scrolling:touch;touch-action:pan-y;
   overscroll-behavior:contain;scrollbar-gutter:stable;
   margin-top:8px;
+}
+
+/* High-quality option "capsules" inside settings lists */
+.opt-row{
+  display:flex;align-items:center;gap:10px;
+  background:#fff;border:1px solid #e3e7ea;border-radius:14px;
+  padding:10px 12px;margin:0 0 10px 0;
+  box-shadow:0 2px 10px rgba(0,0,0,0.04);
+}
+.opt-row.inactive{opacity:0.72;}
+.opt-toggle{
+  display:flex;align-items:center;gap:6px;flex:0 0 auto;
+  font-size:12px;font-weight:900;color:#546e7a;
+  background:#f2f5f7;border:1px solid #e3e7ea;
+  padding:6px 8px;border-radius:999px;user-select:none;
+}
+.opt-toggle input{accent-color:var(--primary);transform:scale(1.05);}
+.opt-name{
+  flex:1 1 auto;min-width:140px;
+  border:1px solid #e3e7ea;border-radius:12px;
+  padding:8px 10px;background:#fff;
+  font-weight:800;color:#263238;
+}
+.opt-name:focus{
+  outline:none;border-color:rgba(0,137,123,0.55);
+  box-shadow:0 0 0 3px rgba(0,137,123,0.12);
+}
+.opt-move{display:flex;gap:6px;flex:0 0 auto;}
+.opt-icon-btn{
+  width:38px;height:36px;
+  display:flex;align-items:center;justify-content:center;
+  border:1px solid #e3e7ea;background:#fff;border-radius:12px;
+  cursor:pointer;
+}
+.opt-icon-btn:active{transform:translateY(1px);}
+.opt-del{
+  flex:0 0 auto;
+  border:1px solid rgba(211,47,47,0.35);background:#fff;color:#d32f2f;
+  font-weight:900;border-radius:12px;padding:8px 10px;cursor:pointer;
+}
+.opt-spacer{height:calc(var(--bottom-nav-height) + env(safe-area-inset-bottom) + 24px);}
+@media (max-width:520px){
+  .opt-row{gap:8px;padding:10px 10px;}
+  .opt-name{min-width:0;}
+  .opt-icon-btn{width:36px;height:34px;border-radius:12px;}
+  .opt-del{padding:8px 10px;border-radius:12px;}
 }
 
 /* Health panel should not compress other cards; keep its own scroll area */
@@ -600,7 +646,7 @@ tr.active-row .prod-name-cell { color: #1b5e20; font-size: 17px; font-weight: 90
 
 <div id="loading-mask">
   <div class="spinner"></div>
-  <div id="loading-text" style="font-weight:700;color:#546e7a;font-size:15px">系統初始化 (V98.11.7)...</div>
+  <div id="loading-text" style="font-weight:700;color:#546e7a;font-size:15px">系統初始化 (V98.11.8)...</div>
 </div>
 
 <div id="restoreWidget" onclick="toggleRestoreList(event)">
@@ -1027,7 +1073,7 @@ function denyAccessAndStop() {
 ADMIN_TOKEN = promptForToken(false);
 if (!ADMIN_TOKEN) denyAccessAndStop();
 
-const APP_VERSION = "98.11.7";
+const APP_VERSION = "98.11.8";
 try{
   document.title = `TTL BIO-TECH 戰情中心 V${APP_VERSION}`;
   const lt = document.getElementById('loading-text');
