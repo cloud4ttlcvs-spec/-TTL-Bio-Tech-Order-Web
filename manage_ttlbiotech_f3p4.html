@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"/>
-<title>TTL BIO-TECH 戰情中心 V98.11.8</title>
+<title>TTL BIO-TECH 戰情中心 V98.11.9</title>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#00897b">
   <meta name="apple-mobile-web-app-title" content="TTL-Bio Dashboard">
@@ -640,13 +640,37 @@ tr.active-row .prod-name-cell { color: #1b5e20; font-size: 17px; font-weight: 90
   cursor: pointer;
 }
 #updateToast .btn-update:active{ transform: scale(0.94); }
+/* --- GLOBAL TOAST (避免版面位移) --- */
+#toast{
+  position: fixed;
+  left: 50%;
+  bottom: 128px;
+  transform: translateX(-50%) translateY(18px);
+  opacity: 0;
+  pointer-events: none;
+  z-index: 6200;
+  background: rgba(38,50,56,0.95);
+  color: #fff;
+  padding: 10px 14px;
+  border-radius: 12px;
+  box-shadow: 0 10px 28px rgba(0,0,0,0.30);
+  font-weight: 800;
+  font-size: 13px;
+  max-width: min(92vw, 520px);
+  text-align: center;
+  line-height: 1.35;
+}
+#toast.show{
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
 </style>
 </head>
 <body>
 
 <div id="loading-mask">
   <div class="spinner"></div>
-  <div id="loading-text" style="font-weight:700;color:#546e7a;font-size:15px">系統初始化 (V98.11.8)...</div>
+  <div id="loading-text" style="font-weight:700;color:#546e7a;font-size:15px">系統初始化 (V98.11.9)...</div>
 </div>
 
 <div id="restoreWidget" onclick="toggleRestoreList(event)">
@@ -938,7 +962,7 @@ tr.active-row .prod-name-cell { color: #1b5e20; font-size: 17px; font-weight: 90
         <div class="settings-card-head">
           <div class="sc-title">資料源狀態</div>
           <div style="display:flex;gap:8px;align-items:center;">
-            <button class="sc-btn" onclick="renderHealthPanel()">刷新</button>
+            <button class="sc-btn" onclick="refreshHealthPanel()">刷新</button>
             <button class="sc-btn" onclick="clearHealth()">清除紀錄</button>
           </div>
         </div>
@@ -1073,7 +1097,7 @@ function denyAccessAndStop() {
 ADMIN_TOKEN = promptForToken(false);
 if (!ADMIN_TOKEN) denyAccessAndStop();
 
-const APP_VERSION = "98.11.8";
+const APP_VERSION = "98.11.9";
 try{
   document.title = `TTL BIO-TECH 戰情中心 V${APP_VERSION}`;
   const lt = document.getElementById('loading-text');
@@ -1364,6 +1388,40 @@ function clearHealth(){
   showToast('已清除資料源狀態紀錄');
 }
 
+
+async function refreshHealthPanel(){
+  // Manual probe of all data sources (records health, doesn't mutate DATA)
+  try{
+    showToast('刷新資料源狀態中…', 1200);
+
+    const tasks = [
+      fetchCSV(getOrdersCsvUrl(), { cacheBust: true, healthKey: 'orders' }).catch(()=>null),
+      fetchCSV(INVENTORY_CSV, { cacheBust: true, healthKey: 'inventory' }).catch(()=>null),
+      fetchCSV(SALES_CSV, { cacheBust: true, healthKey: 'sales' }).catch(()=>null),
+      fetchCSV(SHEET_P_CSV, { cacheBust: true, healthKey: 'products' }).catch(()=>null),
+      (async()=>{
+        const t0 = performance.now();
+        try{
+          const res = await gasFetch({ action: "get_config" }, false);
+          if(res && res.ok){
+            recordHealth('config', true, `ok ${(performance.now()-t0).toFixed(0)}ms`);
+          } else {
+            recordHealth('config', false, (res && (res.error || res.message)) ? (res.error || res.message) : 'bad response');
+          }
+        }catch(e){
+          recordHealth('config', false, e && e.message ? e.message : String(e));
+        }
+      })()
+    ];
+
+    await Promise.allSettled(tasks);
+    renderHealthPanel();
+    showToast('已刷新資料源狀態');
+  }catch(e){
+    console.error('refreshHealthPanel failed', e);
+    showToast('刷新失敗');
+  }
+}
 
 
 
@@ -2628,10 +2686,12 @@ function renderCurrentTable() {
         list = DATA.orders.filter(o => o.id.toLowerCase().includes(q) || o.name.includes(q));
         if (q.length === 8 && !isNaN(q)) list = DATA.orders.filter(o => o.id.includes(q) || o.time.replace(/\D/g,'').startsWith(q));
     }
-        // Orders filter (dept / pickup)
-        if (SELECTED_ORDER_FILTERS && SELECTED_ORDER_FILTERS.size > 0) {
-            list = list.filter(o => SELECTED_ORDER_FILTERS.has(o.dept) || SELECTED_ORDER_FILTERS.has(o.pickup));
-        }
+
+    // Orders filter (dept / pickup) - only applies on Orders tab
+    if (CURRENT_TAB === 'orders' && SELECTED_ORDER_FILTERS && SELECTED_ORDER_FILTERS.size > 0) {
+        list = list.filter(o => SELECTED_ORDER_FILTERS.has(o.dept) || SELECTED_ORDER_FILTERS.has(o.pickup));
+    }
+
     if(SORT.key) list.sort((a,b) => (a[SORT.key]>b[SORT.key]?1:-1)*(SORT.asc?1:-1));
 
     if (isMobile) {
