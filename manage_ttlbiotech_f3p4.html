@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"/>
-<title>TTL BIO-TECH 戰情中心 V98.11.9</title>
+<title>TTL BIO-TECH 戰情中心 V98.12.1</title>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#00897b">
   <meta name="apple-mobile-web-app-title" content="TTL-Bio Dashboard">
@@ -670,7 +670,7 @@ tr.active-row .prod-name-cell { color: #1b5e20; font-size: 17px; font-weight: 90
 
 <div id="loading-mask">
   <div class="spinner"></div>
-  <div id="loading-text" style="font-weight:700;color:#546e7a;font-size:15px">系統初始化 (V98.11.9)...</div>
+  <div id="loading-text" style="font-weight:700;color:#546e7a;font-size:15px">系統初始化 (V98.12.1)...</div>
 </div>
 
 <div id="restoreWidget" onclick="toggleRestoreList(event)">
@@ -1058,44 +1058,59 @@ tr.active-row .prod-name-cell { color: #1b5e20; font-size: 17px; font-weight: 90
 
 <script>
 let ADMIN_TOKEN = null;
+let ADMIN_EXP = null;
 
 // === Auth token (server-issued) persistence (24h, localStorage) ===
 const AUTH_STORAGE_KEY = 'ttlbiotech_admin_auth_v1';
 const AUTH_TTL_MS = 1000 * 60 * 60 * 24; // 24 hours
 
-function getSavedToken() {
+function getSavedAuthObj() {
   try {
     const raw = localStorage.getItem(AUTH_STORAGE_KEY);
     if(!raw) return null;
     const obj = JSON.parse(raw);
     if(!obj || !obj.token || !obj.exp) return null;
-    if(Date.now() > Number(obj.exp)) return null;
-    return String(obj.token);
+    const exp = Number(obj.exp);
+    if(!Number.isFinite(exp)) return null;
+    if(Date.now() > exp) return null;
+    return { token: String(obj.token), exp };
   } catch(e) {
     return null;
   }
+}
+
+function hydrateSavedAuth() {
+  const o = getSavedAuthObj();
+  ADMIN_TOKEN = o ? o.token : null;
+  ADMIN_EXP = o ? o.exp : null;
+  return o;
 }
 
 function saveToken(token, exp) {
   try {
     const e = exp ? Number(exp) : (Date.now() + AUTH_TTL_MS);
     localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify({ token: String(token), exp: e, ts: Date.now() }));
+    // keep in-memory copy for zero-lag UI gating
+    ADMIN_TOKEN = String(token);
+    ADMIN_EXP = e;
   } catch(e) {}
 }
 
 function clearSavedToken() {
   try { localStorage.removeItem(AUTH_STORAGE_KEY); } catch(e) {}
+  ADMIN_TOKEN = null;
+  ADMIN_EXP = null;
 }
 
 // tentative token (will be verified later via GAS)
-ADMIN_TOKEN = getSavedToken();
+hydrateSavedAuth();
 
 // === Chart palette ===
 // 現有庫存（統一色）與月均銷量（灰）為視覺基準；狀態顏色用在「品名」上
 const STOCK_UNI_COLOR = "#1e88e5";
 const AVG_GRAY_COLOR = "#90a4ae";
 
-const APP_VERSION = "98.12.0";
+const APP_VERSION = "98.12.1";
 try{
   document.title = `TTL BIO-TECH 戰情中心 V${APP_VERSION}`;
   const lt = document.getElementById('loading-text');
@@ -1792,6 +1807,11 @@ function switchTab(tab, pushToHistory = true, preserveState = false) {
         __pendingPrivAction = { type: 'gotoTab', tab: tab };
         openAuthModal();
         return;
+    }
+
+    // Non-blocking background verify when entering privileged tabs (do NOT block UI)
+    if((tab === 'orders' || tab === 'settings') && isAuthed()){
+        try{ authVerifyBackground('enter_' + tab); }catch(e){}
     }
 
     if(pushToHistory && tab !== CURRENT_TAB) history.pushState({tab: tab}, '', '');
@@ -3687,7 +3707,21 @@ function startAutoRefresh(){
   applyOrdersAutoRefresh();
 }
 
-function isAuthed(){ return !!ADMIN_TOKEN; }
+function isAuthed(){
+  // Zero-lag local check: token exists AND not expired (exp) -> allow UI without blocking.
+  if(!ADMIN_TOKEN || !ADMIN_EXP){
+    const o = getSavedAuthObj();
+    if(o){ ADMIN_TOKEN = o.token; ADMIN_EXP = o.exp; }
+  }
+  if(!ADMIN_TOKEN || !ADMIN_EXP) return false;
+
+  const exp = Number(ADMIN_EXP);
+  if(Number.isFinite(exp) && Date.now() < exp) return true;
+
+  // Expired locally
+  clearSavedToken();
+  return false;
+}
 
 function setPrivilegedTabsVisible(visible){
   const o1 = document.getElementById('nav-orders');
@@ -3758,6 +3792,7 @@ async function submitAuth(){
     if(j && j.ok && j.token && j.exp){
       saveToken(j.token, j.exp);
       ADMIN_TOKEN = String(j.token);
+      ADMIN_EXP = Number(j.exp);
       closeAuthModal();
       updateAuthUI();
       showToast('登入成功');
@@ -3779,23 +3814,63 @@ async function submitAuth(){
   }
 }
 
-async function verifySavedAuth(){
-  if(!ADMIN_TOKEN) { updateAuthUI(); return; }
+// === Non-blocking background auth_verify (V98.12.1) ===
+// UI gating uses local exp (zero-lag). We only call auth_verify in the background
+// to retain server-side revoke ability without creating UI "break points".
+const AUTH_BG_VERIFY_INTERVAL_MS = 10 * 60 * 1000; // 10 minutes
+let AUTH_BG_VERIFY_TIMER = null;
+let AUTH_BG_VERIFY_INFLIGHT = false;
+let AUTH_BG_VERIFY_LAST_TS = 0;
+
+function gasFetchTokenNoPrompt(payload) {
+  const url = GAS_URL + "?token=" + encodeURIComponent(ADMIN_TOKEN || "");
+  return fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: "payload=" + encodeURIComponent(JSON.stringify(payload)),
+      cache: "no-store"
+  }).then(r => r.json());
+}
+
+function authInvalidate(message){
+  clearSavedToken();
+  updateAuthUI();
+  try{ if(message) showToast(message); }catch(e){}
+}
+
+async function authVerifyBackground(reason = "bg", force = false){
+  if(!isAuthed()) return;
+  const now = Date.now();
+  if(!force && (now - AUTH_BG_VERIFY_LAST_TS) < AUTH_BG_VERIFY_INTERVAL_MS) return;
+  if(AUTH_BG_VERIFY_INFLIGHT) return;
+
+  AUTH_BG_VERIFY_INFLIGHT = true;
+  AUTH_BG_VERIFY_LAST_TS = now;
   try{
-    const r = await gasFetch({ action: 'auth_verify' }, true);
+    const r = await gasFetchTokenNoPrompt({ action: 'auth_verify' });
     if(r && r.ok){
       updateAuthUI();
     } else {
-      clearSavedToken();
-      ADMIN_TOKEN = null;
-      updateAuthUI();
+      authInvalidate('登入已過期');
     }
   }catch(e){
-    // if verification fails, treat as logged out (network required anyway)
-    clearSavedToken();
-    ADMIN_TOKEN = null;
-    updateAuthUI();
+    // Soft-fail: do not logout on transient network errors; retry later.
+    console.warn('auth_verify (bg) failed', e);
+  }finally{
+    AUTH_BG_VERIFY_INFLIGHT = false;
   }
+}
+
+function startAuthBackgroundVerify(){
+  if(AUTH_BG_VERIFY_TIMER) return;
+  AUTH_BG_VERIFY_TIMER = setInterval(() => {
+    if(document.visibilityState !== 'visible') return;
+    authVerifyBackground('timer');
+  }, AUTH_BG_VERIFY_INTERVAL_MS);
+}
+
+function stopAuthBackgroundVerify(){
+  if(AUTH_BG_VERIFY_TIMER){ clearInterval(AUTH_BG_VERIFY_TIMER); AUTH_BG_VERIFY_TIMER = null; }
 }
 
 function bindMetaButtons() {
@@ -3969,7 +4044,10 @@ async function boot() {
   bindMetaButtons();
   registerServiceWorker();
   maybeShowIosGuide();
-  await verifySavedAuth();
+  // Start immediately; auth_verify runs in background (non-blocking)
+  startAuthBackgroundVerify();
+  try{ authVerifyBackground('boot', true); }catch(e){}
+
   await init();
   updateLastSyncText();
   startAutoRefresh();
