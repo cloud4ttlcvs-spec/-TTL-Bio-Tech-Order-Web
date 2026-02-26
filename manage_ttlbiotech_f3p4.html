@@ -719,7 +719,7 @@ tr.active-row .prod-name-cell { color: #1b5e20; font-size: 17px; font-weight: 90
     <div id="lastSyncText">最後更新：--</div>
     <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;">
       <button id="refreshNowBtn" style="border:1px solid #cfd8dc;background:#fff;border-radius:8px;padding:6px 10px;cursor:pointer;">立即更新</button>
-      <button id="logoutBtn" style="border:1px solid #cfd8dc;background:#fff;border-radius:8px;padding:6px 10px;cursor:pointer;">清除密碼</button>
+      <button id="logoutBtn" style="border:1px solid #cfd8dc;background:#fff;border-radius:8px;padding:6px 10px;cursor:pointer;">登入權限</button>
     </div>
   </div>
   <div class="nav-item active" onclick="switchTab('dashboard')">
@@ -731,10 +731,10 @@ tr.active-row .prod-name-cell { color: #1b5e20; font-size: 17px; font-weight: 90
   <div class="nav-item" onclick="switchTab('sales')">
     <span class="material-icons-round">trending_up</span> 銷售總表
   </div>
-  <div class="nav-item" onclick="switchTab('orders')">
+  <div class="nav-item" id="nav-orders" style="display:none" onclick="switchTab('orders')">
     <span class="material-icons-round">edit_note</span> 訂單管理
   </div>
-  <div class="nav-item" onclick="switchTab('settings')">
+  <div class="nav-item" id="nav-settings" style="display:none" onclick="switchTab('settings')">
     <span class="material-icons-round">settings</span> 系統設定
   </div>
 </nav>
@@ -749,10 +749,10 @@ tr.active-row .prod-name-cell { color: #1b5e20; font-size: 17px; font-weight: 90
   <div class="b-nav-item" onclick="switchTab('sales')">
     <span class="material-icons-round">trending_up</span> 銷售
   </div>
-  <div class="b-nav-item" onclick="switchTab('orders')">
+  <div class="b-nav-item" id="bnav-orders" style="display:none" onclick="switchTab('orders')">
     <span class="material-icons-round">edit_note</span> 訂單
   </div>
-  <div class="b-nav-item" onclick="switchTab('settings')">
+  <div class="b-nav-item" id="bnav-settings" style="display:none" onclick="switchTab('settings')">
     <span class="material-icons-round">settings</span> 設定
   </div>
 </nav>
@@ -769,8 +769,8 @@ tr.active-row .prod-name-cell { color: #1b5e20; font-size: 17px; font-weight: 90
         <button id="refreshNowBtnMobile" class="icon-btn" title="重新整理" aria-label="重新整理">
             <span class="material-icons-round">refresh</span>
         </button>
-        <button id="logoutBtnMobile" class="icon-btn" title="清除密碼" aria-label="清除密碼">
-            <span class="material-icons-round">logout</span>
+        <button id="logoutBtnMobile" class="icon-btn" title="登入權限" aria-label="登入權限">
+            <span class="material-icons-round" id="logoutBtnMobileIcon">vpn_key</span>
         </button>
     </div>
   </header>
@@ -1033,6 +1033,22 @@ tr.active-row .prod-name-cell { color: #1b5e20; font-size: 17px; font-weight: 90
   </div>
 </div>
 
+
+<div id="authModal" class="modal">
+  <div class="m-card" style="max-width:420px">
+    <div class="m-head"><span id="authTitle">登入權限</span><span class="material-icons-round" style="cursor:pointer" onclick="closeAuthModal()">close</span></div>
+    <div class="m-body">
+      <div style="color:#607d8b;font-size:13px;line-height:1.4;margin-bottom:10px">輸入管理密碼以開啟「訂單管理 / 系統設定」。</div>
+      <div class="m-form-row"><label class="m-label">密碼</label><input class="m-input" id="authPw" type="password" placeholder="請輸入密碼"></div>
+      <div id="authErr" style="display:none;margin-top:10px;color:var(--danger);font-weight:900"></div>
+      <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:12px">
+        <button class="m-btn normal" onclick="closeAuthModal()">取消</button>
+        <button class="m-btn save" onclick="submitAuth()">登入</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div id="infoModal" class="modal">
   <div class="m-card">
     <div class="m-head"><span id="info-title">詳細資訊</span><span class="material-icons-round" style="cursor:pointer" onclick="history.back()">close</span></div>
@@ -1043,61 +1059,43 @@ tr.active-row .prod-name-cell { color: #1b5e20; font-size: 17px; font-weight: 90
 <script>
 let ADMIN_TOKEN = null;
 
-// === Admin token (password) persistence ===
-// Note: This only stores the token on THIS browser/device.
-const TOKEN_STORAGE_KEY = 'ttlbiotech_admin_token_v1';
-const TOKEN_EXPIRE_MS = 1000 * 60 * 60 * 24 * 30; // 30 days
+// === Auth token (server-issued) persistence (24h, localStorage) ===
+const AUTH_STORAGE_KEY = 'ttlbiotech_admin_auth_v1';
+const AUTH_TTL_MS = 1000 * 60 * 60 * 24; // 24 hours
 
 function getSavedToken() {
   try {
-    const raw = localStorage.getItem(TOKEN_STORAGE_KEY);
+    const raw = localStorage.getItem(AUTH_STORAGE_KEY);
     if(!raw) return null;
     const obj = JSON.parse(raw);
-    if(!obj || !obj.token || !obj.ts) return null;
-    if(Date.now() - obj.ts > TOKEN_EXPIRE_MS) return null;
+    if(!obj || !obj.token || !obj.exp) return null;
+    if(Date.now() > Number(obj.exp)) return null;
     return String(obj.token);
   } catch(e) {
     return null;
   }
 }
 
-function saveToken(token) {
+function saveToken(token, exp) {
   try {
-    localStorage.setItem(TOKEN_STORAGE_KEY, JSON.stringify({ token: String(token), ts: Date.now() }));
+    const e = exp ? Number(exp) : (Date.now() + AUTH_TTL_MS);
+    localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify({ token: String(token), exp: e, ts: Date.now() }));
   } catch(e) {}
 }
+
+function clearSavedToken() {
+  try { localStorage.removeItem(AUTH_STORAGE_KEY); } catch(e) {}
+}
+
+// tentative token (will be verified later via GAS)
+ADMIN_TOKEN = getSavedToken();
 
 // === Chart palette ===
 // 現有庫存（統一色）與月均銷量（灰）為視覺基準；狀態顏色用在「品名」上
 const STOCK_UNI_COLOR = "#1e88e5";
 const AVG_GRAY_COLOR = "#90a4ae";
 
-
-function clearSavedToken() {
-  try { localStorage.removeItem(TOKEN_STORAGE_KEY); } catch(e) {}
-}
-
-function promptForToken(force=false) {
-  const saved = force ? null : getSavedToken();
-  if(saved) return saved;
-
-  const t = prompt("請輸入後台管理密碼：");
-  if(t && String(t).trim()) {
-    saveToken(String(t).trim());
-    return String(t).trim();
-  }
-  return null;
-}
-
-function denyAccessAndStop() {
-  document.body.innerHTML = "<div style='display:flex;align-items:center;justify-content:center;height:100vh;color:red;font-weight:900;font-size:20px'>Access Denied</div>";
-  throw new Error("Stop");
-}
-
-ADMIN_TOKEN = promptForToken(false);
-if (!ADMIN_TOKEN) denyAccessAndStop();
-
-const APP_VERSION = "98.11.10";
+const APP_VERSION = "98.12.0";
 try{
   document.title = `TTL BIO-TECH 戰情中心 V${APP_VERSION}`;
   const lt = document.getElementById('loading-text');
@@ -1788,6 +1786,13 @@ function switchTab(tab, pushToHistory = true, preserveState = false) {
     // V96 UX: allow sidebar tab switch even when full chart is open
     const fcView = document.getElementById('view-full-chart');
     if(fcView && fcView.style.display === 'flex') { fcView.style.display = 'none'; }
+
+    // Auth gating: orders/settings require login
+    if((tab === 'orders' || tab === 'settings') && !isAuthed()) {
+        __pendingPrivAction = { type: 'gotoTab', tab: tab };
+        openAuthModal();
+        return;
+    }
 
     if(pushToHistory && tab !== CURRENT_TAB) history.pushState({tab: tab}, '', '');
     const rl = document.getElementById('restoreList'); if(rl) rl.classList.remove('open');
@@ -3196,6 +3201,7 @@ async function deleteAllOrders() {
 
 // GAS API 呼叫核心
 function callGAS(payload, msg, isDelete, isRetry=false) {
+  if(!isAuthed()){ __pendingPrivAction = { type: 'callGAS', payload, msg, isDelete }; openAuthModal(); return; }
   showLoading(true, isDelete ? "正在刪除訂單..." : "正在儲存..."); 
   if(isDelete) closeModal(true); // 刪除時先關閉視窗
   
@@ -3245,6 +3251,7 @@ function setConfigStatus(text) {
 }
 
 function gasFetch(payload, useToken = false) {
+  if(useToken && !isAuthed()){ __pendingPrivAction = { type: 'settingsReload' }; openAuthModal(); return Promise.reject(new Error('Unauthorized')); }
   const url = useToken ? (GAS_URL + "?token=" + encodeURIComponent(ADMIN_TOKEN)) : GAS_URL;
   return fetch(url, {
       method: "POST",
@@ -3680,11 +3687,129 @@ function startAutoRefresh(){
   applyOrdersAutoRefresh();
 }
 
+function isAuthed(){ return !!ADMIN_TOKEN; }
+
+function setPrivilegedTabsVisible(visible){
+  const o1 = document.getElementById('nav-orders');
+  const o2 = document.getElementById('bnav-orders');
+  const s1 = document.getElementById('nav-settings');
+  const s2 = document.getElementById('bnav-settings');
+  if(o1) o1.style.display = visible ? '' : 'none';
+  if(o2) o2.style.display = visible ? '' : 'none';
+  if(s1) s1.style.display = visible ? '' : 'none';
+  if(s2) s2.style.display = visible ? '' : 'none';
+}
+
+function updateAuthButtons(){
+  const authed = isAuthed();
+  const lo = document.getElementById('logoutBtn');
+  const lom = document.getElementById('logoutBtnMobile');
+  const icon = document.getElementById('logoutBtnMobileIcon');
+  if(lo) lo.textContent = authed ? '登出' : '登入權限';
+  if(lom){
+    lom.title = authed ? '登出' : '登入權限';
+    lom.setAttribute('aria-label', authed ? '登出' : '登入權限');
+  }
+  if(icon) icon.textContent = authed ? 'logout' : 'vpn_key';
+}
+
+function updateAuthUI(){
+  const authed = isAuthed();
+  setPrivilegedTabsVisible(authed);
+  updateAuthButtons();
+  // If currently on privileged tab, bounce back
+  if(!authed && (CURRENT_TAB === 'orders' || CURRENT_TAB === 'settings')){
+    try{ switchTab('dashboard', true, true); }catch(e){}
+  }
+}
+
+let __pendingPrivAction = null;
+
+function openAuthModal(errMsg){
+  const m = document.getElementById('authModal');
+  const pw = document.getElementById('authPw');
+  const err = document.getElementById('authErr');
+  if(err){
+    if(errMsg){ err.style.display='block'; err.textContent = String(errMsg); }
+    else { err.style.display='none'; err.textContent=''; }
+  }
+  if(pw) pw.value='';
+  if(m) m.style.display='flex';
+  setTimeout(()=>{ try{ if(pw) pw.focus(); }catch(e){} }, 50);
+}
+
+function closeAuthModal(){
+  const m = document.getElementById('authModal');
+  if(m) m.style.display='none';
+}
+
+async function submitAuth(){
+  const pw = document.getElementById('authPw');
+  const pass = pw ? String(pw.value||'').trim() : '';
+  if(!pass){ openAuthModal('請輸入密碼'); return; }
+  showLoading(true, '正在登入...');
+  try{
+    const res = await fetch(GAS_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: 'payload=' + encodeURIComponent(JSON.stringify({ action: 'auth_login', password: pass }))
+    });
+    const j = await res.json();
+    if(j && j.ok && j.token && j.exp){
+      saveToken(j.token, j.exp);
+      ADMIN_TOKEN = String(j.token);
+      closeAuthModal();
+      updateAuthUI();
+      showToast('登入成功');
+      if(__pendingPrivAction){
+        const p = __pendingPrivAction; __pendingPrivAction = null;
+        // retry after login
+        if(p.type === 'callGAS'){ callGAS(p.payload, p.msg, p.isDelete, true); }
+        else if(p.type === 'settingsReload'){ try{ ensureSettingsLoaded(true); }catch(e){} }
+        else if(p.type === 'gotoTab'){ try{ switchTab(p.tab, true, true); }catch(e){} }
+      }
+      return;
+    }
+    const msg = (j && j.error) ? String(j.error) : '登入失敗';
+    openAuthModal(msg);
+  }catch(e){
+    openAuthModal('登入失敗：連線錯誤');
+  }finally{
+    showLoading(false);
+  }
+}
+
+async function verifySavedAuth(){
+  if(!ADMIN_TOKEN) { updateAuthUI(); return; }
+  try{
+    const r = await gasFetch({ action: 'auth_verify' }, true);
+    if(r && r.ok){
+      updateAuthUI();
+    } else {
+      clearSavedToken();
+      ADMIN_TOKEN = null;
+      updateAuthUI();
+    }
+  }catch(e){
+    // if verification fails, treat as logged out (network required anyway)
+    clearSavedToken();
+    ADMIN_TOKEN = null;
+    updateAuthUI();
+  }
+}
+
 function bindMetaButtons() {
   const doRefresh = () => refreshAllData(false);
-  const doLogout = () => {
-    clearSavedToken();
-    alert('已清除後台密碼。重新整理後會再次要求輸入。');
+
+  const doAuthToggle = () => {
+    if(isAuthed()){
+      clearSavedToken();
+      ADMIN_TOKEN = null;
+      updateAuthUI();
+      showToast('已登出');
+    } else {
+      openAuthModal();
+    }
   };
 
   const r = document.getElementById('refreshNowBtn');
@@ -3693,17 +3818,20 @@ function bindMetaButtons() {
   if(rm) rm.onclick = doRefresh;
 
   const lo = document.getElementById('logoutBtn');
-  if(lo) lo.onclick = doLogout;
+  if(lo) lo.onclick = doAuthToggle;
   const lom = document.getElementById('logoutBtnMobile');
-  if(lom) lom.onclick = doLogout;
+  if(lom) lom.onclick = doAuthToggle;
+
+  updateAuthUI();
 }
 
-// When GAS rejects token, clear and re-prompt once
+// When GAS rejects token, clear and re-login once
 function ensureValidTokenAndRetry(payload, msg, isDelete) {
   clearSavedToken();
-  ADMIN_TOKEN = promptForToken(true);
-  if(!ADMIN_TOKEN) { denyAccessAndStop(); return; }
-  callGAS(payload, msg, isDelete, true);
+  ADMIN_TOKEN = null;
+  updateAuthUI();
+  __pendingPrivAction = { type: 'callGAS', payload, msg, isDelete };
+  openAuthModal('權限已失效，請重新登入');
 }
 
 // --- PWA INSTALL GUIDANCE (Android + iOS) ---
@@ -3841,6 +3969,7 @@ async function boot() {
   bindMetaButtons();
   registerServiceWorker();
   maybeShowIosGuide();
+  await verifySavedAuth();
   await init();
   updateLastSyncText();
   startAutoRefresh();
