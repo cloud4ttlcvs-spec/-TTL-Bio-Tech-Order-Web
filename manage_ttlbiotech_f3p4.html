@@ -1097,7 +1097,7 @@ function denyAccessAndStop() {
 ADMIN_TOKEN = promptForToken(false);
 if (!ADMIN_TOKEN) denyAccessAndStop();
 
-const APP_VERSION = "98.11.9";
+const APP_VERSION = "98.11.10";
 try{
   document.title = `TTL BIO-TECH 戰情中心 V${APP_VERSION}`;
   const lt = document.getElementById('loading-text');
@@ -1161,7 +1161,25 @@ let OS_SORT_MODE = 'months';
 
 const ALL_STATUSES = ['缺貨', '低位', '留意', '充足', '積壓', '滯銷'];
 let SELECTED_STATUSES = new Set(ALL_STATUSES);
-let SELECTED_ORDER_FILTERS = new Set(JSON.parse(localStorage.getItem('admin_order_filters') || '[]'));
+// Orders Filter (Dept / Pickup)
+let SELECTED_ORDER_PICKUPS = new Set(JSON.parse(localStorage.getItem('admin_order_pickups') || '[]'));
+let SELECTED_ORDER_DEPTS = new Set(JSON.parse(localStorage.getItem('admin_order_depts') || '[]'));
+// Backward-compat: migrate old combined filter set if present
+try {
+  const legacy = JSON.parse(localStorage.getItem('admin_order_filters') || '[]');
+  if (Array.isArray(legacy) && legacy.length > 0 && SELECTED_ORDER_PICKUPS.size === 0 && SELECTED_ORDER_DEPTS.size === 0) {
+    const legacySet = new Set(legacy);
+    if (legacySet.has('自取') || legacySet.has('宅配')) {
+      ['自取','宅配'].forEach(v => { if(legacySet.has(v)) SELECTED_ORDER_PICKUPS.add(v); });
+    }
+    legacy.forEach(v => {
+      if (v && v !== '自取' && v !== '宅配') SELECTED_ORDER_DEPTS.add(v);
+    });
+    if (SELECTED_ORDER_PICKUPS.size > 0) localStorage.setItem('admin_order_pickups', JSON.stringify([...SELECTED_ORDER_PICKUPS]));
+    if (SELECTED_ORDER_DEPTS.size > 0) localStorage.setItem('admin_order_depts', JSON.stringify([...SELECTED_ORDER_DEPTS]));
+  }
+} catch(e) {}
+// (legacy key kept; safe to remove later)
 // Visibility Filter (Hidden / Visible) - V96
 const VISIBILITY_OPTIONS = [
   { k: 'visible', l: '非隱藏' },
@@ -1819,7 +1837,7 @@ function switchTab(tab, pushToHistory = true, preserveState = false) {
     } else if(tab === 'sales') {
         fbtn.classList.toggle('active', !setEquals(SELECTED_VISIBILITY.sales, DEFAULT_VIS_SET));
     } else if(tab === 'orders') {
-        fbtn.classList.toggle('active', (SELECTED_ORDER_FILTERS.size > 0));
+        fbtn.classList.toggle('active', (SELECTED_ORDER_PICKUPS.size > 0 || SELECTED_ORDER_DEPTS.size > 0));
     } else {
         fbtn.classList.remove('active');
     }
@@ -2525,7 +2543,7 @@ function openFilterSheet() {
         statusTitle.innerText = '篩選 (可複選)';
         statusAll.style.display = 'none';
 
-        const depts = [...new Set(DATA.orders.map(o => o.dept))].filter(Boolean).sort();
+        const depts = [...new Set(DATA.orders.map(o => String(o.dept||'').trim()))].filter(Boolean).sort();
         const pickups = ["自取", "宅配"];
         const options = ["(全選)", ...pickups, "---", ...depts];
 
@@ -2535,8 +2553,10 @@ function openFilterSheet() {
                 return;
             }
             const isAll = opt === "(全選)";
-            const defaultAll = (SELECTED_ORDER_FILTERS.size === 0);
-            const isChecked = isAll ? false : (defaultAll ? true : SELECTED_ORDER_FILTERS.has(opt));
+            const pickupDefaultAll = (SELECTED_ORDER_PICKUPS.size === 0);
+            const deptDefaultAll = (SELECTED_ORDER_DEPTS.size === 0);
+            const isPickup = pickups.includes(opt);
+            const isChecked = isAll ? false : (isPickup ? (pickupDefaultAll ? true : SELECTED_ORDER_PICKUPS.has(opt)) : (deptDefaultAll ? true : SELECTED_ORDER_DEPTS.has(opt)));
 
             const div = document.createElement('div');
             div.className = "filter-row";
@@ -2581,27 +2601,41 @@ function applyFilter() {
         if(SELECTED_STATUSES.size === 0) SELECTED_STATUSES = new Set(ALL_STATUSES); // guard
     }
 
-    // Orders filter (dept / pickup) - empty set means "no restriction"
+    // Orders filter (dept / pickup) - stored separately; empty set means "no restriction"
     if(CURRENT_TAB === 'orders') {
         const chks = document.querySelectorAll('.filter-chk');
         const picked = new Set();
-        chks.forEach(c => { if(c.checked) picked.add(c.value); });
+        chks.forEach(c => { if(c.checked) picked.add(String(c.value||"").trim()); });
 
-        const depts = [...new Set(DATA.orders.map(o => o.dept))].filter(Boolean);
-        const pickups = ['自取', '宅配'];
-        const allVals = new Set([...pickups, ...depts]);
+        const deptsAll = new Set([...new Set(DATA.orders.map(o => String(o.dept||"").trim()))].filter(Boolean));
+        const pickupsAll = new Set(['自取', '宅配']);
 
-        // Guard: if nothing selected OR everything selected => treat as "all"
-        if(picked.size === 0 || picked.size === allVals.size) {
-            SELECTED_ORDER_FILTERS = new Set();
-            localStorage.removeItem('admin_order_filters');
+        const pickedPickups = new Set([...picked].filter(v => pickupsAll.has(v)));
+        const pickedDepts = new Set([...picked].filter(v => deptsAll.has(v)));
+
+        // Group guards:
+        // - none selected OR all selected => no restriction (store empty)
+        if(pickedPickups.size === 0 || pickedPickups.size === pickupsAll.size) {
+            SELECTED_ORDER_PICKUPS = new Set();
+            localStorage.removeItem('admin_order_pickups');
         } else {
-            SELECTED_ORDER_FILTERS = picked;
-            localStorage.setItem('admin_order_filters', JSON.stringify([...SELECTED_ORDER_FILTERS]));
+            SELECTED_ORDER_PICKUPS = pickedPickups;
+            localStorage.setItem('admin_order_pickups', JSON.stringify([...SELECTED_ORDER_PICKUPS]));
         }
+
+        if(pickedDepts.size === 0 || pickedDepts.size === deptsAll.size) {
+            SELECTED_ORDER_DEPTS = new Set();
+            localStorage.removeItem('admin_order_depts');
+        } else {
+            SELECTED_ORDER_DEPTS = pickedDepts;
+            localStorage.setItem('admin_order_depts', JSON.stringify([...SELECTED_ORDER_DEPTS]));
+        }
+
+        // Legacy combined key is deprecated; clear to avoid confusion
+        localStorage.removeItem('admin_order_filters');
     }
 
-    // Visibility filter (inventory/sales)
+// Visibility filter (inventory/sales)
     if(CURRENT_TAB === 'inventory' || CURRENT_TAB === 'sales') {
         ensureVisibilitySet(CURRENT_TAB);
         const visChks = document.querySelectorAll('.filter-vis-chk');
@@ -2623,7 +2657,7 @@ function applyFilter() {
     } else if(CURRENT_TAB === 'sales') {
         active = !setEquals(SELECTED_VISIBILITY.sales, DEFAULT_VIS_SET);
     } else if(CURRENT_TAB === 'orders') {
-        active = (SELECTED_ORDER_FILTERS.size > 0);
+        active = (SELECTED_ORDER_PICKUPS.size > 0 || SELECTED_ORDER_DEPTS.size > 0);
     }
     if(active) btn.classList.add('active'); else btn.classList.remove('active');
 
@@ -2687,12 +2721,17 @@ function renderCurrentTable() {
         if (q.length === 8 && !isNaN(q)) list = DATA.orders.filter(o => o.id.includes(q) || o.time.replace(/\D/g,'').startsWith(q));
     }
 
-    // Orders filter (dept / pickup) - only applies on Orders tab
-    if (CURRENT_TAB === 'orders' && SELECTED_ORDER_FILTERS && SELECTED_ORDER_FILTERS.size > 0) {
-        list = list.filter(o => SELECTED_ORDER_FILTERS.has(o.dept) || SELECTED_ORDER_FILTERS.has(o.pickup));
+    // Orders filter (dept / pickup) - only applies on Orders tab (AND by group)
+    if (CURRENT_TAB === 'orders') {
+        if (SELECTED_ORDER_PICKUPS && SELECTED_ORDER_PICKUPS.size > 0) {
+            list = list.filter(o => SELECTED_ORDER_PICKUPS.has(String(o.pickup || '').trim()));
+        }
+        if (SELECTED_ORDER_DEPTS && SELECTED_ORDER_DEPTS.size > 0) {
+            list = list.filter(o => SELECTED_ORDER_DEPTS.has(String(o.dept || '').trim()));
+        }
     }
 
-    if(SORT.key) list.sort((a,b) => (a[SORT.key]>b[SORT.key]?1:-1)*(SORT.asc?1:-1));
+if(SORT.key) list.sort((a,b) => (a[SORT.key]>b[SORT.key]?1:-1)*(SORT.asc?1:-1));
 
     if (isMobile) {
         table.style.display = 'none';
@@ -2843,9 +2882,12 @@ function renderCurrentTable() {
             list.forEach(s => { html += `<tr id="row-${s.code}"><td style="font-size:14px;color:#888">${s.code} <span class="material-icons-round mc-icon-btn hide ${HIDDEN_STOCK.has(s.code) ? 'active' : '' }" onclick="event.stopPropagation(); toggleHidden('${s.code}')" style="font-size:16px;vertical-align:middle;margin-left:4px" title="隱藏/顯示">visibility_off</span></td><td class="prod-name-cell">${s.name}</td><td class="${s.yoy>=0?'val-up':'val-down'}">${s.yoy}%</td><td>$${s.lastRev.toLocaleString()}</td><td>$${s.thisRev.toLocaleString()}</td><td>${s.lastQty}</td><td>${s.thisQty}</td></tr>`; });
         }
                 else if (CURRENT_TAB === 'orders') {
-            // 篩選：部門 / 取貨（Orders 專用；空集合代表不限制）
-            if (SELECTED_ORDER_FILTERS && SELECTED_ORDER_FILTERS.size > 0) {
-                list = list.filter(o => SELECTED_ORDER_FILTERS.has(o.dept) || SELECTED_ORDER_FILTERS.has(o.pickup));
+            // 篩選：部門 / 取貨（Orders 專用；分組 AND；空集合代表不限制）
+            if (SELECTED_ORDER_PICKUPS && SELECTED_ORDER_PICKUPS.size > 0) {
+                list = list.filter(o => SELECTED_ORDER_PICKUPS.has(String(o.pickup || '').trim()));
+            }
+            if (SELECTED_ORDER_DEPTS && SELECTED_ORDER_DEPTS.size > 0) {
+                list = list.filter(o => SELECTED_ORDER_DEPTS.has(String(o.dept || '').trim()));
             }
 
             // [New] 計算篩選後的總金額
