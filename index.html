@@ -2330,6 +2330,7 @@ let modalPid = null, isCartOpen = false;
 let tempBundleSelection = [];
 let lastOrderData = null; 
 let sectionObserver = null;
+let __SCROLLSPY_SCROLL_BOUND__ = false;
 let GIFT_MAP = new Map();
 let achievedGifts = [];
 let isFirstAdd = true; 
@@ -5830,6 +5831,49 @@ function __mainScrollToId(id, behavior){
   }catch(e){ return false; }
 }
 
+function __setActiveCatPillByTarget(tid){
+  try{
+    const targetId = String(tid||'').trim();
+    document.querySelectorAll('.cat-pill').forEach(pill => {
+      const isTop = (targetId === 'cat-all-wrapper' || targetId === 'cat-all') && pill.innerText === '熱銷排行';
+      pill.classList.toggle('active', pill.dataset.target === targetId || isTop);
+    });
+    const activePill = document.querySelector('.cat-pill.active');
+    if(activePill) activePill.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+  }catch(e){}
+}
+
+function __ensureListBottomSpacer(grid){
+  try{
+    const root = grid || document.getElementById('list');
+    if(!root) return;
+    let spacer = root.querySelector('#cat-bottom-spacer');
+    if(!spacer){
+      spacer = document.createElement('div');
+      spacer.id = 'cat-bottom-spacer';
+      spacer.setAttribute('aria-hidden', 'true');
+      root.appendChild(spacer);
+    }
+    spacer.style.height = '180px';
+  }catch(e){}
+}
+
+function __refreshActiveCatByScrollPosition(){
+  try{
+    if(window.scrollY < 50){
+      __setActiveCatPillByTarget('cat-all-wrapper');
+      return;
+    }
+    const doc = document.documentElement;
+    const bottomGap = Math.max(24, window.innerHeight * 0.08);
+    if(window.innerHeight + window.scrollY >= (doc.scrollHeight - bottomGap)){
+      const secs = Array.from(document.querySelectorAll('.cat-section'));
+      const last = secs.length ? secs[secs.length - 1] : null;
+      if(last && last.id) __setActiveCatPillByTarget(last.id);
+    }
+  }catch(e){}
+}
+
 function scrollToSection(id) {
   const tid = String(id||'').trim();
   if(!tid){ return; }
@@ -5843,13 +5887,7 @@ function scrollToSection(id) {
   const go = () => {
     if(__mainScrollToId(tid, 'smooth')){
       // keep top pills state in sync
-      try{
-        document.querySelectorAll('.cat-pill').forEach(p => {
-          p.classList.toggle('active', p.dataset.target === tid);
-        });
-        const activePill = document.querySelector('.cat-pill.active');
-        if(activePill) activePill.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
-      }catch(e){}
+      __setActiveCatPillByTarget(tid);
 
       // subtle flash on section title
       try{
@@ -5887,15 +5925,18 @@ function setupScrollSpy() {
     entries.forEach(entry => {
       if (entry.isIntersecting) {
         const id = entry.target.id;
-        document.querySelectorAll(".cat-pill").forEach(pill => {
-          pill.classList.toggle("active", pill.dataset.target === id || (id==='cat-all-wrapper' && pill.innerText==='熱銷排行'));
-        });
-        const activePill = document.querySelector(".cat-pill.active");
-        if(activePill) activePill.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+        __setActiveCatPillByTarget(id);
       }
     });
+    __refreshActiveCatByScrollPosition();
   }, options);
   document.querySelectorAll('.cat-section').forEach(section => { sectionObserver.observe(section); });
+  if(!__SCROLLSPY_SCROLL_BOUND__){
+    window.addEventListener('scroll', __refreshActiveCatByScrollPosition, { passive:true });
+    window.addEventListener('resize', __refreshActiveCatByScrollPosition, { passive:true });
+    __SCROLLSPY_SCROLL_BOUND__ = true;
+  }
+  __refreshActiveCatByScrollPosition();
 }
 
 
@@ -6117,6 +6158,7 @@ function renderList() {
         grid.appendChild(section);
       }
     });
+    __ensureListBottomSpacer(grid);
     setupScrollSpy();
   }
 }
@@ -6181,6 +6223,7 @@ function __renderListNoSearchLegacy(grid, token){
     __appendCardsChunked(container, catProducts, null, token);
   });
 
+  __ensureListBottomSpacer(grid);
   try{ setupScrollSpy(); }catch(e){}
 }
 
