@@ -2774,6 +2774,138 @@ body.cfg-error .btn-bundle{
 }
 .pm-nav .material-icons-round { color: #0d9488; font-size: 20px; }
 
+
+
+/* ==========================================================
+   V7.12 微調：分類卡去除小標籤、商品籃圖片、5字換行、分類貼紙配色
+   ========================================================== */
+#promoMarqueeSlot .pm-head { display: none !important; }
+.pm-card {
+  flex: 0 0 164px !important;
+  min-height: 138px !important;
+  padding: 14px 14px 13px !important;
+  justify-content: flex-start !important;
+  gap: 0 !important;
+}
+.pm-chip { display: none !important; }
+.pm-basket {
+  position: relative;
+  height: 46px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 0;
+  margin: 0 0 10px 0;
+  isolation: isolate;
+}
+.pm-basket::before {
+  content: '';
+  position: absolute;
+  left: 22px;
+  right: 22px;
+  bottom: 9px;
+  height: 22px;
+  border-radius: 9px 9px 14px 14px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.86), rgba(255,255,255,0.56));
+  border: 1px solid color-mix(in srgb, var(--pm-rail, #0d9488) 24%, transparent);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.90), 0 6px 14px rgba(15,118,110,0.06);
+  z-index: 0;
+}
+.pm-basket-base {
+  position: absolute;
+  left: 28px;
+  right: 28px;
+  bottom: 6px;
+  height: 3px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--pm-rail, #0d9488) 45%, #ffffff);
+  opacity: .72;
+  z-index: 1;
+}
+.pm-basket-img {
+  width: 35px;
+  height: 35px;
+  object-fit: contain;
+  border-radius: 11px;
+  background: rgba(255,255,255,0.94);
+  border: 1px solid rgba(255,255,255,0.82);
+  box-shadow: 0 7px 14px rgba(17,24,39,0.08);
+  padding: 3px;
+  position: relative;
+  z-index: 2;
+}
+.pm-basket-img + .pm-basket-img { margin-left: -8px; }
+.pm-basket-img-1 { transform: rotate(-6deg) translateY(1px); }
+.pm-basket-img-2 { transform: translateY(-4px); z-index: 3; }
+.pm-basket-img-3 { transform: rotate(6deg) translateY(1px); }
+.pm-basket-empty {
+  align-items: center;
+  color: color-mix(in srgb, var(--pm-rail, #0d9488) 70%, #ffffff);
+  background: var(--pm-wash, rgba(13,148,136,0.12));
+  border-radius: 16px;
+  border: 1px solid rgba(13,148,136,0.08);
+}
+.pm-basket-empty .material-icons-round { font-size: 28px; }
+.pm-name {
+  min-height: 43px !important;
+  font-size: 16px !important;
+  line-height: 1.25 !important;
+  text-align: center;
+  margin: 0 0 9px 0 !important;
+  -webkit-line-clamp: initial !important;
+  display: block !important;
+  overflow: hidden !important;
+  color: #172033 !important;
+  letter-spacing: .02em;
+}
+.pm-name-rest {
+  display: inline-block;
+  font-size: .94em;
+  font-weight: 800;
+}
+.pm-hint {
+  align-self: center;
+  max-width: 100%;
+  margin: 0 !important;
+  padding: 5px 9px !important;
+  border-radius: 999px !important;
+  font-size: 12px !important;
+  line-height: 1.15;
+  letter-spacing: .01em;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.62);
+  border: 1px solid transparent;
+}
+.pm-theme-drink .pm-hint {
+  background: rgba(255,243,224,0.92) !important;
+  color: #b45f00 !important;
+  border-color: rgba(230,162,69,0.22) !important;
+}
+.pm-theme-health .pm-hint {
+  background: rgba(227,242,253,0.92) !important;
+  color: #1565c0 !important;
+  border-color: rgba(63,155,208,0.22) !important;
+}
+.pm-theme-beauty .pm-hint {
+  background: rgba(252,228,236,0.92) !important;
+  color: #ad1457 !important;
+  border-color: rgba(217,109,153,0.22) !important;
+}
+.pm-theme-clean .pm-hint {
+  background: rgba(232,245,233,0.94) !important;
+  color: #2e7d32 !important;
+  border-color: rgba(94,179,106,0.22) !important;
+}
+.pm-theme-default .pm-hint {
+  background: rgba(236,239,241,0.92) !important;
+  color: #546e7a !important;
+  border-color: rgba(144,164,174,0.22) !important;
+}
+@media (max-width: 430px){
+  .pm-card { flex-basis: 154px !important; min-height: 134px !important; padding: 13px 12px 12px !important; }
+  .pm-basket-img { width: 33px; height: 33px; }
+  .pm-name { font-size: 15px !important; }
+}
+
 </style>
 </head>
 <body>
@@ -4954,6 +5086,44 @@ function initPromoMarqueeAutoScroll(){
 }
 
 
+
+function pmTitleFirstLine5Html(title){
+  const chars = Array.from(String(title||'').trim());
+  const first = chars.slice(0,5).join('');
+  const rest = chars.slice(5).join('');
+  const f = escapeHtml(first || '品類');
+  const r = escapeHtml(rest || '');
+  return r ? `${f}<br><span class="pm-name-rest">${r}</span>` : f;
+}
+
+function pmCollectBasketImages(sec){
+  try{
+    const imgs = [];
+    const seen = new Set();
+    const nodes = Array.from(sec.querySelectorAll('.p-img-box img.p-img, img.p-img'));
+    for(const img of nodes){
+      let src = String(img.getAttribute('src') || img.currentSrc || img.src || '').trim();
+      if(!src || src.indexOf('data:image') === 0) continue;
+      if(seen.has(src)) continue;
+      seen.add(src);
+      imgs.push(src);
+      if(imgs.length >= 3) break;
+    }
+    return imgs;
+  }catch(e){ return []; }
+}
+
+function pmBasketHtml(imgs){
+  try{
+    const arr = Array.isArray(imgs) ? imgs.filter(Boolean).slice(0,3) : [];
+    if(arr.length === 0){
+      return `<div class="pm-basket pm-basket-empty"><span class="material-icons-round">shopping_basket</span></div>`;
+    }
+    const imgsHtml = arr.map((src, i)=>`<img class="pm-basket-img pm-basket-img-${i+1}" src="${String(src).replace(/"/g,'&quot;')}" loading="lazy" decoding="async" onerror="this.style.display='none'">`).join('');
+    return `<div class="pm-basket">${imgsHtml}<div class="pm-basket-base"></div></div>`;
+  }catch(e){ return `<div class="pm-basket pm-basket-empty"><span class="material-icons-round">shopping_basket</span></div>`; }
+}
+
 function renderPromoMarquee(){
   try{
     const slot = document.getElementById("promoMarqueeSlot");
@@ -4967,7 +5137,8 @@ function renderPromoMarquee(){
       if(!title) continue;
       const theme = pmThemeFromTitle(title);
       const summary = buildPromoMarqueeSummary(title);
-      items.push({ title, theme, summary });
+      const basketImages = pmCollectBasketImages(sec);
+      items.push({ title, theme, summary, basketImages });
     }
 
     if(items.length === 0){
@@ -5000,11 +5171,11 @@ function renderPromoMarquee(){
           const card = document.createElement("div");
           const theme = it.theme || "default";
           card.className = `pm-card pm-theme-${theme}`;
-          const t = escapeHtml(it.title);
+          const t = pmTitleFirstLine5Html(it.title);
           const s = escapeHtml(it.summary || "多重優惠");
-          const k = escapeHtml(pmGuideKicker(it.title));
+          const basket = pmBasketHtml(it.basketImages || []);
           card.innerHTML = `
-            <div class="pm-chip">${k}</div>
+            ${basket}
             <div class="pm-name">${t}</div>
             <div class="pm-hint">${s}</div>
           `;
