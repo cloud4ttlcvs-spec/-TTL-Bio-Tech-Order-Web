@@ -5906,8 +5906,7 @@ function getStarProducts(){
     const codesRaw = uiGet('star|codes', uiGet('ui|star_codes','')).trim();
     let picks = [];
     if(codesRaw){
-      const codes = codesRaw.split(/[\s,;
-]+/).map(s=>s.trim()).filter(Boolean);
+      const codes = codesRaw.split(/[\s,;\n]+/).map(s=>s.trim()).filter(Boolean);
       const set = new Set(codes);
       picks = vis.filter(p => p && set.has(String(p.code||'').trim()));
       const map = new Map(picks.map(p => [String(p.code||'').trim(), p]));
