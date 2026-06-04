@@ -2906,6 +2906,75 @@ body.cfg-error .btn-bundle{
   .pm-name { font-size: 15px !important; }
 }
 
+
+/* ==========================================================
+   V7.13 修正：商品籃放大、圖片補抓、主打星入口恢復
+   ========================================================== */
+.sys-ann .star-dock-btn{
+  width: 46px;
+  height: 46px;
+  border-radius: 14px;
+  margin-right: 0;
+  flex: 0 0 46px;
+  background: linear-gradient(135deg, #fff7ed, #ffffff);
+  border: 1px solid rgba(245,158,11,0.22);
+  color: #f59e0b;
+  box-shadow: inset 0 2px 4px rgba(255,255,255,0.92), 0 8px 18px rgba(245,158,11,0.12);
+}
+.sys-ann .star-dock-btn.hidden{ display:none; }
+.sys-ann .star-dock-btn:not(.hidden){ display:inline-flex; }
+.sys-ann .star-dock-btn .material-icons-round{ font-size: 24px; }
+
+.pm-card{
+  flex: 0 0 176px !important;
+  min-height: 172px !important;
+  padding: 15px 14px 14px !important;
+}
+.pm-basket{
+  height: 70px !important;
+  margin: 0 0 11px 0 !important;
+}
+.pm-basket::before{
+  left: 14px !important;
+  right: 14px !important;
+  bottom: 12px !important;
+  height: 31px !important;
+  border-radius: 13px 13px 18px 18px !important;
+}
+.pm-basket-base{
+  left: 23px !important;
+  right: 23px !important;
+  bottom: 8px !important;
+  height: 4px !important;
+}
+.pm-basket-img{
+  width: 52px !important;
+  height: 52px !important;
+  border-radius: 15px !important;
+  padding: 4px !important;
+  box-shadow: 0 10px 18px rgba(17,24,39,0.10) !important;
+}
+.pm-basket-img + .pm-basket-img{ margin-left: -13px !important; }
+.pm-basket-img-1{ transform: rotate(-7deg) translateY(2px) !important; }
+.pm-basket-img-2{ transform: translateY(-6px) !important; z-index:3; }
+.pm-basket-img-3{ transform: rotate(7deg) translateY(2px) !important; }
+.pm-basket-empty{
+  height: 62px !important;
+  margin-bottom: 12px !important;
+}
+.pm-basket-empty .material-icons-round{ font-size: 34px !important; }
+.pm-name{
+  min-height: 44px !important;
+  margin-bottom: 10px !important;
+}
+@media (max-width: 430px){
+  .sys-ann .star-dock-btn{ width: 42px; height: 42px; flex-basis:42px; }
+  .sys-ann .star-dock-btn .material-icons-round{ font-size:22px; }
+  .pm-card{ flex-basis: 166px !important; min-height: 166px !important; }
+  .pm-basket{ height: 66px !important; }
+  .pm-basket-img{ width: 50px !important; height: 50px !important; }
+}
+
 </style>
 </head>
 <body>
@@ -5096,18 +5165,63 @@ function pmTitleFirstLine5Html(title){
   return r ? `${f}<br><span class="pm-name-rest">${r}</span>` : f;
 }
 
-function pmCollectBasketImages(sec){
+function pmCollectBasketImages(sec, title){
   try{
     const imgs = [];
     const seen = new Set();
-    const nodes = Array.from(sec.querySelectorAll('.p-img-box img.p-img, img.p-img'));
-    for(const img of nodes){
-      let src = String(img.getAttribute('src') || img.currentSrc || img.src || '').trim();
-      if(!src || src.indexOf('data:image') === 0) continue;
-      if(seen.has(src)) continue;
+    const pushSrc = (src)=>{
+      src = String(src || '').trim();
+      if(!src || src.indexOf('data:image') === 0) return false;
+      if(seen.has(src)) return false;
       seen.add(src);
       imgs.push(src);
-      if(imgs.length >= 3) break;
+      return imgs.length >= 3;
+    };
+
+    // 1) 先抓目前 DOM 已渲染的商品圖；若該分類有被虛擬列表延遲渲染，再走資料層補抓。
+    const nodes = Array.from((sec || document).querySelectorAll('.p-img-box img.p-img, img.p-img'));
+    for(const img of nodes){
+      if(pushSrc(img.getAttribute('src') || img.currentSrc || img.src)) return imgs;
+    }
+
+    // 2) 從 PRODUCTS 資料層補抓，避免虛擬列表尚未產生 DOM 時導致分類沒有圖片。
+    const t = String(title || '').trim();
+    const isMatch = (p)=>{
+      if(!p || p.is_hidden) return false;
+      const cat = String(p.category || '');
+      const name = String(p.name || '');
+      if(t.includes('清潔-')){
+        if(!cat.includes('清潔')) return false;
+        if(t === '清潔-洗潔') return name.includes('洗潔');
+        if(t === '清潔-洗衣') return name.includes('洗衣');
+        if(t === '清潔-皂') return name.includes('皂');
+        return true;
+      }
+      return !!t && (cat.includes(t) || cat.split(/[\s_]/)[0] === t || name.includes(t));
+    };
+    const pickFrom = (arr)=>{
+      for(const p of arr || []){
+        if(pushSrc(p && p.photo)) return true;
+      }
+      return false;
+    };
+    if(Array.isArray(PRODUCTS)){
+      pickFrom(PRODUCTS.filter(isMatch));
+      if(imgs.length < 2){
+        const theme = pmThemeFromTitle(t);
+        const fallback = PRODUCTS.filter(p=>{
+          if(!p || p.is_hidden) return false;
+          const cat = String(p.category||'');
+          const name = String(p.name||'');
+          if(theme === 'health') return cat.includes('保健') || name.includes('保健');
+          if(theme === 'beauty') return cat.includes('美容') || name.includes('面膜') || name.includes('精華') || name.includes('乳');
+          if(theme === 'clean') return cat.includes('清潔') || name.includes('洗') || name.includes('皂');
+          if(theme === 'drink') return cat.includes('飲') || name.includes('飲');
+          return false;
+        });
+        pickFrom(fallback);
+      }
+      if(imgs.length < 2) pickFrom(PRODUCTS.filter(p=>p && !p.is_hidden && p.photo));
     }
     return imgs;
   }catch(e){ return []; }
@@ -5137,7 +5251,7 @@ function renderPromoMarquee(){
       if(!title) continue;
       const theme = pmThemeFromTitle(title);
       const summary = buildPromoMarqueeSummary(title);
-      const basketImages = pmCollectBasketImages(sec);
+      const basketImages = pmCollectBasketImages(sec, title);
       items.push({ title, theme, summary, basketImages });
     }
 
@@ -6244,6 +6358,8 @@ function showStarDock(show){
 
     if(show){
       btn.classList.remove('hidden');
+      btn.setAttribute('title','主打星');
+      btn.setAttribute('aria-label','主打星入口');
       // Fix: button could be left at opacity:0 (clickable but invisible)
       btn.style.opacity = '1';
       btn.style.visibility = 'visible';
@@ -6294,11 +6410,12 @@ function refreshStarDockBadge(){
 
 function initStarHero(){
   try{
-    if(starIsDismissed()){
-      showStarDock(true);
+    const hasStar = (typeof getStarProducts === 'function') ? ((getStarProducts() || []).length > 0) : false;
+    // V7.13: 主打星入口固定恢復顯示，只要有主打星商品即可開啟，不再等到主打星彈窗關閉後才出現。
+    showStarDock(!!hasStar);
+    if(hasStar){
       try{ refreshStarDockBadge(); }catch(e){}
     }else{
-      showStarDock(false);
       try{ updateStarDockBadge(0); }catch(e){}
     }
 
