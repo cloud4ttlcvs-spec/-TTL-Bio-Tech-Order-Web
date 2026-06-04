@@ -3000,6 +3000,43 @@ body.cfg-error .btn-bundle{
   .sys-ann-main .star-dock-btn.sys-ann-icon{ width:42px !important; height:42px !important; flex-basis:42px !important; }
 }
 
+
+/* ==========================================================
+   V7.15 修正：單張商品籃放大、主打星核心補回
+   ========================================================== */
+.pm-basket.pm-basket-single{
+  height: 90px !important;
+  margin-bottom: 8px !important;
+}
+.pm-basket.pm-basket-single::before{
+  left: 36px !important;
+  right: 36px !important;
+  bottom: 13px !important;
+  height: 34px !important;
+  border-radius: 15px 15px 20px 20px !important;
+}
+.pm-basket.pm-basket-single .pm-basket-base{
+  left: 46px !important;
+  right: 46px !important;
+  bottom: 8px !important;
+}
+.pm-basket.pm-basket-single .pm-basket-img{
+  width: 78px !important;
+  height: 78px !important;
+  border-radius: 18px !important;
+  padding: 5px !important;
+  transform: translateY(-10px) !important;
+  z-index: 3 !important;
+}
+.pm-card:has(.pm-basket-single){
+  min-height: 190px !important;
+}
+@media (max-width: 430px){
+  .pm-basket.pm-basket-single{ height: 84px !important; }
+  .pm-basket.pm-basket-single .pm-basket-img{ width: 75px !important; height: 75px !important; }
+  .pm-card:has(.pm-basket-single){ min-height: 184px !important; }
+}
+
 </style>
 </head>
 <body>
@@ -5290,7 +5327,8 @@ function pmBasketHtml(imgs){
       return `<div class="pm-basket pm-basket-empty"><span class="material-icons-round">shopping_basket</span></div>`;
     }
     const imgsHtml = arr.map((src, i)=>`<img class="pm-basket-img pm-basket-img-${i+1}" src="${String(src).replace(/"/g,'&quot;')}" loading="lazy" decoding="async" onerror="this.style.display='none'">`).join('');
-    return `<div class="pm-basket">${imgsHtml}<div class="pm-basket-base"></div></div>`;
+    const cls = arr.length === 1 ? 'pm-basket pm-basket-single' : 'pm-basket';
+    return `<div class="${cls}">${imgsHtml}<div class="pm-basket-base"></div></div>`;
   }catch(e){ return `<div class="pm-basket pm-basket-empty"><span class="material-icons-round">shopping_basket</span></div>`; }
 }
 
@@ -5806,6 +5844,82 @@ try{
       };
     }
   }catch(e){}
+}
+
+/* --- V7.15: Star Hero core restored from stable V7.6 --- */
+let __STAR_AUTO_PENDING__ = false;
+let __STAR_OPEN__ = false;
+let __STAR_CLOSING__ = false;
+let __STAR_PENDING_NAV__ = null;
+let __STAR_PENDING_BACK__ = false;
+let __STAR_ATT_TIMER__ = null;
+let __STAR_SCROLL_TIMER__ = null;
+let __STAR_ITEMS__ = [];
+let __STAR_ACTIVE_IDX__ = 0;
+let __STAR_SUBTITLE_TPL__ = '';
+let __STAR_TEMPLATE_HTML__ = null;
+let __STAR_CLOSE_WATCHDOG__ = null;
+let __STAR_REOPEN_PENDING__ = false;
+
+function __starCaptureTemplate(){
+  try{
+    const ov = document.getElementById('starHeroOverlay');
+    if(!ov) return;
+    if(__STAR_TEMPLATE_HTML__ == null){
+      __STAR_TEMPLATE_HTML__ = ov.innerHTML;
+    }
+  }catch(e){}
+}
+function __starRebuildDOM(){
+  try{
+    const ov = document.getElementById('starHeroOverlay');
+    if(!ov) return;
+    __starCaptureTemplate();
+    if(__STAR_TEMPLATE_HTML__ != null){
+      ov.innerHTML = __STAR_TEMPLATE_HTML__;
+    }
+  }catch(e){}
+}
+function starIsDismissed(){
+  try{ return localStorage.getItem('ttl_star_hero_dismissed') === '1'; }catch(e){ return false; }
+}
+function setStarDismissed(){
+  try{ localStorage.setItem('ttl_star_hero_dismissed','1'); }catch(e){}
+}
+function getStarProducts(){
+  try{
+    const list = Array.isArray(PRODUCTS) ? PRODUCTS.slice() : [];
+    const vis = list.filter(p => p && !p.isGift && !p.isHidden && !p.is_hidden && String(p.photo||'').trim() !== '');
+
+    const pickNew = ()=>{
+      const news = vis.filter(p => p.isNew || p.is_new || String(p.badge||'').includes('主打') || String(p.tags||'').includes('主打'));
+      const base = (news.length ? news : vis).slice();
+      base.sort((a,b)=>{
+        const aa = String(a.category||'').includes('加價購') ? 1 : 0;
+        const bb = String(b.category||'').includes('加價購') ? 1 : 0;
+        if(aa !== bb) return aa - bb;
+        return (String(a.name||'') > String(b.name||'')) ? 1 : -1;
+      });
+      return base.slice(0,8);
+    };
+
+    const codesRaw = uiGet('star|codes', uiGet('ui|star_codes','')).trim();
+    let picks = [];
+    if(codesRaw){
+      const codes = codesRaw.split(/[\s,;
+]+/).map(s=>s.trim()).filter(Boolean);
+      const set = new Set(codes);
+      picks = vis.filter(p => p && set.has(String(p.code||'').trim()));
+      const map = new Map(picks.map(p => [String(p.code||'').trim(), p]));
+      picks = codes.map(c => map.get(c)).filter(Boolean);
+      if(picks.length === 0) picks = pickNew();
+    }else{
+      picks = pickNew();
+    }
+    return picks.slice(0,8);
+  }catch(e){
+    return [];
+  }
 }
 
 function getStarHeroCopy(){
