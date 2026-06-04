@@ -4419,7 +4419,7 @@ function renderPromoMarquee(){
           card.className = `pm-card pm-theme-${theme}`;
           const t = escapeHtml(it.title);
           const s = escapeHtml(it.summary || "多重優惠");
-          const chip = escapeHtml(pmChipLabel(title));
+          const chip = escapeHtml(pmChipLabel(it.title));
           card.innerHTML = `
             <div class="pm-chip">${chip}</div>
             <div class="pm-name">${t}</div>
