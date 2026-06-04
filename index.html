@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"/>
-<title>生技產品訂購系統</title>
+<title>2026生技展訂購系統</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&family=Roboto:wght@500;700;900&display=swap" rel="stylesheet">
 <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
@@ -125,57 +125,94 @@ main { padding: 12px; max-width: 900px; margin: 0 auto; margin-top: 10px; }
 
 /* Promo Marquee (優惠導覽：排行榜與公告之間) */
 #promoMarqueeSlot{
-  margin: 0 12px 12px;
-  padding: 12px;
-  border-radius: 16px;
-  border: 1px solid rgba(0,0,0,0.06);
-  background: rgba(255,255,255,0.92);
-  box-shadow: 0 12px 30px rgba(0,0,0,0.06);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  position: relative;
+  margin: 0 12px 14px;
+  padding: 12px 12px 14px;
+  border-radius: 20px;
+  border: 1px solid rgba(111,183,155,0.20);
+  background:
+    radial-gradient(circle at 12% 18%, rgba(255,255,255,0.92), rgba(255,255,255,0) 22%),
+    radial-gradient(circle at 88% 24%, rgba(255,236,210,0.44), rgba(255,236,210,0) 24%),
+    linear-gradient(135deg, rgba(243,250,247,0.96), rgba(251,255,252,0.95));
+  box-shadow: 0 14px 34px rgba(36, 92, 74, 0.10);
+  overflow: hidden;
+}
+#promoMarqueeSlot::before,
+#promoMarqueeSlot::after{
+  content:'';
+  position:absolute;
+  border-radius:999px;
+  pointer-events:none;
+  opacity:.42;
+}
+#promoMarqueeSlot::before{
+  width: 118px; height: 118px;
+  right:-28px; top:-36px;
+  background: radial-gradient(circle at center, rgba(121, 191, 164, 0.28), rgba(121,191,164,0));
+}
+#promoMarqueeSlot::after{
+  width: 94px; height: 94px;
+  left:-18px; bottom:-38px;
+  background: radial-gradient(circle at center, rgba(255,193,122,0.24), rgba(255,193,122,0));
 }
 .pm-head{
+  position: relative;
+  z-index: 1;
   display:flex;
-  align-items:center;
+  align-items:flex-start;
   justify-content:space-between;
   gap: 10px;
-  margin-bottom: 8px;
+  margin-bottom: 10px;
 }
+.pm-head-main{ min-width:0; }
 .pm-title{
   display:flex;
   align-items:center;
-  gap: 8px;
-  font-weight: 900;
-  color: #111827;
+  gap: 9px;
+  font-weight: 950;
+  color: #1f4d41;
+  letter-spacing: .01em;
 }
-.pm-title .material-icons-round{ color:#ff8f00; font-size:20px; }
-
-.pm-shell{ position: relative; }
+.pm-title .material-icons-round{
+  color:#e7a24e;
+  font-size:20px;
+  background: rgba(255, 245, 228, 0.88);
+  border: 1px solid rgba(231,162,78,0.22);
+  border-radius: 999px;
+  padding: 6px;
+  box-shadow: 0 8px 18px rgba(231,162,78,0.14);
+}
+.pm-subtitle{
+  margin-top: 4px;
+  font-size: 12px;
+  font-weight: 700;
+  color: rgba(37,82,68,0.70);
+}
+.pm-shell{ position: relative; z-index:1; }
 .pm-viewport{
   overflow-x:auto;
   overflow-y:hidden;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
-  padding: 2px 36px 8px; /* 留給左右箭頭 */
+  padding: 2px 36px 10px;
   scroll-behavior: smooth;
-
   touch-action: pan-y;
   overscroll-behavior: contain;
 }
 .pm-viewport::-webkit-scrollbar{ display:none; }
 .pm-track{
   display:flex;
-  gap: 10px;
+  gap: 12px;
   padding: 2px 2px 2px;
 }
-
 .pm-card{
-  flex: 0 0 132px; /* 窄卡：5字寬節奏 */
-  border-radius: 16px;
-  padding: 12px 12px 10px 14px;
-  background: rgba(255,255,255,0.94);
-  border: 1px solid rgba(0,0,0,0.06);
-  box-shadow: 0 10px 24px rgba(0,0,0,0.06);
+  flex: 0 0 144px;
+  min-height: 90px;
+  border-radius: 999px;
+  padding: 14px 18px 12px 18px;
+  background: linear-gradient(135deg, rgba(255,255,255,0.98), rgba(248,253,250,0.95));
+  border: 1px solid rgba(131,182,160,0.18);
+  box-shadow: 0 10px 24px rgba(51,101,84,0.08);
   cursor:pointer;
   transition: transform .12s ease, box-shadow .18s ease, filter .18s ease;
   position:relative;
@@ -184,55 +221,69 @@ main { padding: 12px; max-width: 900px; margin: 0 auto; margin-top: 10px; }
 .pm-card::before{
   content:'';
   position:absolute;
-  left:0; top:0; bottom:0;
-  width:6px;
-  background: var(--pm-rail, #cfd8dc);
-  border-radius: 16px 0 0 16px;
-  opacity: 0.95;
+  inset: 10px auto 10px 10px;
+  width:10px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, var(--pm-rail, #cfd8dc), rgba(255,255,255,0));
+  opacity: 0.92;
   pointer-events:none;
 }
 .pm-card::after{
   content:'';
   position:absolute;
   inset:0;
-  background: linear-gradient(135deg, var(--pm-wash, rgba(207,216,220,0.16)) 0%, rgba(255,255,255,0) 62%);
+  background: radial-gradient(circle at 80% 18%, rgba(255,255,255,0.68), rgba(255,255,255,0) 28%), linear-gradient(135deg, var(--pm-wash, rgba(207,216,220,0.14)) 0%, rgba(255,255,255,0) 66%);
   pointer-events:none;
 }
-.pm-card:hover{ filter: brightness(1.02); box-shadow: 0 14px 28px rgba(0,0,0,0.08); }
+.pm-card:hover{ filter: brightness(1.02); box-shadow: 0 14px 28px rgba(45,95,77,0.12); }
 .pm-card:active{ transform: translateY(1px) scale(0.996); }
-
-
 .pm-card > *{ position: relative; z-index: 1; }
+.pm-chip{
+  display:inline-flex;
+  align-items:center;
+  gap:4px;
+  margin-left: 10px;
+  margin-bottom: 7px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.78);
+  border: 1px solid rgba(255,255,255,0.72);
+  color: #4e6d63;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: .02em;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.85);
+}
 .pm-name{
   font-weight: 950;
-  color:#111827;
-  font-size: 16px; /* 主標題放大 */
-  line-height:1.18;
+  color:#173d35;
+  font-size: 16px;
+  line-height:1.16;
   display:-webkit-box;
   -webkit-line-clamp:2;
   -webkit-box-orient: vertical;
   overflow:hidden;
-  min-height: 40px;
-  max-width: 5.0em; /* 約 5 個中文字寬 */
+  min-height: 38px;
+  max-width: 5.4em;
+  margin-left: 10px;
 }
 .pm-hint{
-  margin-top: 6px;
+  margin-top: 5px;
+  margin-left: 10px;
   font-size: 12px;
   font-weight: 800;
-  color: #455a64;
-  line-height: 1.25;
+  color: #57746b;
+  line-height: 1.22;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   max-width: 100%;
 }
-
-.pm-theme-drink{ --pm-rail: #ffa726; --pm-wash: rgba(255,167,38,0.16); }
-.pm-theme-health{ --pm-rail: #64b5f6; --pm-wash: rgba(100,181,246,0.16); }
-.pm-theme-beauty{ --pm-rail: #f48fb1; --pm-wash: rgba(244,143,177,0.16); }
-.pm-theme-clean{ --pm-rail: #81c784; --pm-wash: rgba(129,199,132,0.16); }
-.pm-theme-default{ --pm-rail: #cfd8dc; --pm-wash: rgba(207,216,220,0.16); }
-
+.pm-theme-drink{ --pm-rail: #f2a343; --pm-wash: rgba(242,163,67,0.12); }
+.pm-theme-health{ --pm-rail: #6eb2e8; --pm-wash: rgba(110,178,232,0.14); }
+.pm-theme-beauty{ --pm-rail: #e89ab8; --pm-wash: rgba(232,154,184,0.14); }
+.pm-theme-clean{ --pm-rail: #86c88d; --pm-wash: rgba(134,200,141,0.14); }
+.pm-theme-default{ --pm-rail: #b0bec5; --pm-wash: rgba(176,190,197,0.14); }
 .pm-nav{
   position:absolute;
   top: 50%;
@@ -240,16 +291,16 @@ main { padding: 12px; max-width: 900px; margin: 0 auto; margin-top: 10px; }
   width: 34px;
   height: 34px;
   border-radius: 999px;
-  background: rgba(255,255,255,0.72);
-  border: 1px solid rgba(0,0,0,0.08);
-  box-shadow: 0 10px 20px rgba(0,0,0,0.10);
+  background: rgba(255,255,255,0.76);
+  border: 1px solid rgba(74,111,98,0.10);
+  box-shadow: 0 10px 20px rgba(37,82,68,0.12);
   backdrop-filter: blur(6px);
   -webkit-backdrop-filter: blur(6px);
   display:flex;
   align-items:center;
   justify-content:center;
   cursor:pointer;
-  opacity: 0.88;
+  opacity: 0.92;
   user-select:none;
   -webkit-tap-highlight-color: transparent;
 }
@@ -258,10 +309,26 @@ main { padding: 12px; max-width: 900px; margin: 0 auto; margin-top: 10px; }
 .pm-nav.left{ left: 4px; }
 .pm-nav.right{ right: 4px; }
 .pm-nav.hidden{ display:none; }
-.pm-nav .material-icons-round{ font-size: 20px; color: rgba(17,24,39,0.72); }
-
-#promoMarqueeCtaHost .pm-cta-btn{ margin-left: 6px; }
-
+.pm-nav .material-icons-round{ font-size: 20px; color: rgba(23,61,53,0.72); }
+#promoMarqueeCtaHost .pm-cta-btn,
+#promoMarqueeCtaHost .sys-ann-cta{ margin-left: 6px; }
+#promoMarqueeCtaHost .sys-ann-cta{
+  padding: 10px 14px;
+  background: linear-gradient(135deg, rgba(255,250,240,0.98), rgba(255,255,255,0.92));
+  border-color: rgba(229,157,76,0.30);
+  color: #7a4c14;
+  box-shadow: 0 10px 22px rgba(229,157,76,0.12);
+}
+#promoMarqueeCtaHost .sys-ann-cta .cta-icon{
+  color: #d48822;
+  margin-right: 5px;
+}
+@media (max-width: 420px){
+  #promoMarqueeSlot{ padding: 12px 10px 14px; }
+  .pm-card{ flex-basis: 138px; }
+  .pm-subtitle{ font-size: 11px; }
+  #promoMarqueeCtaHost .sys-ann-cta .cta-text{ font-size: 12px; }
+}
 
 /* --- Float Bar & Buttons --- */
 #float-bar { 
@@ -275,14 +342,48 @@ main { padding: 12px; max-width: 900px; margin: 0 auto; margin-top: 10px; }
   transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 #float-bar.hidden { transform: translateY(200%); }
-.fb-total { font-size: 18px; font-weight: 700; }
+.fb-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
+.fb-total { font-size: 18px; font-weight: 700; line-height: 1.15; }
+.fb-meta { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; min-width: 0; }
 .fb-count { font-size: 12px; opacity: 0.7; }
+.fb-ship-badge {
+  display: none;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 900;
+  line-height: 1.2;
+  white-space: nowrap;
+  background: rgba(255,248,225,0.16);
+  border: 1px solid rgba(255,224,178,0.28);
+  color: #ffe0b2;
+}
+.fb-ship-badge.ok { background: rgba(232,245,233,0.16); border-color: rgba(200,230,201,0.35); color: #e8f5e9; }
+.fb-ship-check{
+  color:#69f0ae;
+  -webkit-text-fill-color:#69f0ae;
+  font-weight: 950;
+  line-height: 1;
+  display:inline-flex;
+  align-items:center;
+  transform: translateY(-0.5px);
+}
+@media (max-width: 480px){
+  .fb-btn{ padding: 10px 18px; font-size: 14px; }
+  .fb-ship-badge{ font-size: 10px; padding: 2px 7px; }
+}
 .fb-btn { 
   background: var(--accent); color: #fff; padding: 10px 24px; border-radius: 40px; 
   font-weight: 700; font-size: 15px; box-shadow: 0 4px 15px rgba(255,111,0,0.4); 
   display: flex; align-items: center; gap: 6px; transition: 0.1s;
 }
 .fb-btn:active { background: #e65100; transform: scale(0.98); }
+@media (max-width: 480px){
+  #float-bar .fb-btn{ padding: 10px 18px; font-size: 14px; }
+  #float-bar .fb-ship-badge{ font-size: 10px; padding: 2px 7px; }
+}
 
 #gift-fab {
   position: fixed; bottom: calc(90px + var(--safe-bottom) + var(--kb)); left: 20px;
@@ -317,11 +418,12 @@ main { padding: 12px; max-width: 900px; margin: 0 auto; margin-top: 10px; }
   box-shadow: 0 8px 30px rgba(0,0,0,0.3); 
   z-index: 3000; transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.4s;
   backdrop-filter: blur(8px);
-  transform: translateY(-150%); opacity: 0; pointer-events: none;
+  transform: translateY(-150%); opacity: 0; pointer-events: none; cursor: pointer;
 }
 #top-notify.show { transform: translateY(0); opacity: 1; pointer-events: auto; }
 .tn-head { display: flex; align-items: center; gap: 8px; font-weight: 700; color: #ffd54f; font-size: 14px; margin-bottom: 2px; }
 .tn-body { font-size: 13px; line-height: 1.5; color: #fff; white-space: normal; }
+.tn-cta { margin-top: 4px; font-size: 12px; font-weight: 800; color: #ffd54f; opacity: 0.95; }
 
 /* --- Milestone Card --- */
 #milestone-overlay {
@@ -380,7 +482,13 @@ main { padding: 12px; max-width: 900px; margin: 0 auto; margin-top: 10px; }
   line-height: 1;
   border: 1px solid transparent;
   letter-spacing: .2px;
-  flex: 0 0 auto;
+  flex: 0 0 54px;
+  width: 54px;
+  min-width: 54px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
 }
 .ms-badge-all{
   background: rgba(230,81,0,0.12);
@@ -516,6 +624,43 @@ main { padding: 12px; max-width: 900px; margin: 0 auto; margin-top: 10px; }
 /* FIX: Multi-Image CSS */
 .g-img-row { display: flex; gap: 4px; align-items: center; }
 .g-thumb { width: 40px; height: 40px; object-fit: contain; border: 1px solid #eee; border-radius: 6px; background: #fff; }
+.gift-img-click{
+  cursor: zoom-in;
+  transition: transform .14s ease, box-shadow .18s ease, border-color .18s ease;
+}
+.gift-img-click:active{ transform: scale(0.97); }
+.ms-d-media{ flex: 0 0 76px; }
+.ms-d-media .g-thumb{ width:76px; height:76px; border-radius: 14px; }
+.ms-d-media .g-img-row{ justify-content:center; }
+.gift-list .gift-item{
+  align-items: stretch;
+  gap: 14px;
+  padding: 14px;
+  border-radius: 16px;
+}
+.gift-list .gift-item > div:nth-child(2){
+  flex: 0 0 108px !important;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+.gift-list .g-img-row{ justify-content:center; width:108px; height:108px; }
+.gift-list .g-thumb{ width:104px; height:104px; border-radius: 18px; box-shadow: 0 8px 20px rgba(0,0,0,0.06); }
+.gift-list .g-thumb:not(:first-child){ display:none; }
+.gift-list .g-info{ display:flex; flex-direction:column; justify-content:center; min-width:0; }
+.gift-list .g-amt{ font-size:13px; }
+.gift-list .g-name{ font-size:15px; font-weight:900; line-height:1.3; color:#263238; }
+.pm-gift-media{ flex: 0 0 104px; }
+.pm-gift-media .g-thumb{ width: 92px; height: 92px; border-radius: 16px; box-shadow: 0 8px 20px rgba(0,0,0,0.05); }
+.pm-gift-media .g-img-row{ justify-content:center; width:96px; }
+@media (max-width: 380px){
+  .gift-list .gift-item{ gap: 10px; padding: 12px; }
+  .gift-list .gift-item > div:nth-child(2){ flex-basis: 92px !important; }
+  .gift-list .g-img-row{ width:92px; height:92px; }
+  .gift-list .g-thumb{ width:88px; height:88px; border-radius: 16px; }
+  .pm-gift-media{ flex-basis: 90px; }
+  .pm-gift-media .g-thumb{ width:82px; height:82px; }
+}
 
 /* --- General --- */
 .highlight { background-color: #fff176 !important; color: #212121 !important; font-weight: 900; border-radius: 2px; padding: 0 2px; }
@@ -603,7 +748,8 @@ main { padding: 12px; max-width: 900px; margin: 0 auto; margin-top: 10px; }
 .bg-purple { background: rgba(171, 71, 188, 0.95); }
 .bg-teal { background: #26a69a; }
 
-.p-body { padding: 12px; flex: 1; display: flex; flex-direction: column; justify-content: space-between; position: relative; }
+.p-body { padding: 12px; flex: 1; display: flex; flex-direction: column; justify-content: space-between; position: relative; min-height: 118px; }
+.p-main { min-width: 0; display: flex; flex-direction: column; }
 .p-title { font-size: 14px; font-weight: 700; line-height: 1.4; color: #37474f; margin-bottom: 4px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; height: 40px; }
 .p-code { font-size: 11px; color: #cfd8dc; margin-bottom: 8px; }
 .p-code-chip{
@@ -624,7 +770,23 @@ main { padding: 12px; max-width: 900px; margin: 0 auto; margin-top: 10px; }
 }
 
 
-.p-pill-row{ margin-top: 6px; }
+.p-pill-row{ margin-top: 6px; display:flex; align-items:center; gap:6px; flex-wrap:wrap; min-height:24px; }
+.p-bundle-count-pill{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  font-size:12px;
+  font-weight:900;
+  color:#00695c;
+  background:rgba(0,137,123,.10);
+  border:1px solid rgba(0,137,123,.24);
+  padding:3px 8px;
+  border-radius:999px;
+  line-height:1.15;
+  white-space:nowrap;
+  cursor:pointer;
+}
+.p-bundle-count-pill:active{ transform: translateY(1px); background:rgba(0,137,123,.16); }
 
 .p-price-row { display: flex; align-items: baseline; gap: 6px; margin-top: 2px; justify-content: flex-start; }
 .p-price { font-size: var(--price-size-lg); font-weight: 800; color: #263238; }
@@ -665,7 +827,8 @@ main { padding: 12px; max-width: 900px; margin: 0 auto; margin-top: 10px; }
   align-items: center;
   justify-content: flex-end; /* stepper 永遠靠右，避免擠壓 */
   gap: 10px;
-  margin-top: 10px;
+  margin-top: auto;
+  padding-top: 8px;
 }
 .p-buy-row.no-pill{ justify-content: flex-end; }
 .p-buy-row .stepper{ margin-top: 0 !important; }
@@ -722,8 +885,9 @@ header { position: sticky; top: 0; z-index: 1000; background: rgba(255,255,255,0
 .c-spec { font-size: 12px; margin-bottom: 2px; color:#90a4ae; }
 .c-price-box { margin-top: 2px; font-weight:700; font-size:15px; color:#263238; }
 .c-old { text-decoration: line-through; color: #90a4ae; font-size: 12px; margin-right: 6px; }
-.c-tags { margin-top: 2px; }
-.c-tag { font-size: 11px; padding: 3px 8px; border-radius: 6px; font-weight: 600; display: inline-flex; align-items: center; gap: 4px; }
+.c-tags { margin-top: 4px; display: flex; flex-wrap: wrap; gap: 4px; }
+.c-tag { font-size: 11px; padding: 3px 8px; border-radius: 6px; font-weight: 600; display: inline-flex; align-items: center; gap: 4px; line-height: 1.2; }
+.c-price-box { line-height: 1.25; }
 .c-tag.save { background: #fff3e0; color: #e65100; border: 1px solid #ffe0b2; }
 .c-tag.warn { background: #ffebee; color: #c62828; border: 1px solid #ffcdd2; }
 .c-ctrl { display: flex; flex-direction: column; align-items: flex-end; justify-content: center; }
@@ -858,9 +1022,83 @@ input:focus, select:focus { border-color: var(--primary); background: #fff; outl
 .rc-meta { display: flex; justify-content: space-between; font-size: 13px; color: #78909c; }
 .rc-actions { padding: 20px; background: #fafafa; border-top: 1px solid #eee; }
 .btn-email { width: 100%; padding: 12px; border: 1px solid #cfd8dc; background: #fff; border-radius: 10px; color: #546e7a; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 10px; }
+.btn-save-rc { width: 100%; padding: 15px; background: linear-gradient(135deg, #00897b, #00695c); color: #fff; border: none; border-radius: 12px; font-weight: 900; font-size: 16px; display:flex; align-items:center; justify-content:center; gap:8px; box-shadow:0 8px 18px rgba(0,137,123,.22); }
+.btn-save-rc:active { transform: scale(.985); opacity:.92; }
 .btn-close-rc { width: 100%; padding: 14px; background: var(--text-main); color: #fff; border: none; border-radius: 10px; font-weight: 700; font-size: 16px; }
+.btn-close-rc.receipt-finish { margin-top: 10px; display: none; }
 .email-input-box { display: none; gap: 8px; margin-bottom: 10px; }
 .email-input-box.show { display: flex; }
+.rc-info-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0 12px;}
+.rc-info-cell{background:#f7faf9;border:1px solid #e0f2f1;border-radius:10px;padding:8px 10px;font-size:12px;color:#546e7a;}
+.rc-info-cell b{display:block;color:#263238;font-size:13px;margin-top:2px;word-break:break-word;}
+.rc-info-cell.full{grid-column:1/-1;}
+.rc-save-hint{font-size:12px;color:#607d8b;text-align:center;margin:10px 0 12px;line-height:1.55;background:#fff8e1;border:1px solid #ffe0b2;border-radius:10px;padding:9px 10px;}
+#receiptPrintArea { position: fixed; left: -99999px; top: 0; width: 760px; max-width: 760px; background: #fff; color: #263238; z-index: -1; }
+.print-receipt { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans TC", "Microsoft JhengHei", sans-serif; background:#fff; color:#263238; padding: 0; width:760px; max-width:760px; }
+.pr-card { border: 1px solid #d8e2e0; border-radius: 22px; overflow: hidden; background:#fff; box-shadow: 0 10px 26px rgba(0,0,0,.08); }
+.pr-head { background: linear-gradient(135deg,#00897b,#00695c); color:#fff; padding: 27px 26px 23px; text-align:center; }
+.pr-head h1 { margin:0; font-size:42px; letter-spacing:1px; font-weight:900; line-height:1.12; }
+.pr-head .pr-order { margin-top:10px; font-size:21px; opacity:.94; font-weight:800; }
+.pr-section { padding: 19px 26px; border-bottom: 1px solid #edf2f1; }
+.pr-section:last-child { border-bottom:0; }
+.pr-hint { background:#fff7ed; color:#9a3412; border:1px solid #fed7aa; border-radius:16px; padding:17px 20px; font-size:23px; line-height:1.48; margin-bottom: 18px; font-weight:900; }
+.pr-qr { text-align:center; background:#f8fffd; border:1px solid #b2dfdb; border-radius:24px; padding:20px 20px 18px; margin-bottom:18px; }
+.pr-qr-title{ font-size:34px; font-weight:900; color:#00796b; margin-bottom:16px; letter-spacing:.2px; }
+.pr-qr-main{ display:grid; grid-template-columns: 330px minmax(0,1fr); gap:26px; align-items:center; justify-content:center; max-width:690px; margin:0 auto; }
+.pr-qr-imgbox{ display:flex; align-items:center; justify-content:center; }
+.pr-qr img { width:320px; height:320px; background:#fff; border:13px solid #fff; border-radius:22px; box-shadow:0 8px 24px rgba(0,0,0,.12); box-sizing:border-box; }
+.pr-code-panel{ display:flex; flex-direction:column; align-items:center; justify-content:center; min-width:0; }
+.pr-code-label{ font-size:20px; color:#00796b; font-weight:900; margin-bottom:9px; letter-spacing:.08em; }
+.pr-code { display:block; width:100%; max-width:300px; box-sizing:border-box; padding:15px 14px; border:2px dashed #80cbc4; border-radius:16px; background:#fff; color:#00796b; font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace; font-size:36px; font-weight:900; letter-spacing:2px; line-height:1.05; white-space:nowrap; text-align:center; }
+.pr-qr-note{ font-size:18px; color:#607d8b; margin-top:13px; line-height:1.45; font-weight:800; }
+.pr-grid { display:grid; grid-template-columns:1fr 1fr; gap:13px; }
+.pr-cell { background:#f7faf9; border:1px solid #d7ece8; border-radius:16px; padding:14px 16px; font-size:19px; color:#607d8b; font-weight:800; }
+.pr-cell b { display:block; color:#263238; font-size:25px; margin-top:6px; word-break:break-word; line-height:1.24; }
+.pr-cell.full { grid-column:1/-1; }
+.pr-title { font-weight:900; font-size:28px; color:#00695c; margin-bottom:12px; display:flex; align-items:center; justify-content:space-between; gap:10px; }
+.pr-title span:last-child{ color:#b91c1c; font-size:26px; white-space:nowrap; }
+.pr-table { width:100%; border-collapse: collapse; font-size:20px; }
+.pr-table th { background:#f1f5f4; color:#37474f; text-align:left; padding:12px 11px; border-bottom:1px solid #dfe7e5; font-size:20px; }
+.pr-table td { padding:12px 11px; border-bottom:1px solid #edf2f1; vertical-align:top; line-height:1.35; }
+.pr-table td b{ font-size:20px; }
+.pr-table td div{ font-size:15px !important; color:#78909c !important; margin-top:4px !important; }
+.pr-table .num { text-align:right; white-space:nowrap; }
+.pr-gift-row td { color:#e65100; font-weight:800; }
+.pr-total { display:flex; justify-content:space-between; align-items:center; font-size:36px; font-weight:900; color:#b91c1c; padding-top:16px; border-top:3px solid #263238; margin-top:14px; }
+.pr-footer { text-align:center; color:#78909c; font-size:18px; line-height:1.55; padding:16px 22px 20px; font-weight:800; }
+@media print {
+  @page { size: A4 portrait; margin: 0; }
+  html, body, body.modal-open { background:#fff !important; overflow: visible !important; height: auto !important; min-height:0 !important; position: static !important; width: auto !important; padding:0 !important; margin:0 !important; }
+  body > *:not(#receiptPrintArea) { display: none !important; }
+  #receiptPrintArea { display:block !important; position:static !important; left:auto !important; top:auto !important; width:100% !important; max-width:none !important; z-index:auto !important; background:#fff !important; padding:0 !important; margin:0 !important; color:#263238 !important; }
+  #receiptPrintArea * { visibility: visible !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+  .print-receipt { width:100% !important; max-width:none !important; margin:0 !important; padding:0 !important; }
+  .pr-card { width:100% !important; min-height:auto !important; border-radius:0 !important; border:0 !important; box-shadow:none !important; page-break-inside: avoid !important; break-inside: avoid !important; overflow:visible !important; }
+  .pr-head { padding:27px 26px 23px !important; }
+  .pr-head h1 { font-size:42px !important; line-height:1.12 !important; }
+  .pr-head .pr-order { font-size:21px !important; margin-top:10px !important; }
+  .pr-section { padding:19px 26px !important; }
+  .pr-hint { font-size:23px !important; padding:17px 20px !important; margin-bottom:18px !important; border-radius:16px !important; }
+  .pr-qr { padding:20px 20px 18px !important; margin-bottom:18px !important; border-radius:24px !important; page-break-inside: avoid !important; break-inside: avoid !important; }
+  .pr-qr-title{ font-size:34px !important; margin-bottom:16px !important; }
+  .pr-qr-main{ display:grid !important; grid-template-columns:330px minmax(0,1fr) !important; gap:26px !important; max-width:690px !important; }
+  .pr-qr img { width:320px !important; height:320px !important; max-width:320px !important; max-height:320px !important; border-width:13px !important; border-radius:22px !important; }
+  .pr-code-label { font-size:20px !important; margin-bottom:9px !important; }
+  .pr-code { font-size:36px !important; padding:15px 14px !important; max-width:300px !important; color:#00796b !important; }
+  .pr-qr-note { font-size:18px !important; margin-top:13px !important; }
+  .pr-grid { gap:13px !important; page-break-inside: avoid !important; break-inside: avoid !important; }
+  .pr-cell { padding:14px 16px !important; font-size:19px !important; border-radius:16px !important; }
+  .pr-cell b { font-size:25px !important; }
+  .pr-title { font-size:28px !important; margin-bottom:12px !important; page-break-after: avoid !important; break-after: avoid !important; }
+  .pr-title span:last-child{ font-size:26px !important; }
+  .pr-table { font-size:20px !important; }
+  .pr-table th, .pr-table td { padding:12px 11px !important; }
+  .pr-table td b { font-size:20px !important; }
+  .pr-table td div { font-size:15px !important; }
+  .pr-total { font-size:36px !important; padding-top:16px !important; margin-top:14px !important; }
+  .pr-footer { font-size:18px !important; padding:16px 22px 20px !important; }
+}
+
 
 .flying-gift { position: fixed; z-index: 1300; pointer-events: none; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.3); width: 60px; height: 60px; object-fit: contain; background: #fff; border: 2px solid #ffca28; }
 
@@ -878,6 +1116,33 @@ input:focus, select:focus { border-color: var(--primary); background: #fff; outl
 .d-collapse-btn { position: absolute; top: 8px; right: 8px; border: none; background: #ef6c00; color: #fff; font-size: 12px; font-weight: 700; padding: 4px 10px; border-radius: 999px; cursor: pointer; display: none; }
 .d-collapse-btn:hover { filter: brightness(0.95); }
 .d-collapse-btn:active { transform: translateY(1px); }
+.d-collapse-btn.ready-hint{
+  animation: deliveryCollapseCue 2.8s ease-in-out infinite;
+  box-shadow: 0 8px 18px rgba(239,108,0,0.28);
+}
+@keyframes deliveryCollapseCue{
+  0%, 68%, 100%{ transform: translateX(0) rotate(0deg); }
+  72%{ transform: translateX(-2px) rotate(-2deg); }
+  76%{ transform: translateX(2px) rotate(2deg); }
+  80%{ transform: translateX(-1.5px) rotate(-1.2deg); }
+  84%{ transform: translateX(1.5px) rotate(1.2deg); }
+  88%{ transform: translateX(0) rotate(0deg); }
+}
+.delivery-collapse-hint{
+  display:none;
+  align-items:center;
+  gap:4px;
+  font-size:12px;
+  font-weight:800;
+  color:#2e7d32;
+  background:rgba(46,125,50,0.08);
+  border:1px solid rgba(46,125,50,0.16);
+  border-radius:999px;
+  padding:2px 8px;
+  line-height:1.2;
+  white-space:nowrap;
+}
+.delivery-collapse-hint.show{ display:inline-flex; }
 
 
 /* --- V2.8: Delivery free-shipping badge + better spacing when expanded --- */
@@ -902,6 +1167,8 @@ input:focus, select:focus { border-color: var(--primary); background: #fff; outl
 @media (max-width: 480px){
   .ship-free-badge{ top:6px; right:66px; font-size:11px; padding:3px 8px; }
   .delivery-toggle-wrap.has-badge .d-toggle-label{ padding-right: 156px; }
+  .d-toggle-label{ flex-wrap: wrap; row-gap: 3px; }
+  .delivery-collapse-hint.show{ flex-basis: 100%; margin-left: 28px; width: fit-content; font-size: 11px; padding: 2px 7px; }
 }
 
 /* --- V2.8: Auto-scroll target highlight --- */
@@ -977,26 +1244,76 @@ input:focus, select:focus { border-color: var(--primary); background: #fff; outl
 }
 
 /* --- V2.8.8: System announcement slot (between rankings and categories) --- */
-#systemAnnouncementSlot{ padding:0 14px; margin: 10px 0 6px; }
+#systemAnnouncementSlot{ padding:0 14px; margin: 8px 0 10px; }
 .sys-ann{
-  background: rgba(0,137,123,0.08);
-  border: 1px solid rgba(0,137,123,0.18);
-  color: #004d40;
-  border-radius: 14px;
-  padding: 10px 12px;
+  position: relative;
+  background: linear-gradient(135deg, rgba(255,248,239,0.98), rgba(255,253,249,0.98));
+  border: 1px solid rgba(226,170,104,0.28);
+  color: #6b4a1d;
+  border-radius: 18px;
+  padding: 12px 14px;
   font-size: 13px;
-  line-height: 1.35;
-  box-shadow: 0 6px 18px rgba(0,0,0,0.04);
+  line-height: 1.46;
+  box-shadow: 0 12px 26px rgba(163,110,43,0.09);
+  overflow: hidden;
 }
-.sys-ann .title{ font-weight: 800; margin-bottom: 4px; }
-
+.sys-ann::before{
+  content:'';
+  position:absolute;
+  left:-22px; top:-24px;
+  width: 110px; height: 110px;
+  background: radial-gradient(circle at center, rgba(255,202,139,0.20), rgba(255,202,139,0));
+  border-radius:999px;
+  pointer-events:none;
+}
+.sys-ann--row{
+  position: relative;
+  z-index: 1;
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:12px;
+  flex-wrap:nowrap;
+}
+.sys-ann-main{
+  flex: 1 1 200px;
+  min-width: 0;
+  display:flex;
+  align-items:flex-start;
+  gap: 12px;
+}
+.sys-ann-icon{
+  flex:0 0 36px;
+  width: 36px; height:36px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, rgba(255,238,209,0.98), rgba(255,250,239,0.96));
+  border: 1px solid rgba(227,168,97,0.26);
+  color:#d18a2c;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.75);
+}
+.sys-ann-icon .material-icons-round{ font-size: 20px; }
+.sys-ann-body{ min-width:0; }
+.sys-ann-main .title{
+  font-weight: 900;
+  margin-bottom: 4px;
+  color: #7b5319;
+  letter-spacing: .01em;
+}
+.sys-ann-main .desc{
+  color: #765634;
+  white-space: normal;
+  overflow: visible;
+  text-overflow: initial;
+}
 @media (max-width:380px){
-  .sys-ann--row{ flex-wrap:nowrap; }
-  .sys-ann-main{ flex:1 1 auto; }
-  .sys-ann-cta .cta-text{ display:none; }
-  .sys-ann-cta{ padding: 8px 10px; }
+  .sys-ann-main{ gap: 10px; }
+  .sys-ann-icon{ width: 34px; height:34px; flex-basis: 34px; }
+  .sys-ann-main .title{ font-size: 13px; }
+  .sys-ann-main .desc{ font-size: 12px; }
 }
-
 
 /* --- V2.8.9: Promo Map (優惠地圖) entry + drawer --- */
 .sys-ann--row{
@@ -1013,9 +1330,9 @@ input:focus, select:focus { border-color: var(--primary); background: #fff; outl
 .sys-ann-main .desc{white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
 .sys-ann-cta{
   flex: 0 0 auto;
-  border: 1px solid rgba(0,137,123,0.35);
-  background: rgba(255,255,255,0.85);
-  color: #004d40;
+  border: 1px solid rgba(217,155,76,0.30);
+  background: rgba(255,255,255,0.88);
+  color: #7a4c14;
   border-radius: 999px;
   padding: 8px 12px;
   font-weight: 800;
@@ -1030,7 +1347,7 @@ input:focus, select:focus { border-color: var(--primary); background: #fff; outl
   display:inline-block;
   margin-right: 6px;
   font-weight: 900;
-  color: var(--ann-icon-fg, #ff6f00);
+  color: var(--ann-icon-fg, #d48822);
 }
 .sys-ann-cta .cta-text{ display:inline-block; }
 
@@ -1758,6 +2075,126 @@ body.cfg-error .btn-bundle{
 }
 
 
+
+
+/* --- V42 UX v4: Gift image preview modal --- */
+#giftImagePreviewModal{
+  z-index: 10020;
+  background: rgba(0,0,0,0.72);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  padding: 18px;
+}
+.gip-box{
+  position: relative;
+  width: min(92vw, 430px);
+  max-height: 86vh;
+  background: rgba(255,255,255,0.98);
+  border-radius: 24px;
+  padding: 16px 16px 18px;
+  box-shadow: 0 24px 70px rgba(0,0,0,0.35);
+  display:flex;
+  flex-direction:column;
+  gap: 12px;
+  transform: scale(.96);
+  transition: transform .18s ease;
+}
+#giftImagePreviewModal.open .gip-box{ transform: scale(1); }
+.gip-close{
+  position:absolute;
+  top: 10px;
+  right: 10px;
+  width: 36px;
+  height: 36px;
+  border: 0;
+  border-radius: 13px;
+  background: rgba(255,255,255,0.86);
+  color:#455a64;
+  box-shadow: 0 8px 18px rgba(0,0,0,0.10);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  cursor:pointer;
+  z-index:2;
+}
+.gip-main-img-wrap{
+  width:100%;
+  min-height: 240px;
+  max-height: 46vh;
+  border-radius: 20px;
+  border: 1px solid rgba(0,0,0,0.06);
+  background: linear-gradient(180deg, #fff, #fafafa);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  overflow:hidden;
+  padding: 14px;
+}
+#gipMainImg{
+  max-width:100%;
+  max-height: 42vh;
+  object-fit: contain;
+  display:block;
+}
+.gip-name{
+  font-size: 16px;
+  font-weight: 950;
+  color:#263238;
+  text-align:center;
+  line-height:1.35;
+  padding: 0 24px;
+}
+.gip-meta{
+  font-size: 12px;
+  font-weight: 800;
+  color:#607d8b;
+  text-align:center;
+  min-height: 16px;
+}
+.gip-thumbs{
+  display:flex;
+  justify-content:center;
+  gap:8px;
+  overflow-x:auto;
+  padding: 2px 4px;
+  scrollbar-width:none;
+}
+.gip-thumbs::-webkit-scrollbar{ display:none; }
+.gip-thumb{
+  width: 54px;
+  height: 54px;
+  border-radius: 13px;
+  border: 2px solid transparent;
+  background:#fff;
+  object-fit: contain;
+  padding: 3px;
+  cursor:pointer;
+  box-shadow: 0 6px 14px rgba(0,0,0,0.08);
+  opacity:.72;
+}
+.gip-thumb.active{ border-color:#ff8f00; opacity:1; }
+.gip-hint{
+  font-size: 11px;
+  color:#90a4ae;
+  text-align:center;
+}
+@media (max-width: 480px){
+  #giftImagePreviewModal{ padding: 14px; }
+  .gip-box{ width: 94vw; padding: 14px; border-radius: 22px; }
+  .gip-main-img-wrap{ min-height: 230px; }
+}
+
+
+/* --- Pickup QR / email receipt proof --- */
+.pickup-proof-card{background:#f8fffd;border:1px solid #b2dfdb;border-radius:12px;padding:12px;margin:10px 0 12px;text-align:center;}
+.pickup-proof-title{font-weight:900;color:#00695c;font-size:14px;margin-bottom:6px;display:flex;align-items:center;justify-content:center;gap:6px;}
+.pickup-qr-img{width:170px;height:170px;border:8px solid #fff;border-radius:12px;box-shadow:0 4px 14px rgba(0,0,0,.08);background:#fff;}
+.pickup-code{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;font-size:18px;font-weight:900;letter-spacing:1px;color:#263238;background:#fff;border:1px dashed #80cbc4;border-radius:10px;padding:8px 10px;margin:8px auto 4px;display:inline-block;}
+.receipt-status{font-size:12px;line-height:1.45;border-radius:10px;padding:9px 10px;margin:8px 0;text-align:left;}
+.receipt-status.ok{background:#ecfdf5;color:#047857;border:1px solid #a7f3d0;}
+.receipt-status.warn{background:#fff7ed;color:#c2410c;border:1px solid #fed7aa;}
+.receipt-status.fail{background:#fef2f2;color:#b91c1c;border:1px solid #fecaca;}
+
 </style>
 </head>
 <body>
@@ -1806,7 +2243,7 @@ body.cfg-error .btn-bundle{
   <span class="material-icons-round" style="color:#ffca28">card_giftcard</span>
 </div>
 
-<div id="top-notify">
+<div id="top-notify" onclick="openMilestoneFromNotify()" role="button" aria-label="查看滿額贈進度">
   <div class="tn-head"><span class="material-icons-round">emoji_events</span> 獲得贈品</div>
   <div class="tn-body" id="tn-text"></div>
 </div>
@@ -1893,7 +2330,10 @@ body.cfg-error .btn-bundle{
 <div id="float-bar" onclick="safeOpenCart()">
   <div class="fb-info">
     <span class="fb-total">$0</span>
-    <span class="fb-count">0 件商品</span>
+    <div class="fb-meta">
+      <span class="fb-count">0 件商品</span>
+      <span id="floatShipBadge" class="fb-ship-badge"></span>
+    </div>
   </div>
   <div class="fb-btn">查看購物車 <span class="material-icons-round" style="font-size:18px">arrow_forward</span></div>
 </div>
@@ -1946,7 +2386,7 @@ body.cfg-error .btn-bundle{
       <div class="delivery-toggle-wrap">
         <label class="d-toggle-label">
           <input type="checkbox" id="chkDelivery" onchange="toggleDelivery()">
-          <span>需宅配寄送</span> <span id="deliveryStatusText" style="font-size:12px;font-weight:400;color:#ef6c00">(請填寫收件資訊)</span>
+          <span>需宅配寄送</span> <span id="deliveryStatusText" style="font-size:12px;font-weight:400;color:#ef6c00">(請填寫收件資訊)</span><span id="deliveryCollapseHint" class="delivery-collapse-hint">資料已填，可收合</span>
         </label>
         <span id="shipFreeBadge" class="ship-free-badge" style="display:none"></span>
         <button type="button" class="d-collapse-btn" id="btnDeliveryCollapse" onclick="collapseDelivery()">收合</button>
@@ -1999,6 +2439,17 @@ body.cfg-error .btn-bundle{
   </div>
 </div>
 
+<div id="giftImagePreviewModal" class="modal" onclick="closeGiftImagePreview()" aria-hidden="true">
+  <div class="gip-box" onclick="event.stopPropagation()" role="dialog" aria-modal="true" aria-label="贈品圖片預覽">
+    <button type="button" class="gip-close" onclick="closeGiftImagePreview()" aria-label="關閉預覽"><span class="material-icons-round">close</span></button>
+    <div class="gip-main-img-wrap"><img id="gipMainImg" src="" alt="贈品圖片預覽"></div>
+    <div class="gip-name" id="gipName"></div>
+    <div class="gip-meta" id="gipMeta"></div>
+    <div class="gip-thumbs" id="gipThumbs"></div>
+    <div class="gip-hint">點擊圖片外任一位置即可返回</div>
+  </div>
+</div>
+
 <div id="receiptModal" class="modal" style="z-index:2200;">
   <div class="m-box receipt-paper" style="max-height:90vh; max-width:400px; padding:0;">
     <div class="rc-head">
@@ -2007,20 +2458,19 @@ body.cfg-error .btn-bundle{
     </div>
     <div class="rc-body" id="rcBody"></div>
     <div class="rc-actions">
-      <button class="btn-email" onclick="toggleEmailInput()">
-        <span class="material-icons-round">email</span> 寄送訂購紀錄到 Email
+      <button class="btn-save-rc" id="btnSaveReceipt" onclick="saveReceiptCredential()">
+        <span class="material-icons-round">ios_share</span> 儲存憑證
       </button>
-      <div class="email-input-box" id="emailBox">
-        <input type="email" id="rcEmail" placeholder="請輸入 Email..." style="flex:1;">
-        <button class="btn-submit" style="flex:0 0 80px;padding:10px;" onclick="sendReceipt()">發送</button>
+      <div class="rc-save-hint">
+        請「自行截圖」或「儲存憑證」，可於付款／取貨時加速流程（出示 QR Code 或取貨碼）。<br>
+        若手機儲存不順，建議直接截圖留存。
       </div>
-      <div style="font-size:11px;color:#90a4ae;text-align:center;margin-bottom:15px;">
-        請自行截圖留存，或使用上方按鈕寄送。
-      </div>
-      <button class="btn-close-rc" onclick="closeReceipt()">關閉並完成</button>
+      <button class="btn-close-rc receipt-finish" id="btnReceiptDone" onclick="closeReceipt()">我已截圖或儲存，完成</button>
     </div>
   </div>
 </div>
+
+<div id="receiptPrintArea" aria-hidden="true"></div>
 
 <script>
 const GIFT_IMAGES = {}; 
@@ -2081,7 +2531,7 @@ const GIFT_IMAGES = {};
 })();
 
 // ===== Build / Release =====
-const BUILD_ID = "V42_FINAL_r20260222_01_v2";
+const BUILD_ID = "V42_FINAL_r20260222_01_v2_uxfix_v7_6_ranking_setbadge";
 window.BUILD_ID = BUILD_ID;
 
 
@@ -2329,6 +2779,12 @@ let currentCat = "", categories = [];
 let modalPid = null, isCartOpen = false;
 let tempBundleSelection = [];
 let lastOrderData = null; 
+let lastOrderId = null;
+let lastPickupToken = '';
+let lastPickupCode = '';
+let lastReceiptEmail = '';
+let lastReceiptEmailStatus = null;
+let lastReceiptEmailError = '';
 let sectionObserver = null;
 let __SCROLLSPY_SCROLL_BOUND__ = false;
 let GIFT_MAP = new Map();
@@ -2456,19 +2912,70 @@ function getFreeShipThreshold(){
   return (isFinite(t) && t > 0) ? t : 0;
 }
 
+function getShipFreeStatus(total){
+  const thr = getFreeShipThreshold();
+  if(!thr) return { enabled:false, ok:false, diff:0, text:'' };
+  const val = Number(total)||0;
+  const diff = Math.max(0, Math.round(thr - val));
+  const ok = val >= thr;
+  return { enabled:true, ok, diff, text: ok ? '✔ 滿額免運' : `差 ${diff.toLocaleString()} 免運` };
+}
+
+function applyShipFreeBadge(el, total, displayValue){
+  if(!el) return;
+  const st = getShipFreeStatus(total);
+  if(!st.enabled){ el.style.display='none'; return; }
+  el.classList.toggle('ok', !!st.ok);
+  if(el.id === 'floatShipBadge' && st.ok){
+    el.innerHTML = '<span class="fb-ship-check">✓</span><span>滿額免運</span>';
+  }else{
+    el.textContent = st.text;
+  }
+  el.style.display = displayValue || 'inline-flex';
+}
+
+function preserveScrollDuring(fn){
+  const x = window.scrollX || window.pageXOffset || 0;
+  const y = window.scrollY || window.pageYOffset || 0;
+  let ret;
+  try { ret = fn && fn(); } catch(e) { throw e; }
+  const restore = () => {
+    try { window.scrollTo(x, y); } catch(e) {}
+  };
+  try { requestAnimationFrame(() => { restore(); requestAnimationFrame(restore); }); } catch(e) { setTimeout(restore, 0); }
+  setTimeout(restore, 80);
+  return ret;
+}
+
+function isDeliveryRequiredComplete(){
+  const n = (document.getElementById("dName")?.value || "").trim();
+  const p = (document.getElementById("dPhone")?.value || "").trim();
+  const a = (document.getElementById("dAddr")?.value || "").trim();
+  return !!(n && p && a);
+}
+
+function updateDeliveryCollapseCue(){
+  try{
+    const chk = document.getElementById("chkDelivery");
+    const form = document.getElementById("deliveryForm");
+    const btn = document.getElementById("btnDeliveryCollapse");
+    const hint = document.getElementById("deliveryCollapseHint");
+    const ready = !!(chk && chk.checked && form && form.classList.contains("show") && isDeliveryRequiredComplete());
+    if(btn) btn.classList.toggle("ready-hint", ready);
+    if(hint) hint.classList.toggle("show", ready);
+  }catch(e){}
+}
+
 function updateShipFreeBadge(total){
   const badge = document.getElementById('shipFreeBadge');
+  applyShipFreeBadge(badge, total, 'inline-flex');
+}
+
+function updateFloatShipBadge(total){
+  const badge = document.getElementById('floatShipBadge');
   if(!badge) return;
-  const thr = getFreeShipThreshold();
-  if(!thr){ badge.style.display='none'; return; }
-  const diff = Math.max(0, Math.round(thr - (Number(total)||0)));
-  if((Number(total)||0) >= thr){
-    badge.classList.add('ok');
-    badge.textContent = '✔ 滿額免運';
-  } else {
-    badge.classList.remove('ok');
-    badge.textContent = `差 ${diff.toLocaleString()} 免運`;
-  }
+  if(!CART || CART.length === 0){ badge.style.display = 'none'; return; }
+  applyShipFreeBadge(badge, total, 'inline-flex');
 }
 
 // --- V42: Threshold crossing toast (Free Shipping) ---
@@ -2506,17 +3013,18 @@ function syncDeliveryHeaderUI(){
   if(!wrap || !form || !status || !badge || !chk) return;
 
   const expanded = !!(chk.checked && form.classList.contains('show'));
-  if(expanded){
-    status.style.display = 'none';
-    badge.style.display = 'inline-flex';
+  const checkoutOpened = (typeof __CHECKOUT_STAGE__ !== 'undefined' && __CHECKOUT_STAGE__ === 2);
+  status.style.display = expanded ? 'none' : 'inline';
+
+  if(checkoutOpened){
     wrap.classList.add('has-badge');
     const total = parseFloat(String(document.getElementById('sumPay')?.innerText||'').replace(/[^\d.]/g,'')) || 0;
     updateShipFreeBadge(total);
   } else {
-    status.style.display = 'inline';
     badge.style.display = 'none';
     wrap.classList.remove('has-badge');
   }
+  try { updateDeliveryCollapseCue(); } catch(e) {}
 }
 
 // --- GLOBAL FUNCTIONS ---
@@ -2564,6 +3072,7 @@ function setCheckoutStage(stage){
     if(btn){
       btn.textContent = (__CHECKOUT_STAGE__ === 2) ? '確認訂購' : '結帳去';
     }
+    try{ syncDeliveryHeaderUI(); }catch(e){}
   }catch(e){}
 }
 function handleCheckoutSubmit(){
@@ -2661,30 +3170,128 @@ window.openGiftList = function() {
 };
 
 // OPTIMIZATION: Multi-Image Helper (Grid Layout)
-function renderGiftImages(giftCode) {
+function renderGiftImages(giftCode, metaText) {
     const images = GIFT_MAP.get(giftCode) || [];
     if(images.length === 0) return '';
+    const code = String(giftCode || '').trim();
+    const meta = String(metaText || '').trim();
+    const safeCode = (typeof escapeHtml === 'function') ? escapeHtml(code) : code;
+    const safeMeta = (typeof escapeHtml === 'function') ? escapeHtml(meta) : meta;
     
-    let html = `<div class="g-img-row">`;
-    // Max 3 images, auto extend
-    images.slice(0, 3).forEach(url => {
-        if(url) html += `<img src="${url}" class="g-thumb">`;
+    let html = `<div class="g-img-row" data-gift-code="${safeCode}" data-gift-meta="${safeMeta}">`;
+    // Max 3 images, auto extend; preview can still open all images in GIFT_MAP
+    images.slice(0, 3).forEach((url, idx) => {
+        if(url) {
+          const safeUrl = (typeof escapeHtml === 'function') ? escapeHtml(url) : url;
+          html += `<img src="${safeUrl}" class="g-thumb gift-img-click" data-gift-code="${safeCode}" data-img-idx="${idx}" data-gift-meta="${safeMeta}" alt="贈品圖片">`;
+        }
     });
     html += `</div>`;
     return html;
 }
 
+function getGiftDisplayName(giftCode){
+  try{
+    let gName = (PRODUCT_MAP.get(giftCode) || {}).name || giftCode || '贈品';
+    return String(gName||'贈品').replace(/^(贈品|贈|Gift)[:\s|｜_]*/i, '');
+  }catch(e){ return String(giftCode || '贈品'); }
+}
+
+function openGiftImagePreview(giftCode, startIdx, metaText){
+  try{
+    const code = String(giftCode || '').trim();
+    if(!code) return;
+    const imgs = (GIFT_MAP.get(code) || []).filter(Boolean);
+    if(!imgs.length) return;
+    const modal = document.getElementById('giftImagePreviewModal');
+    const main = document.getElementById('gipMainImg');
+    const nameEl = document.getElementById('gipName');
+    const metaEl = document.getElementById('gipMeta');
+    const thumbs = document.getElementById('gipThumbs');
+    if(!modal || !main || !nameEl || !metaEl || !thumbs) return;
+
+    let idx = Number(startIdx || 0);
+    if(!Number.isFinite(idx) || idx < 0 || idx >= imgs.length) idx = 0;
+    const setImage = (i)=>{
+      const n = Math.max(0, Math.min(imgs.length - 1, Number(i)||0));
+      main.src = imgs[n];
+      Array.from(thumbs.querySelectorAll('.gip-thumb')).forEach((el, k)=> el.classList.toggle('active', k === n));
+    };
+
+    nameEl.textContent = getGiftDisplayName(code);
+    metaEl.textContent = String(metaText || '').trim();
+    thumbs.innerHTML = '';
+    imgs.forEach((url, i)=>{
+      const im = document.createElement('img');
+      im.className = 'gip-thumb' + (i === idx ? ' active' : '');
+      im.src = url;
+      im.alt = '贈品縮圖';
+      im.onclick = (ev)=>{ ev.stopPropagation(); setImage(i); };
+      thumbs.appendChild(im);
+    });
+    thumbs.style.display = imgs.length > 1 ? 'flex' : 'none';
+    setImage(idx);
+    modal.classList.add('open');
+    modal.setAttribute('aria-hidden', 'false');
+    document.body.classList.add('modal-open');
+    try{ history.pushState({modal:'giftImagePreview'}, null, ''); }catch(e){}
+  }catch(e){ console.warn('[GiftPreview] open failed', e); }
+}
+
+function closeGiftImagePreview(opts){
+  const o = opts || {};
+  const skipHistory = !!o.skipHistory;
+  const modal = document.getElementById('giftImagePreviewModal');
+  if(!modal || !modal.classList.contains('open')) return;
+  if(!skipHistory){
+    try{
+      if(history.state && history.state.modal === 'giftImagePreview'){
+        history.back();
+        return;
+      }
+    }catch(e){}
+  }
+  modal.classList.remove('open');
+  modal.setAttribute('aria-hidden', 'true');
+  const main = document.getElementById('gipMainImg');
+  if(main) main.removeAttribute('src');
+  try{
+    const promoOpen = (typeof isPromoMapOpen === 'function' && isPromoMapOpen());
+
+    // V42 UX v6: gift-image preview can be opened from the promo map drawer.
+    // The preview itself uses body.modal-open, but the promo map uses body.drawer-open.
+    // When closing only the preview, remove modal-open and keep drawer-open, otherwise iOS/Safari
+    // may leave body fixed and the product page cannot scroll after the drawer is closed.
+    if(promoOpen){
+      document.body.classList.remove('modal-open');
+      document.body.style.overflow = '';
+      document.body.style.height = '';
+      document.body.style.position = '';
+      document.body.style.width = '';
+      return;
+    }
+
+    const hasOpen = document.querySelector('.modal.open') ||
+      document.getElementById('milestone-overlay')?.classList.contains('open') ||
+      document.getElementById('drawer')?.classList.contains('open');
+    if(!hasOpen) cleanupUI();
+  }catch(e){}
+}
+
 function createSeriesGiftItem(g, reached, baseQty) {
     let gName = (PRODUCT_MAP.get(g.gift) || {}).name || g.gift;
     gName = gName.replace(/^(贈品|贈|Gift)[:\s|｜_]*/i, "");
-    let imgHtml = renderGiftImages(g.gift);
-    if(!imgHtml) imgHtml = '<div class="g-thumb" style="display:flex;align-items:center;justify-content:center;font-size:16px">🎁</div>';
 
+    // V42 UX v5: define display meta before rendering clickable gift image.
+    // v4 used perText before declaration, which broke 「查看好禮」 when series gifts existed.
     const unit = seriesGiftUnit(g.prefix);
     const thr = Number(g.amt);
     const ruleText = (Number.isFinite(thr) && thr > 0) ? `每 ${thr} ${unit}送` : `每${unit}送`;
     const perQty = (Number(g.qty) || 0);
     const perText = `${ruleText} ${perQty} 個`;
+
+    let imgHtml = renderGiftImages(g.gift, perText);
+    if(!imgHtml) imgHtml = '<div class="g-thumb" style="display:flex;align-items:center;justify-content:center;font-size:16px">🎁</div>';
 
     // earned gift count (consider mult)
     let giftTimes = 0;
@@ -2716,7 +3323,7 @@ function createGiftItem(g, reached) {
     let gName = (PRODUCT_MAP.get(g.gift) || {}).name || g.gift;
     gName = gName.replace(/^(贈品|贈|Gift)[:\s|｜_]*/i, "");
     
-    let imgHtml = renderGiftImages(g.gift);
+    let imgHtml = renderGiftImages(g.gift, `滿 $${g.amt.toLocaleString()}`);
     // If no images found, show placeholder
     if(!imgHtml) imgHtml = '<div class="g-thumb" style="display:flex;align-items:center;justify-content:center;font-size:16px">🎁</div>';
 
@@ -2823,7 +3430,7 @@ window.updateQty = function(btnEl, pid, delta) {
 
   saveState();
   refreshCart();
-  renderList();
+  preserveScrollDuring(() => renderList());
   
   const fab = document.getElementById("float-bar");
   fab.classList.remove("show");
@@ -2938,7 +3545,7 @@ function createDualItem(g, isReached, opts) {
     gName = String(gName||'').replace(/^(贈品|贈|Gift)[:\s|｜_]*/i, "");
 
     let imgHtml = '';
-    try{ imgHtml = renderGiftImages(g.gift); }catch(e){}
+    try{ imgHtml = renderGiftImages(g.gift, `滿 $${(Number(g.amt)||0).toLocaleString()}`); }catch(e){}
     if(!imgHtml) imgHtml = '<div class="g-thumb" style="display:flex;align-items:center;justify-content:center;font-size:16px">🎁</div>';
 
     const isNext = !!o.isNext;
@@ -2967,6 +3574,36 @@ function createDualItem(g, isReached, opts) {
     return item;
 }
 
+let __TOP_NOTIFY_TIMER__ = null;
+
+window.openMilestoneFromNotify = function(){
+    try{
+      if(__TOP_NOTIFY_TIMER__) clearTimeout(__TOP_NOTIFY_TIMER__);
+      const notify = document.getElementById('top-notify');
+      if(notify) notify.classList.remove('show');
+    }catch(e){}
+    try{ showMilestoneCard(); }catch(e){}
+};
+
+function showGiftUnlockNotify(unlocks, durationMs){
+    try{
+      const list = Array.isArray(unlocks) ? unlocks.filter(Boolean) : [unlocks].filter(Boolean);
+      if(list.length === 0) return;
+      const notify = document.getElementById('top-notify');
+      const txt = document.getElementById('tn-text');
+      if(!notify || !txt) return;
+      let html = "";
+      list.forEach(name => { html += `<div>• ${String(name).replace(/[<>]/g,'')}</div>`; });
+      html += `<div class="tn-cta">點擊查看滿額贈進度 ›</div>`;
+      txt.innerHTML = html;
+      notify.classList.add('show');
+      if(__TOP_NOTIFY_TIMER__) clearTimeout(__TOP_NOTIFY_TIMER__);
+      __TOP_NOTIFY_TIMER__ = setTimeout(() => {
+        try{ notify.classList.remove('show'); }catch(e){}
+      }, Number(durationMs)||4000);
+    }catch(e){}
+}
+
 function checkNewGifts(currentGifts) {
     const currentNames = currentGifts.map(g => g.name);
     const newUnlocks = currentNames.filter(n => !achievedGifts.includes(n));
@@ -2982,17 +3619,10 @@ function checkNewGifts(currentGifts) {
 
         fab.classList.add('gift-shake');
         
-        let html = "";
-        newUnlocks.forEach(name => {
-           html += `<div>• ${name}</div>`;
-        });
-        txt.innerHTML = html;
-        
-        notify.classList.add('show');
+        showGiftUnlockNotify(newUnlocks, 4000);
         
         setTimeout(() => {
             fab.classList.remove('gift-shake');
-            notify.classList.remove('show');
         }, 4000); 
     }
     achievedGifts = currentNames;
@@ -3443,6 +4073,15 @@ function findMixPayRulesByCategoryTitle(title){
   return hits;
 }
 
+function pmChipLabel(title){
+  const t = String(title||'');
+  if(/保健/.test(t)) return '營養精選';
+  if(/美容/.test(t)) return '美妍精選';
+  if(/清潔/.test(t)) return '潔淨精選';
+  if(/飲/.test(t)) return '飲品精選';
+  return '展區導覽';
+}
+
 function buildPromoMarqueeSummary(title){
   try{
     const t = String(title||'').trim();
@@ -3756,7 +4395,10 @@ function renderPromoMarquee(){
 
     slot.innerHTML = `
       <div class="pm-head">
-        <div class="pm-title"><span class="material-icons-round">map</span> 優惠導覽</div>
+        <div class="pm-head-main">
+          <div class="pm-title"><span class="material-icons-round">biotech</span> 生技膠囊導覽列</div>
+          <div class="pm-subtitle">快速切換各品類，搭配優惠地圖一次掌握活動亮點</div>
+        </div>
         <div id="promoMarqueeCtaHost"></div>
       </div>
       <div class="pm-shell">
@@ -3777,7 +4419,9 @@ function renderPromoMarquee(){
           card.className = `pm-card pm-theme-${theme}`;
           const t = escapeHtml(it.title);
           const s = escapeHtml(it.summary || "多重優惠");
+          const chip = escapeHtml(pmChipLabel(title));
           card.innerHTML = `
+            <div class="pm-chip">${chip}</div>
             <div class="pm-name">${t}</div>
             <div class="pm-hint">${s}</div>
           `;
@@ -3897,7 +4541,7 @@ function buildPromoGiftList(scope){
 
         const gName = pmFormatGiftName(g.gift);
         let imgHtml = '';
-        try{ imgHtml = renderGiftImages(g.gift) || ''; }catch(e){}
+        try{ imgHtml = renderGiftImages(g.gift, ruleText) || ''; }catch(e){}
         if(!imgHtml) imgHtml = '<div class="g-thumb" style="display:flex;align-items:center;justify-content:center;font-size:16px">🎁</div>';
 
         item.innerHTML = `
@@ -3928,7 +4572,7 @@ function buildPromoGiftList(scope){
       const amt = Number(g.amt||0);
       const gName = pmFormatGiftName(g.gift);
       let imgHtml = '';
-      try{ imgHtml = renderGiftImages(g.gift) || ''; }catch(e){}
+      try{ imgHtml = renderGiftImages(g.gift, `滿 $${Math.round(amt).toLocaleString()}`) || ''; }catch(e){}
       if(!imgHtml) imgHtml = '<div class="g-thumb" style="display:flex;align-items:center;justify-content:center;font-size:16px">🎁</div>';
 
       item.innerHTML = `
@@ -4205,7 +4849,13 @@ function renderSystemAnnouncement(){
     slot.innerHTML = `
       <div class="sys-ann sys-ann--row">
         <button type="button" id="starDockBtn" class="star-dock-btn hidden" title="主打星"><span class="material-icons-round">star</span><span class="star-dock-badge" id="starDockBadge" style="display:none">0</span></button>
-        ${safe ? `<div class="sys-ann-main">${safe}</div>` : `<div class="sys-ann-main"></div>`}
+        <div class="sys-ann-main">
+          <div class="sys-ann-icon"><span class="material-icons-round">lightbulb</span></div>
+          <div class="sys-ann-body">
+            <div class="title">訂購小提醒</div>
+            <div class="desc">${safe || '請留意活動優惠、贈品與取貨相關資訊，系統將自動為您計算。'}</div>
+          </div>
+        </div>
         <button type="button" id="promoMapCtaBtn" class="sys-ann-cta${attnCls}"><span class="cta-icon">👉</span><span class="cta-text">查看優惠地圖 ›</span></button>
       </div>
     `;
@@ -5188,12 +5838,25 @@ function jumpToGroupByCode(groupCode, source){
   return false;
 }
 function handleRankingClick(p){
+  const unavailableMsg = '本活動暫無此商品可供選購，感謝支持，請挑選其他品項。';
   try{
-    if(p && p.is_hidden && p.group_code){
+    if(!p) { showPromoHint(unavailableMsg); return; }
+    if(p.is_hidden && p.group_code){
       if(jumpToGroupByCode(p.group_code, 'rank')) return;
+      showPromoHint(unavailableMsg);
+      return;
     }
-  }catch(e){}
-  jumpToProduct(p._id, 'rank');
+    const pid = p._id;
+    const code = String(p.code || '').trim();
+    const target = (Array.isArray(PRODUCTS) ? PRODUCTS.find(x => x && !x.is_hidden && (x._id === pid || (code && String(x.code||'').trim() === code))) : null);
+    if(!target){
+      showPromoHint(unavailableMsg);
+      return;
+    }
+    jumpToProduct(target._id, 'rank');
+  }catch(e){
+    try{ showPromoHint(unavailableMsg); }catch(_e){}
+  }
 }
 
 
@@ -6233,7 +6896,7 @@ let __VLIST_READY__ = false;
 let __VLIST_SCROLL_BOUND__ = false;
 let __VLIST_COLS__ = 2;
 let __VLIST_GAP__ = 12;
-let __VLIST_SAFE_PAD__ = 20; // safety padding to prevent row overlap on some devices
+let __VLIST_SAFE_PAD__ = 32; // safety padding to prevent row overlap on promo-heavy cards
 let __VLIST_CARD_H__ = 260;
 let __VLIST_ROW_H__ = 272;
 let __VLIST_TITLE_H__ = 44;
@@ -6528,6 +7191,35 @@ function getTierRangeText(p){
   return `${r.low.toLocaleString()}–${r.high.toLocaleString()}`;
 }
 
+
+function isBundleSelectProduct(p){
+  try{
+    // 本方案的「任選買一送一／選擇內容物」以商品主資料 product_name(p.name) 判斷，
+    // 不使用 category，避免影響另一套以 category/zone/codes 運作的 mixpay 任選優惠。
+    return !!(p && Array.isArray(p.bundle) && p.bundle.length >= 2 && String(p.name||'').includes('任選'));
+  }catch(e){ return false; }
+}
+
+function getBundleSelectCartQty(p){
+  try{
+    if(!p || !Array.isArray(CART)) return 0;
+    const pid = p._id;
+    const code = String(p.code||'').trim();
+    return CART.reduce((sum, it)=>{
+      if(!it || !it.bundleSelection) return sum;
+      const sameId = (it._id === pid);
+      const sameCode = code && String(it.code||'').trim() === code;
+      if(sameId || sameCode) return sum + (Number(it.qty)||0);
+      return sum;
+    }, 0);
+  }catch(e){ return 0; }
+}
+
+function openCartFromBundleCount(ev){
+  try{ if(ev){ ev.preventDefault(); ev.stopPropagation(); } }catch(e){}
+  try{ safeOpenCart(); }catch(e){}
+}
+
 function createProductCard(p, highlightQuery) {
     const inCart = CART.find(x => x._id === p._id && !x.bundleSelection);
     const qty = inCart ? inCart.qty : 0;
@@ -6537,6 +7229,7 @@ const L_addon = getBadgeName('addon','加價購');
 const L_bogo  = getBadgeName('bogo','買一送一');
 const L_mixpay = getBadgeName('mixpay','任選優惠');
 const L_bundleSel = getBadgeName('bundle_select','優惠組合');
+const L_setBundle = getBadgeName('set_bundle','精選套組');
 const L_order = getBadgeName('order_discount','訂單折扣');
 const L_tier  = getBadgeName('tier','多件優惠');
 
@@ -6545,14 +7238,19 @@ const L_tier  = getBadgeName('tier','多件優惠');
     if(RULES && Array.isArray(RULES.mixpay) && RULES.mixpay.some(r => (r && r.zone && String(p.category||'').includes(String(r.zone||''))) || (r && Array.isArray(r.codes) && r.codes.includes(String(p.code||'').trim())))) badges += `<span class="badge bg-gold promo-badge" data-promo="mixpay" data-code="${String(p.code||'').replace(/"/g,'&quot;')}" data-zone="${String(p.category||'').replace(/"/g,'&quot;')}">${L_mixpay}</span>`;
     if(RULES.bogo.some(b => b.code === p.code)) badges += `<span class="badge bg-blue promo-badge" data-promo="bogo" data-code="${p.code}">${L_bogo}</span>`;
     if(p.name.includes("任選")) badges += `<span class="badge bg-gold promo-badge" data-promo="bundle_select">${L_bundleSel}</span>`;
+    const _pNameForSetBadge = String(p.name || '');
+    const _pCatForSetBadge = String(p.category || '');
+    const isSelectedSetBundle = !_pNameForSetBadge.includes("任選") && (_pNameForSetBadge.includes("超值組") || _pCatForSetBadge.includes("超值組"));
+    if(isSelectedSetBundle) badges += `<span class="badge bg-teal promo-badge" data-promo="set_bundle">${L_setBundle}</span>`;
     (function(){
     const info = getTierBadgeInfoByCategory(p.category);
     if(!info) return;
     if(info.kind === 'order') badges += `<span class="badge bg-purple promo-badge" data-promo="order_discount" data-zone="${String(info.zone).replace(/"/g,'&quot;')}">${L_order}</span>`;
     else badges += `<span class="badge bg-purple promo-badge" data-promo="tier" data-zone="${String(info.zone).replace(/"/g,'&quot;')}">${L_tier}</span>`;
   })();
+    const isBundleSelect = isBundleSelectProduct(p);
     let actionBtn = "";
-    if(p.bundle.length >= 2 && p.name.includes("任選")) {
+    if(isBundleSelect) {
       const hasSel = SELECTED_BUNDLE.has(p._id);
       actionBtn = `<div class="btn-bundle" onclick="openBundle(${p._id})">${hasSel ? "內容已選 ✓" : "選擇內容物"}</div>`;
     }
@@ -6592,13 +7290,20 @@ const L_tier  = getBadgeName('tier','多件優惠');
       }
     })();
         const codeChipHtml = (p.code && String(p.code).trim()) ? `<div class="p-code-chip">${escapeHtml(p.code)}</div>` : '';
-    const pillRowHtml = pricePack.pillHtml ? `<div class="p-pill-row">${pricePack.pillHtml}</div>` : '';
+    const bundleSelectQty = isBundleSelect ? getBundleSelectCartQty(p) : 0;
+    const bundleCountPillHtml = (isBundleSelect && bundleSelectQty > 0)
+      ? `<span class="p-bundle-count-pill" onclick="openCartFromBundleCount(event)">已購 ${bundleSelectQty} 組</span>`
+      : '';
+    const pillRowHtml = (pricePack.pillHtml || bundleCountPillHtml)
+      ? `<div class="p-pill-row">${pricePack.pillHtml || ''}${bundleCountPillHtml}</div>`
+      : '';
 
 const newBadgeLabel = (function(){
   try{ return escapeHtml(getBadgeName('new', 'NEW')); }catch(e){ return 'NEW'; }
 })();
 const newBadgeHtml = (p.is_new) ? `<div class="new-badge">${newBadgeLabel}</div>` : '';
-    card.innerHTML = `<div class="p-img-box"><div class="badges">${badges}</div>${imgHtml}${newBadgeHtml}</div><div class="p-body">${codeChipHtml}<div><div class="p-title">${displayName}</div><div class="p-price-row">${pricePack.priceHtml}</div>${pillRowHtml}${actionBtn}<div class="p-buy-row no-pill"><div class="stepper"><div class="s-btn ${qty===0?'hidden':''}" onclick="window.updateQty(this, ${p._id}, -1)">－</div><div class="s-val ${qty===0?'hidden':''}">${qty}</div><div class="s-btn add" onclick="window.updateQty(this, ${p._id}, 1)">＋</div></div></div></div></div>`;
+    const stepperHtml = isBundleSelect ? '' : `<div class="p-buy-row no-pill"><div class="stepper"><div class="s-btn ${qty===0?'hidden':''}" onclick="window.updateQty(this, ${p._id}, -1)">－</div><div class="s-val ${qty===0?'hidden':''}">${qty}</div><div class="s-btn add" onclick="window.updateQty(this, ${p._id}, 1)">＋</div></div></div>`;
+    card.innerHTML = `<div class="p-img-box"><div class="badges">${badges}</div>${imgHtml}${newBadgeHtml}</div><div class="p-body">${codeChipHtml}<div class="p-main"><div class="p-title">${displayName}</div><div class="p-price-row">${pricePack.priceHtml}</div>${pillRowHtml}${actionBtn}</div>${stepperHtml}</div>`;
     return card;
 }
 
@@ -6683,7 +7388,7 @@ window.confirmBundle = function() {
 
   saveState(); 
   refreshCart(); 
-  renderList(); // Update buttons state
+  preserveScrollDuring(() => renderList()); // Update buttons state without changing current scroll position
   
   // Show toast
   const addedToast = showToast("已加入購物車");
@@ -6757,12 +7462,8 @@ window.updateCartItem = function(index, delta) {
         msg.innerText = `🎉 恭喜！已獲得新贈品`;
         msg.classList.add('success'); 
         
-        // Also show Top Pill
-        const notify = document.getElementById('top-notify');
-        const txt = document.getElementById('tn-text');
-        txt.innerText = `已獲得 ${newUnlocks[newUnlocks.length-1]}!`;
-        notify.classList.add('show');
-        setTimeout(() => notify.classList.remove('show'), 3000);
+        // Also show clickable top notification
+        showGiftUnlockNotify([newUnlocks[newUnlocks.length-1]], 3000);
 
         setTimeout(() => {
             msg.innerText = originalMsg; 
@@ -6969,6 +7670,7 @@ function refreshCart() {
   list.innerHTML = "";
   document.querySelector(".fb-total").innerText = "$" + Math.round(data.finalTotal).toLocaleString();
   document.querySelector(".fb-count").innerText = CART.reduce((a,b)=>a+b.qty,0) + " 件";
+  try { updateFloatShipBadge(data.finalTotal); } catch(e) {}
   
   data.items.forEach((it, index) => {
     let specStr = it.spec;
@@ -7023,7 +7725,7 @@ function refreshCart() {
   data.gifts.forEach(g => sumHtml += `<div class="sum-line" style="color:#e65100"><span>🎁 ${g.name}</span><span>x${g.qty}</span></div>`);
   finalList.innerHTML = sumHtml; // V22.2 Fix: Ensure HTML is set
 
-  // Update宅配列右側免運提示（僅在展開時顯示）
+  // Update宅配列右側免運提示（結帳二階段展開後即顯示）
   try { syncDeliveryHeaderUI(); } catch(e) {}
 
   try { __detectThresholdToasts(data); } catch(e) {}
@@ -7039,6 +7741,11 @@ window.onpopstate = (e) => {
     try{
       const so = document.getElementById('starHeroOverlay');
       if(so && so.classList.contains('show')){ dismissStarHero('popstate'); return; }
+    }catch(ex){}
+    // Handle Gift image preview first so underlying modals/drawers stay open
+    try{
+      const gp = document.getElementById('giftImagePreviewModal');
+      if(gp && gp.classList.contains('open')){ closeGiftImagePreview({skipHistory:true}); return; }
     }catch(ex){}
     // CRITICAL FIX: Always ensure body is clean when returning to root state
     if (!document.querySelector('.modal.open') && 
@@ -7156,6 +7863,7 @@ window.toggleDelivery = function() {
       form.classList.add("show");
       if(btn) btn.style.display = "inline-flex";
       setStatus(true);
+      try { updateDeliveryCollapseCue(); } catch(e) {}
       return;
     }
 
@@ -7163,6 +7871,7 @@ window.toggleDelivery = function() {
     if(btn) btn.style.display = "none";
     setStatus(false);
   }
+  try { updateDeliveryCollapseCue(); } catch(e) {}
   try { syncDeliveryHeaderUI(); } catch(e) {}
 };
 
@@ -7198,7 +7907,8 @@ window.collapseDelivery = function() {
 
   // Collapse
   if(form) form.classList.remove("show");
-  if(btn) btn.style.display = "none";
+  if(btn) { btn.style.display = "none"; btn.classList.remove("ready-hint"); }
+  try { updateDeliveryCollapseCue(); } catch(e) {}
 
   // Update status text
   if(status) {
@@ -7231,9 +7941,10 @@ window.syncDeliveryUI = function(opts = { collapse: true }) {
 
     if(opts && opts.collapse) {
       form.classList.remove("show");
-      if(btn) btn.style.display = "none";
+      if(btn) { btn.style.display = "none"; btn.classList.remove("ready-hint"); }
     }
   }
+  try { updateDeliveryCollapseCue(); } catch(e) {}
   try { syncDeliveryHeaderUI(); } catch(e) {}
 };
 
@@ -7242,16 +7953,24 @@ setTimeout(() => window.syncDeliveryUI && window.syncDeliveryUI({ collapse: true
 window.addEventListener("pageshow", () => {
   setTimeout(() => window.syncDeliveryUI && window.syncDeliveryUI({ collapse: true }), 200);
 });
+["dName","dPhone","dAddr"].forEach(id => {
+  const el = document.getElementById(id);
+  if(el){
+    el.addEventListener("input", () => { try { updateDeliveryCollapseCue(); } catch(e) {} }, { passive:true });
+    el.addEventListener("change", () => { try { updateDeliveryCollapseCue(); } catch(e) {} }, { passive:true });
+  }
+});
 
 window.submitOrder = () => {
     // V2 Sprint1: strict mode — if config isn't ready, don't allow submission
     if(!CONFIG_READY) {
-        try { showInitBlockedToast(); } catch(e) { try { showToast('系統初始化中…請稍候', 'info', 2800); } catch(e2) {} }return;
+        try { showInitBlockedToast(); } catch(e) { try { showToast('系統初始化中…請稍候', 'info', 2800); } catch(e2) {} }
+        return;
     }
-const f = (id) => document.getElementById(id).value.trim(); 
+
+    const f = (id) => document.getElementById(id).value.trim();
     const nameEl = document.getElementById("fName");
     const deptEl = document.getElementById("fDept");
-
     // 錯誤提示重置
     nameEl.classList.remove("input-error", "flash-anim");
     deptEl.classList.remove("input-error", "flash-anim");
@@ -7261,11 +7980,13 @@ const f = (id) => document.getElementById(id).value.trim();
     void nameEl.offsetWidth; // Trigger reflow
 
     let hasError = false;
+    const receiptEmail = "";
+
     // 1. 基本驗證
     if(!f("fName")) { nameEl.classList.add("input-error", "flash-anim"); hasError = true; }
     if(!f("fDept")) { deptEl.classList.add("input-error", "flash-anim"); hasError = true; }
 
-    // [NEW] 2. 宅配驗證
+    // 2. 宅配驗證
     const isDelivery = document.getElementById("chkDelivery").checked;
     let pickupInfo = null;
 
@@ -7285,149 +8006,305 @@ const f = (id) => document.getElementById(id).value.trim();
     }
 
     if(hasError) {
-        showToast(isDelivery ? "請填寫完整訂購與宅配資訊" : "請填寫姓名與部門", "warn"); 
-        return; 
-    } 
+        showToast(isDelivery ? "請填寫完整訂購與宅配資訊" : "請填寫姓名與部門", "warn");
+        return;
+    }
 
-    const data = calcCart(); 
-    if(data.warnings.length > 0) { 
-        const warnEl = document.getElementById("warnMsg"); 
-        warnEl.scrollIntoView({ behavior: "smooth", block: "center" }); 
-        warnEl.classList.remove("flash-anim"); void warnEl.offsetWidth; warnEl.classList.add("flash-anim"); 
-        showToast("尚有優惠未湊滿，無法送出！", "warn"); 
-        return; 
-    } 
+    const data = calcCart();
+    if(data.warnings.length > 0) {
+        const warnEl = document.getElementById("warnMsg");
+        warnEl.scrollIntoView({ behavior: "smooth", block: "center" });
+        warnEl.classList.remove("flash-anim"); void warnEl.offsetWidth; warnEl.classList.add("flash-anim");
+        showToast("尚有優惠未湊滿，無法送出！", "warn");
+        return;
+    }
 
-    const btn = document.querySelector(".btn-submit"); 
-    const originalText = btn.innerText; 
-    btn.innerText = "資料傳送中..."; 
-    btn.disabled = true; 
-    btn.style.opacity = "0.7"; 
+    const btn = document.querySelector(".btn-submit");
+    const originalText = btn.innerText;
+    btn.innerText = "訂單資料傳送中...請勿關閉視窗";
+    btn.disabled = true;
+    btn.style.opacity = "0.7";
 
-    const allDiscountNotes = []; 
+    const allDiscountNotes = [];
 
     // 準備商品資料
-    const itemsPayload = data.items.map(it => { 
-        let spec = it.spec || ""; 
-        let bundleSummary = ""; 
+    const itemsPayload = data.items.map(it => {
+        let spec = it.spec || "";
+        let bundleSummary = "";
 
-        if(it.bundleSelection) { 
-            const s = it.bundleSelection; 
-            spec = `[自選] ${it.bundle[s[0]]?.name} + ${it.bundle[s[1]]?.name}`; 
-            bundleSummary = `${it.bundle[s[0]]?.name}|${it.bundle[s[1]]?.name}`; 
-        } else { 
-            if(it.bundle.length > 0) { 
-                spec = "[" + it.bundle.map(b=>b.name).join("+") + "]"; 
-                bundleSummary = it.bundle.map(b=>b.name).join("|"); 
-            } 
-        } 
+        if(it.bundleSelection) {
+            const s = it.bundleSelection;
+            spec = `[自選] ${it.bundle[s[0]]?.name} + ${it.bundle[s[1]]?.name}`;
+            bundleSummary = `${it.bundle[s[0]]?.name}|${it.bundle[s[1]]?.name}`;
+        } else {
+            if(it.bundle.length > 0) {
+                spec = "[" + it.bundle.map(b=>b.name).join("+") + "]";
+                bundleSummary = it.bundle.map(b=>b.name).join("|");
+            }
+        }
 
-        let chargeQty = it.qty, freeQty = 0; 
-        const bogo = RULES.bogo.find(b => b.code === it.code); 
-        if(bogo) { 
-            const set = bogo.buy + bogo.get; 
-            const sets = Math.floor(it.qty / set); 
-            freeQty = sets * bogo.get; 
-            chargeQty = it.qty - freeQty; 
-        } 
+        let chargeQty = it.qty, freeQty = 0;
+        const bogo = RULES.bogo.find(b => b.code === it.code);
+        if(bogo) {
+            const set = bogo.buy + bogo.get;
+            const sets = Math.floor(it.qty / set);
+            freeQty = sets * bogo.get;
+            chargeQty = it.qty - freeQty;
+        }
 
-        it.tags.forEach(t => { 
-            if(t.cls === 'save') allDiscountNotes.push(`${it.name}: ${t.text}`); 
-        }); 
+        it.tags.forEach(t => {
+            if(t.cls === 'save') allDiscountNotes.push(`${it.name}: ${t.text}`);
+        });
 
-        return { 
-            product_code: it.code, 
-            product_name: it.name, 
-            spec: spec, 
-            category: it.category, 
-            unit_price: it.price, 
-            qty: it.qty, 
-            charge_qty: chargeQty, 
-            free_qty: freeQty, 
-            line_total: Math.round(it.finalLine), 
-            bundle_summary: bundleSummary 
-        }; 
-    }); 
+        return {
+            product_code: it.code,
+            product_name: it.name,
+            spec: spec,
+            category: it.category,
+            unit_price: it.price,
+            qty: it.qty,
+            charge_qty: chargeQty,
+            free_qty: freeQty,
+            line_total: Math.round(it.finalLine),
+            bundle_summary: bundleSummary
+        };
+    });
 
-    // [Mod] 準備贈品資料 (包含拆解邏輯)
+    // 準備贈品資料 (包含拆解邏輯)
     const giftsPayload = data.gifts.map(g => {
         let bundleSummary = "";
-        // 查找贈品是否有 bundle 設定 (邏輯同產品列表)
         const p = PRODUCT_MAP.get(g.code);
         if (p && p.bundle && p.bundle.length > 0) {
-            // 如果贈品本身是組合包，自動拆解其內容物
             bundleSummary = p.bundle.map(b => b.name).join("|");
         }
 
-        return { 
-            product_code: g.code || "GIFT", 
-            product_name: `[贈品] ${g.name}`, 
+        return {
+            product_code: g.code || "GIFT",
+            product_name: `[贈品] ${g.name}`,
             qty: g.qty,
-            bundle_summary: bundleSummary // 傳給後端寫入 Content 欄位
+            bundle_summary: bundleSummary
         };
-    }); 
+    });
 
-    if(giftsPayload.length > 0) allDiscountNotes.push("已符合滿額贈資格"); 
+    if(giftsPayload.length > 0) allDiscountNotes.push("已符合滿額贈資格");
 
     // 組合最終 Payload
-    lastOrderData = { 
-        employee_name: f("fName"), 
-        department: f("fDept"), 
-        payment_method: f("fPay"), 
-        remarks: f("fNote"), 
-        totals: { 
-            base: data.subTotal, 
-            discount: Math.round(data.discountAmt), 
-            pay: Math.round(data.finalTotal) 
-        }, 
-        discount_notes: allDiscountNotes, 
-        items: itemsPayload, 
+    lastOrderData = {
+        employee_name: f("fName"),
+        department: f("fDept"),
+        payment_method: f("fPay"),
+        receipt_email: receiptEmail,
+        remarks: f("fNote"),
+        totals: {
+            base: data.subTotal,
+            discount: Math.round(data.discountAmt),
+            pay: Math.round(data.finalTotal)
+        },
+        discount_notes: allDiscountNotes,
+        items: itemsPayload,
         gifts: giftsPayload,
-        // [New] 宅配與取貨資訊
         pickup_method: isDelivery ? '宅配' : '自取',
         pickup_info: pickupInfo
-    }; 
+    };
 
-    fetch(GAS_URL, { 
-        method: "POST", 
-        headers: { "Content-Type": "application/x-www-form-urlencoded" }, 
-        body: "payload=" + encodeURIComponent(JSON.stringify(lastOrderData)) 
+    fetch(GAS_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: "payload=" + encodeURIComponent(JSON.stringify(lastOrderData))
     })
     .then(response => response.json())
-    .then(res => { 
-        if(res.ok) { 
-            showToast("訂單送出成功！"); 
-            openReceipt(res.order_id); 
-        } else { 
-            alert("訂單送出失敗：" + (res.error || "未知錯誤")); 
-        } 
+    .then(res => {
+        if(res.ok) {
+            lastOrderId = res.order_id || null;
+            lastPickupToken = res.pickup_token || '';
+            lastPickupCode = res.pickup_code || '';
+            lastReceiptEmail = "";
+            lastReceiptEmailStatus = null;
+            lastReceiptEmailError = '';
+            lastOrderData.order_id = lastOrderId;
+            lastOrderData.pickup_token = lastPickupToken;
+            lastOrderData.pickup_code = lastPickupCode;
+            showToast("訂單送出成功！");
+            openReceipt(lastOrderId, res);
+        } else {
+            alert("訂單送出失敗：" + (res.error || "未知錯誤"));
+        }
     })
-    .catch(err => { 
-        console.error(err); 
-        alert("連線發生錯誤"); 
+    .catch(err => {
+        console.error(err);
+        alert("連線發生錯誤");
     })
-    .finally(() => { 
-        btn.innerText = originalText; 
-        btn.disabled = false; 
-        btn.style.opacity = "1"; 
-    }); 
+    .finally(() => {
+        btn.innerText = originalText;
+        btn.disabled = false;
+        btn.style.opacity = "1";
+    });
 };
 
-function openReceipt(orderId) { const modal = document.getElementById("receiptModal"); const body = document.getElementById("rcBody"); document.getElementById("rcOrderId").innerText = `No. ${orderId}`; let html = ""; 
+function pickupQrPayload(){ return lastPickupToken ? `TTLBT_PICKUP|v1|${lastPickupToken}` : ''; }
+function pickupQrUrl(){ return pickupQrPayload() ? `https://api.qrserver.com/v1/create-qr-code/?size=220x220&margin=10&data=${encodeURIComponent(pickupQrPayload())}` : ''; }
+function escapeHtml(str){ return String(str ?? '').replace(/[&<>"]/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[s])); }
 
-    // [New] 收據顯示宅配資訊
+function openReceipt(orderId, res = {}) {
+    const modal = document.getElementById("receiptModal");
+    const body = document.getElementById("rcBody");
+    document.getElementById("rcOrderId").innerText = `No. ${orderId || ''}`;
+
+    let html = `<div class="receipt-status warn">請「自行截圖」或「儲存憑證」，可於付款／取貨時加速流程（出示 QR Code 或取貨碼）。</div>`;
+
+    if(lastPickupToken || lastPickupCode) {
+        html += `<div class="pickup-proof-card">
+            <div class="pickup-proof-title"><span class="material-icons-round" style="font-size:18px">qr_code_2</span>取貨 QR Code</div>
+            ${pickupQrUrl() ? `<img class="pickup-qr-img" src="${pickupQrUrl()}" alt="取貨 QR Code">` : ''}
+            <div class="pickup-code">${escapeHtml(lastPickupCode || lastPickupToken)}</div>
+            <div style="font-size:11px;color:#607d8b;line-height:1.45;">此 QR Code 僅供取貨時掃描辨識訂單使用。</div>
+        </div>`;
+    }
+
+    html += `<div class="rc-info-grid">
+      <div class="rc-info-cell">訂購人<b>${escapeHtml(lastOrderData.employee_name || '')}</b></div>
+      <div class="rc-info-cell">部門<b>${escapeHtml(lastOrderData.department || '')}</b></div>
+      <div class="rc-info-cell">付款方式<b>${escapeHtml(lastOrderData.payment_method || '')}</b></div>
+      <div class="rc-info-cell">取貨方式<b>${escapeHtml(lastOrderData.pickup_method || '自取')}</b></div>
+      ${lastOrderData.remarks ? `<div class="rc-info-cell full">訂單備註<b>${escapeHtml(lastOrderData.remarks)}</b></div>` : ''}
+    </div>`;
+
+    // 收據顯示宅配資訊
     if (lastOrderData.pickup_method === '宅配' && lastOrderData.pickup_info) {
         html += `
         <div style="background:#fff3e0;padding:10px;margin-bottom:10px;border-radius:6px;font-size:13px;color:#e65100;">
             <b>🚚 宅配資訊</b><br>
-            ${lastOrderData.pickup_info.name} / ${lastOrderData.pickup_info.phone}<br>
-            ${lastOrderData.pickup_info.address}
+            ${escapeHtml(lastOrderData.pickup_info.name)} / ${escapeHtml(lastOrderData.pickup_info.phone)}<br>
+            ${escapeHtml(lastOrderData.pickup_info.address)}
+            ${lastOrderData.pickup_info.note ? `<br>備註：${escapeHtml(lastOrderData.pickup_info.note)}` : ''}
         </div>`;
     }
- lastOrderData.items.forEach(it => { html += `<div class="rc-item"><div class="rc-name">${it.product_name}</div><div class="rc-meta"><span>${it.spec}</span><span>x${it.qty}</span><span>$${it.line_total}</span></div></div>`; }); if(lastOrderData.gifts.length > 0) { html += `<div class="rc-row bold" style="color:#e65100">滿額贈品</div>`; lastOrderData.gifts.forEach(g => { html += `<div class="rc-item"><div class="rc-name" style="color:#e65100">🎁 ${g.product_name}</div><div class="rc-meta"><span></span><span>x${g.qty}</span><span>免費</span></div></div>`; }); } html += `<div class="rc-row bold"><span>總計金額</span><span>$${lastOrderData.totals.pay}</span></div>`; body.innerHTML = html; modal.classList.add("open"); }
-function closeReceipt() { document.getElementById("receiptModal").classList.remove("open"); CART = []; SELECTED_BUNDLE.clear(); achievedGifts = []; saveState(); refreshCart(); closeCart(); renderList(); document.getElementById("fNote").value = ""; lastOrderData = null; }
-function toggleEmailInput() { const box = document.getElementById("emailBox"); box.classList.toggle("show"); if(box.classList.contains("show")) document.getElementById("rcEmail").focus(); }
-function sendReceipt() { const email = document.getElementById("rcEmail").value.trim(); if(!email || !email.includes('@')) { showToast("請輸入有效的 Email", "warn"); return; } const btn = document.querySelector("#emailBox .btn-submit"); const orgTxt = btn.innerText; btn.innerText = "..."; btn.disabled = true; const payload = { action: 'send_email', email: email, order_id: document.getElementById("rcOrderId").innerText, order_data: lastOrderData }; fetch(GAS_URL, { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: "payload=" + encodeURIComponent(JSON.stringify(payload)) }).then(res => res.json()).then(res => { if(res.ok) { showToast("✅ 已寄送至信箱"); toggleEmailInput(); } else { alert("寄送失敗"); } }).catch(err => alert("連線錯誤")) .finally(() => { btn.innerText = orgTxt; btn.disabled = false; }); }
+    lastOrderData.items.forEach(it => { html += `<div class="rc-item"><div class="rc-name">${escapeHtml(it.product_name)}</div><div class="rc-meta"><span>${escapeHtml(it.spec)}</span><span>x${it.qty}</span><span>$${it.line_total}</span></div></div>`; });
+    if(lastOrderData.gifts.length > 0) {
+        html += `<div class="rc-row bold" style="color:#e65100">滿額贈品</div>`;
+        lastOrderData.gifts.forEach(g => { html += `<div class="rc-item"><div class="rc-name" style="color:#e65100">🎁 ${escapeHtml(g.product_name)}</div><div class="rc-meta"><span></span><span>x${g.qty}</span><span>免費</span></div></div>`; });
+    }
+    html += `<div class="rc-row bold"><span>總計金額</span><span>$${lastOrderData.totals.pay}</span></div>`;
+    body.innerHTML = html;
+    const doneBtn = document.getElementById("btnReceiptDone");
+    if(doneBtn) doneBtn.style.display = "block";
+    modal.classList.add("open");
+}
+
+function buildReceiptPrintHtml() {
+    const d = lastOrderData || {};
+    const items = Array.isArray(d.items) ? d.items : [];
+    const gifts = Array.isArray(d.gifts) ? d.gifts : [];
+    const qr = pickupQrUrl();
+    const code = lastPickupCode || lastPickupToken || '';
+    const pickup = d.pickup_info || {};
+    const orderNo = lastOrderId || d.order_id || '';
+    const itemRows = items.length ? items.map(it => `
+      <tr>
+        <td><b>${escapeHtml(it.product_name || '')}</b>${it.spec ? `<div style="font-size:11px;color:#78909c;margin-top:3px;">${escapeHtml(it.spec)}</div>` : ''}</td>
+        <td class="num">x${escapeHtml(it.qty || 0)}</td>
+        <td class="num">$${escapeHtml(it.line_total || 0)}</td>
+      </tr>`).join('') : `<tr><td colspan="3" style="text-align:center;color:#90a4ae;">無商品明細</td></tr>`;
+    const giftRows = gifts.length ? `<tr class="pr-gift-row"><td colspan="3" style="font-weight:900;background:#fff7ed;">🎁 滿額贈品</td></tr>` + gifts.map(g => `
+      <tr class="pr-gift-row">
+        <td><b>${escapeHtml(g.product_name || '')}</b></td>
+        <td class="num">x${escapeHtml(g.qty || 0)}</td>
+        <td class="num">免費</td>
+      </tr>`).join('') : '';
+    const deliveryHtml = (d.pickup_method === '宅配' && pickup) ? `
+      <div class="pr-section">
+        <div class="pr-title">宅配資訊</div>
+        <div class="pr-grid">
+          <div class="pr-cell">收件人<b>${escapeHtml(pickup.name || '')}</b></div>
+          <div class="pr-cell">電話<b>${escapeHtml(pickup.phone || '')}</b></div>
+          <div class="pr-cell full">地址<b>${escapeHtml(pickup.address || '')}</b></div>
+          ${pickup.note ? `<div class="pr-cell full">宅配備註<b>${escapeHtml(pickup.note || '')}</b></div>` : ''}
+        </div>
+      </div>` : '';
+    return `
+      <div class="print-receipt">
+        <div class="pr-card">
+          <div class="pr-head">
+            <h1>台酒生技訂購憑證</h1>
+            <div class="pr-order">訂單編號：${escapeHtml(orderNo)}</div>
+          </div>
+          <div class="pr-section">
+            <div class="pr-hint">請「自行截圖」或「儲存憑證」，可於付款／取貨時加速流程（出示 QR Code 或取貨碼）。</div>
+            ${qr ? `<div class="pr-qr"><div class="pr-qr-title">取貨 QR Code</div><div class="pr-qr-main"><div class="pr-qr-imgbox"><img src="${qr}" alt="取貨 QR Code"></div><div class="pr-code-panel"><div class="pr-code-label">取貨碼</div><div class="pr-code">${escapeHtml(code)}</div><div class="pr-qr-note">此 QR Code 僅供取貨時掃描辨識訂單使用。</div></div></div></div>` : ''}
+            <div class="pr-grid">
+              <div class="pr-cell">訂購人<b>${escapeHtml(d.employee_name || '')}</b></div>
+              <div class="pr-cell">部門<b>${escapeHtml(d.department || '')}</b></div>
+              <div class="pr-cell">付款方式<b>${escapeHtml(d.payment_method || '')}</b></div>
+              <div class="pr-cell">取貨方式<b>${escapeHtml(d.pickup_method || '自取')}</b></div>
+              ${d.remarks ? `<div class="pr-cell full">訂單備註<b>${escapeHtml(d.remarks || '')}</b></div>` : ''}
+            </div>
+          </div>
+          ${deliveryHtml}
+          <div class="pr-section">
+            <div class="pr-title"><span>商品明細</span><span style="color:#b91c1c;">總計 $${escapeHtml(d.totals && d.totals.pay ? d.totals.pay : 0)}</span></div>
+            <table class="pr-table">
+              <thead><tr><th>品項</th><th class="num">數量</th><th class="num">小計</th></tr></thead>
+              <tbody>${itemRows}${giftRows}</tbody>
+            </table>
+            <div class="pr-total"><span>總計金額</span><span>$${escapeHtml(d.totals && d.totals.pay ? d.totals.pay : 0)}</span></div>
+          </div>
+          <div class="pr-footer">本憑證為內部訂購與付款／取貨識別使用，非發票或付款證明。<br>台酒生技 祝您健康美麗</div>
+        </div>
+      </div>`;
+}
+
+function prepareReceiptPrintArea() {
+    const area = document.getElementById("receiptPrintArea");
+    if(!area) return null;
+    area.innerHTML = buildReceiptPrintHtml();
+    return area;
+}
+
+function waitForReceiptPrintImages(area, timeoutMs = 1600) {
+    const imgs = area ? Array.from(area.querySelectorAll('img')) : [];
+    if(!imgs.length) return Promise.resolve();
+    const jobs = imgs.map(img => new Promise(resolve => {
+      if(img.complete && img.naturalWidth > 0) return resolve();
+      const done = () => resolve();
+      img.onload = done;
+      img.onerror = done;
+    }));
+    return Promise.race([
+      Promise.all(jobs),
+      new Promise(resolve => setTimeout(resolve, timeoutMs))
+    ]);
+}
+
+function saveReceiptCredential() {
+    const doneBtn = document.getElementById("btnReceiptDone");
+    if(doneBtn) doneBtn.style.display = "block";
+    try { showToast("若無法儲存，請截圖本畫面留存", "info"); } catch(e) {}
+    const area = prepareReceiptPrintArea();
+    waitForReceiptPrintImages(area).then(() => {
+      try { window.print(); } catch(e) {}
+    });
+}
+
+function closeReceipt() {
+    document.getElementById("receiptModal").classList.remove("open");
+    CART = [];
+    SELECTED_BUNDLE.clear();
+    achievedGifts = [];
+    saveState();
+    refreshCart();
+    closeCart();
+    renderList();
+    document.getElementById("fNote").value = "";
+    lastOrderData = null;
+    lastOrderId = null;
+    lastPickupToken = '';
+    lastPickupCode = '';
+    lastReceiptEmail = '';
+    lastReceiptEmailStatus = null;
+    lastReceiptEmailError = '';
+}
+function toggleEmailInput() { showToast("此版本已改以取貨憑證為主，不再寄送 Email", "info"); }
+function sendReceipt() { showToast("此版本已改以取貨憑證為主，不再寄送 Email", "info"); }
 
 // Start
 window.addEventListener('scroll', () => {
@@ -7515,16 +8392,31 @@ initApp();
 try{ __starCaptureTemplate(); }catch(e){}
 try{ initBackGuard(); }catch(e){}
 
+// --- V42 UX v4: Click gift thumbnail to preview enlarged image ---
+document.addEventListener('click', function giftPreviewClick(e){
+  const img = e.target && e.target.closest ? e.target.closest('.gift-img-click') : null;
+  if(!img) return;
+  try{ e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation(); }catch(ex){}
+  const code = img.dataset.giftCode || img.closest('.g-img-row')?.dataset?.giftCode || '';
+  const idx = Number(img.dataset.imgIdx || 0);
+  let meta = img.dataset.giftMeta || img.closest('.g-img-row')?.dataset?.giftMeta || '';
+  if(!meta){
+    const card = img.closest('.gift-item, .pm-gift-item, .ms-dual-item');
+    meta = card?.querySelector?.('.g-amt, .pm-gift-amt, .ms-d-th')?.textContent || '';
+  }
+  openGiftImagePreview(code, idx, meta);
+}, true);
+
 // --- V2.8.8: Click-to-explain for promo badges/pills (non-intrusive) ---
 document.addEventListener('click', function promoHintClick(e){
-  const el = e.target.closest('.promo-badge, .p-price-pill, #shipFreeBadge');
+  const el = e.target.closest('.promo-badge, .p-price-pill, #shipFreeBadge, #floatShipBadge');
   if(!el) return;
   // prevent interfering with +/- buttons etc.
   if(e.target.closest('.s-btn')) return;
 
   // Shipping badge
-  if(el.id === 'shipFreeBadge'){
-    const total = Number(document.getElementById("sumPay")?.innerText?.replace('$','').replace(/,/g,'')) || 0;
+  if(el.id === 'shipFreeBadge' || el.id === 'floatShipBadge'){
+    const total = (typeof calcCart === 'function') ? Number(calcCart().finalTotal||0) : (Number(document.getElementById("sumPay")?.innerText?.replace('$','').replace(/,/g,'')) || 0);
     const thr = getFreeShipThreshold();
     if(!thr) return;
     if(total >= thr) return showPromoHint(`免運門檻：滿 ${Math.round(thr).toLocaleString()} 免運（已達標）`);
@@ -7573,6 +8465,9 @@ document.addEventListener('click', function promoHintClick(e){
   }
   if(promo === 'bundle_select'){
     return showPromoHint(`${getBadgeName('bundle_select','優惠組合')}：依商品內容任選搭配`);
+  }
+  if(promo === 'set_bundle'){
+    return showPromoHint(`${getBadgeName('set_bundle','精選套組')}：已搭配好的主題組合商品`);
   }
   if(promo === 'bundle_price'){
     return showPromoHint('優惠價：以活動設定為準');
