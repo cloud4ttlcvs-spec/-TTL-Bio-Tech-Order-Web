@@ -2975,6 +2975,31 @@ body.cfg-error .btn-bundle{
   .pm-basket-img{ width: 50px !important; height: 50px !important; }
 }
 
+
+/* ==========================================================
+   V7.14 修正：分類商品籃只顯示該分類商品、公告 ICON 改回主打星入口
+   ========================================================== */
+.sys-ann-main .star-dock-btn.sys-ann-icon{
+  width: 46px !important;
+  height: 46px !important;
+  flex: 0 0 46px !important;
+  margin-right: 0 !important;
+  border-radius: 14px !important;
+  background: linear-gradient(135deg, #fff7ed, #ffffff) !important;
+  border: 1px solid rgba(245,158,11,0.24) !important;
+  color: #f59e0b !important;
+  box-shadow: inset 0 2px 4px rgba(255,255,255,0.92), 0 8px 18px rgba(245,158,11,0.14) !important;
+}
+.sys-ann-main .star-dock-btn.sys-ann-icon.hidden{ display:none !important; }
+.sys-ann-main .star-dock-btn.sys-ann-icon:not(.hidden){ display:inline-flex !important; }
+.pm-basket-img:only-of-type{
+  transform: translateY(-6px) !important;
+  z-index: 3 !important;
+}
+@media (max-width: 430px){
+  .sys-ann-main .star-dock-btn.sys-ann-icon{ width:42px !important; height:42px !important; flex-basis:42px !important; }
+}
+
 </style>
 </head>
 <body>
@@ -5177,28 +5202,62 @@ function pmCollectBasketImages(sec, title){
       imgs.push(src);
       return imgs.length >= 3;
     };
+    const normalizeTitle = (v)=> String(v || '').trim().replace(/[＊*]/g,'').replace(/\s+/g,'');
+    const sectionCat = (()=>{
+      try{
+        const gridEl = sec && sec.querySelector ? sec.querySelector('[data-vcat]') : null;
+        const vcat = gridEl && gridEl.dataset ? String(gridEl.dataset.vcat || '').trim() : '';
+        if(vcat) return vcat;
+      }catch(e){}
+      return String(title || '').trim();
+    })();
+    const rawCat = String(sectionCat || title || '').trim();
+    const rawClean = normalizeTitle(rawCat);
 
-    // 1) 先抓目前 DOM 已渲染的商品圖；若該分類有被虛擬列表延遲渲染，再走資料層補抓。
+    const productMatchesExactCategory = (p)=>{
+      if(!p || p.is_hidden) return false;
+      const cat = String(p.category || '').trim();
+      const name = String(p.name || '').trim();
+      const catClean = normalizeTitle(cat);
+      const nameClean = normalizeTitle(name);
+      if(!rawClean) return false;
+      if(rawClean.includes('清潔-')){
+        if(!catClean.includes('清潔')) return false;
+        if(rawClean === '清潔-洗潔') return nameClean.includes('洗潔');
+        if(rawClean === '清潔-洗衣') return nameClean.includes('洗衣');
+        if(rawClean === '清潔-皂') return nameClean.includes('皂');
+        return true;
+      }
+      return catClean.includes(rawClean) || nameClean.includes(rawClean);
+    };
+
+    // 1) 以該分類原始資料為準，只拿該分類自己的商品；若只有 1 個商品，就只顯示 1 張圖，不再補抓同色系商品。
+    let exactProducts = [];
+    try{
+      const registry = window.__VLIST_CAT__ || {};
+      if(rawCat && registry[rawCat] && Array.isArray(registry[rawCat].items)){
+        exactProducts = registry[rawCat].items.filter(p => p && !p.is_hidden);
+      }
+    }catch(e){}
+    if(exactProducts.length === 0 && Array.isArray(PRODUCTS)){
+      exactProducts = PRODUCTS.filter(productMatchesExactCategory);
+    }
+    if(exactProducts.length > 0){
+      for(const p of exactProducts){
+        if(pushSrc(p && p.photo)) break;
+      }
+      return imgs;
+    }
+
+    // 2) 若資料層沒有對到，再抓該分類區塊目前 DOM 已渲染的商品圖。
     const nodes = Array.from((sec || document).querySelectorAll('.p-img-box img.p-img, img.p-img'));
     for(const img of nodes){
       if(pushSrc(img.getAttribute('src') || img.currentSrc || img.src)) return imgs;
     }
+    if(imgs.length > 0) return imgs;
 
-    // 2) 從 PRODUCTS 資料層補抓，避免虛擬列表尚未產生 DOM 時導致分類沒有圖片。
+    // 3) 最後才做極低風險 fallback，避免分類完全沒有圖片。
     const t = String(title || '').trim();
-    const isMatch = (p)=>{
-      if(!p || p.is_hidden) return false;
-      const cat = String(p.category || '');
-      const name = String(p.name || '');
-      if(t.includes('清潔-')){
-        if(!cat.includes('清潔')) return false;
-        if(t === '清潔-洗潔') return name.includes('洗潔');
-        if(t === '清潔-洗衣') return name.includes('洗衣');
-        if(t === '清潔-皂') return name.includes('皂');
-        return true;
-      }
-      return !!t && (cat.includes(t) || cat.split(/[\s_]/)[0] === t || name.includes(t));
-    };
     const pickFrom = (arr)=>{
       for(const p of arr || []){
         if(pushSrc(p && p.photo)) return true;
@@ -5206,22 +5265,19 @@ function pmCollectBasketImages(sec, title){
       return false;
     };
     if(Array.isArray(PRODUCTS)){
-      pickFrom(PRODUCTS.filter(isMatch));
-      if(imgs.length < 2){
-        const theme = pmThemeFromTitle(t);
-        const fallback = PRODUCTS.filter(p=>{
-          if(!p || p.is_hidden) return false;
-          const cat = String(p.category||'');
-          const name = String(p.name||'');
-          if(theme === 'health') return cat.includes('保健') || name.includes('保健');
-          if(theme === 'beauty') return cat.includes('美容') || name.includes('面膜') || name.includes('精華') || name.includes('乳');
-          if(theme === 'clean') return cat.includes('清潔') || name.includes('洗') || name.includes('皂');
-          if(theme === 'drink') return cat.includes('飲') || name.includes('飲');
-          return false;
-        });
-        pickFrom(fallback);
-      }
-      if(imgs.length < 2) pickFrom(PRODUCTS.filter(p=>p && !p.is_hidden && p.photo));
+      const theme = pmThemeFromTitle(t);
+      const fallback = PRODUCTS.filter(p=>{
+        if(!p || p.is_hidden) return false;
+        const cat = String(p.category||'');
+        const name = String(p.name||'');
+        if(theme === 'health') return cat.includes('保健') || name.includes('保健');
+        if(theme === 'beauty') return cat.includes('美容') || name.includes('面膜') || name.includes('精華') || name.includes('乳');
+        if(theme === 'clean') return cat.includes('清潔') || name.includes('洗') || name.includes('皂');
+        if(theme === 'drink') return cat.includes('飲') || name.includes('飲');
+        return false;
+      });
+      pickFrom(fallback);
+      if(imgs.length === 0) pickFrom(PRODUCTS.filter(p=>p && !p.is_hidden && p.photo));
     }
     return imgs;
   }catch(e){ return []; }
@@ -5720,9 +5776,8 @@ function renderSystemAnnouncement(){
     slot.style.display='block';
     slot.innerHTML = `
       <div class="sys-ann sys-ann--row">
-        <button type="button" id="starDockBtn" class="star-dock-btn hidden" title="主打星"><span class="material-icons-round">star</span><span class="star-dock-badge" id="starDockBadge" style="display:none">0</span></button>
         <div class="sys-ann-main">
-          <div class="sys-ann-icon"><span class="material-icons-round">tips_and_updates</span></div>
+          <button type="button" id="starDockBtn" class="sys-ann-icon star-dock-btn hidden" title="主打星"><span class="material-icons-round">star</span><span class="star-dock-badge" id="starDockBadge" style="display:none">0</span></button>
           <div class="sys-ann-body">
             <div class="title">${titleLine}</div>
             <div class="desc">${descText}</div>
